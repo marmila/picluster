@@ -6,7 +6,7 @@ serviceMonitor:
 
 # Ingress configuration
 ingress:
-  host: linkerd.picluster.ricsanfre.com
+  host: linkerd.picluster.marmilan.com
   # configure cert-manager issuer
   certmanager:
     # tlsIssuer=letsecrypt to generate valid TLS certficiate using IONOS API

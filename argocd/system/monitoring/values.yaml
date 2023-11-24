@@ -1,7 +1,7 @@
 
 # Ingress configuration
 ingress:
-  host: monitoring.picluster.ricsanfre.com
+  host: monitoring.picluster.marmilan.com
   # configure cert-manager issuer
   certmanager:
     # tlsIssuer=letsecrypt to generate valid TLS certficiate using IONOS API
@@ -72,7 +72,7 @@ kube-prometheus-stack:
   alertmanager:
     alertmanagerSpec:
       # Subpath /alertmanager configuration
-      externalUrl: http://monitoring.picluster.ricsanfre.com/alertmanager/
+      externalUrl: http://monitoring.picluster.marmilan.com/alertmanager/
       routePrefix: /
       # PVC config
       storage:
@@ -94,7 +94,7 @@ kube-prometheus-stack:
   prometheus:
     prometheusSpec:
       # Subpath /prometheus configuration
-      externalUrl: http://monitoring.picluster.ricsanfre.com/prometheus/
+      externalUrl: http://monitoring.picluster.marmilan.com/prometheus/
       routePrefix: /
       # Resources request and limits
       resources:
@@ -144,7 +144,7 @@ kube-prometheus-stack:
     # Configuring /grafana subpath
     grafana.ini:
       server:
-        domain: monitoring.picluster.ricsanfre.com
+        domain: monitoring.picluster.marmilan.com
         root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
         # rewrite rules configured in nginx rules
         # https://grafana.com/tutorials/run-grafana-behind-a-proxy/

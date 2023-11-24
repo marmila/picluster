@@ -4,7 +4,7 @@
 # Creating with specific template
 ingress:
   enabled: true
-  host: traefik.picluster.ricsanfre.com
+  host: traefik.picluster.marmilan.com
   # configure cert-manager issuer
   certmanager:
     # tlsIssuer=letsecrypt to generate valid TLS certficiate using IONOS API

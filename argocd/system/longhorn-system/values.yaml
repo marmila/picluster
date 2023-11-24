@@ -1,7 +1,7 @@
 
 # Backup S3 backend URL
 backup:
-  minioUrl: "https://s3.ricsanfre.com:9091"
+  minioUrl: "https://s3.marmilan.com:9091"
 
 # Prometheus servicemonitor configuration
 serviceMonitor:
@@ -26,7 +26,7 @@ longhorn:
     ingressClassName: nginx
    
     # ingress host
-    host: longhorn.picluster.ricsanfre.com
+    host: longhorn.picluster.marmilan.com
 
     ## Set this to true in order to enable TLS on the ingress record
     tls: true
@@ -50,4 +50,4 @@ longhorn:
       #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
       #   * 'ca-issuer' (CA-signed certificate, not valid)
       cert-manager.io/cluster-issuer: letsencrypt-issuer
-      cert-manager.io/common-name: longhorn.picluster.ricsanfre.com
+      cert-manager.io/common-name: longhorn.picluster.marmilan.com

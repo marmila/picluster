@@ -57,12 +57,12 @@ kafdrop:
     ingressClassName: nginx
     # ingress host
     hosts:
-      - kafdrop.picluster.ricsanfre.com
+      - kafdrop.picluster.marmilan.com
     ## TLS Secret Name
     tls:
       - secretName: kafdrop-tls
         hosts:
-          - kafdrop.picluster.ricsanfre.com
+          - kafdrop.picluster.marmilan.com
     ## Default ingress path
     path: /
     ## Ingress annotations
@@ -74,7 +74,7 @@ kafdrop:
       #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
       #   * 'ca-issuer' (CA-signed certificate, not valid)
       cert-manager.io/cluster-issuer: letsencrypt-issuer
-      cert-manager.io/common-name: kafdrop.picluster.ricsanfre.com
+      cert-manager.io/common-name: kafdrop.picluster.marmilan.com
 
   # Kafdrop docker images are not multi-arch. Only amd64 image is available
   affinity:

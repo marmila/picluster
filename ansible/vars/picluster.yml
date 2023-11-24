@@ -104,14 +104,14 @@ ionos_api_endpoint: https://api.hosting.ionos.com
 
 
 # issuer email
-acme_issuer_email: admin@ricsanfre.com
+acme_issuer_email: admin@marmilan.com
 
 ##########################
 # Minio S3 configuration #
 ##########################
 
 # Minio S3 Server
-minio_hostname: "s3.ricsanfre.com"
+minio_hostname: "s3.marmilan.com"
 minio_endpoint: "{{ minio_hostname }}:9091"
 minio_url: "https://{{ minio_hostname }}:9091"
 
@@ -125,7 +125,7 @@ minio_root_user: "minioadmin"
 minio_root_password: "{{ vault.minio.root.key }}"
 
 # Minio site region configuration
-minio_site_region: "eu-west-1"
+minio_site_region: "eu-milan-1"
 
 # Enabling TLS
 minio_enable_tls: true
@@ -230,8 +230,9 @@ restic_environment:
 # Vault configuration
 #######################
 
-vault_hostname: "vault.picluster.ricsanfre.com"
+vault_hostname: "vault.picluster.marmilan.com"
 vault_dns: "{{ vault_hostname }}"
+vault_version: 1.15.2
 vault_enable_tls: true
 custom_ca: false
 vault_init: true
