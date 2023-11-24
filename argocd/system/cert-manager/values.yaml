@@ -12,7 +12,7 @@ acme:
     # It creates ClusterIssuer resource `letsencrypt-issuer`
     ionos:
       enabled: true
-  acme_issuer_email: admin@ricsanfre.com
+  acme_issuer_email: admin@marmilan.com
 
 ########################
 # cert-manager  subchart
@@ -26,5 +26,5 @@ cert-manager:
 # cert-manager-webhook-ionos subchart
 #####################################
 cert-manager-webhook-ionos:
-  groupName: acme.ricsanfre.com
+  groupName: acme.marmilan.com
 

@@ -2,7 +2,7 @@
 # Group all variables.
 
 # Remote user name
-ansible_user: ricsanfre
+ansible_user: marmila
 
 # Ansible ssh private key
 ansible_ssh_private_key_file: ~/.ssh/id_rsa
@@ -16,7 +16,7 @@ centralized_san: false
 #######################
 # DNS server
 dns_server: 10.0.0.1
-dns_domain: picluster.ricsanfre.com
+dns_domain: picluster.marmilan.com
 
 ############################
 # restic backup role variables
@@ -32,3 +32,4 @@ restic_backups_dirs:
     exclude:
       - pattern: '.cache'
       - pattern: '.ansible'
+

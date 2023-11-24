@@ -14,7 +14,7 @@ dnsmasq_dhcp_range: '10.0.0.32,10.0.0.99'
 dnsmasq_additional_dhcp_hosts:
   ethernet_switch:
     desc: "Ethernet Switch"
-    mac: 94:a6:7e:7c:c7:69
+    mac: e0:46:ee:11:69:f3
     ip: 10.0.0.2
 dnsmasq_additional_dns_hosts:
   ntp_server:
@@ -28,7 +28,7 @@ dnsmasq_additional_dns_hosts:
   s3_server:
     desc: "S3 Server"
     hostname: s3
-    ip: 10.0.0.11
+    ip: 129.152.28.229
   elasticsearch:
     desc: "Elasticsearch server"
     hostname: elasticsearch

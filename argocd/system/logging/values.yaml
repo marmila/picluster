@@ -24,7 +24,7 @@ elasticsearch:
 
   # Ingress configuration
   ingress:
-    host: elasticsearch.picluster.ricsanfre.com
+    host: elasticsearch.picluster.marmilan.com
     # configure cert-manager issuer
     certmanager:
       # tlsIssuer=letsecrypt to generate valid TLS certficiate using IONOS API
@@ -42,7 +42,7 @@ kibana:
 
   # Ingress configuration
   ingress:
-    host: kibana.picluster.ricsanfre.com
+    host: kibana.picluster.marmilan.com
     # configure cert-manager issuer
     certmanager:
       # tlsIssuer=letsecrypt to generate valid TLS certficiate using IONOS API
@@ -53,7 +53,7 @@ kibana:
 external:
   fluentd:
     loadBalancerIp: 10.0.0.101
-    dns: fluentd.picluster.ricsanfre.com
+    dns: fluentd.picluster.marmilan.com
 
 # Prometheus monitoring
 serviceMonitor:
@@ -522,7 +522,7 @@ fluent-bit:
           fieldPath: spec.nodeName
     # Specify TZ
     - name: TZ
-      value: "Europe/Madrid"
+      value: "Europe/Rome"
   # Fluentbit config
   config:
     # Helm chart combines service, inputs, outputs, custom_parsers and filters section

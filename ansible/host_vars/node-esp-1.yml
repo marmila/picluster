@@ -5,6 +5,8 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
+        serial: KINGSTON_SA400S37480G_50026B7283150896
+        wwn: 0x50026b7283150896
         path: /dev/sda
         wipe: superblock-recursive
         preserve: false
@@ -98,3 +100,4 @@ autoinstall:
         device: format-0
         type: mount
         id: mount-0
+

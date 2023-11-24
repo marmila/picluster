@@ -35,12 +35,12 @@ argo-cd:
       ingressClassName: nginx
       # ingress host
       hosts:
-        - argocd.picluster.ricsanfre.com
+        - argocd.picluster.marmilan.com
       ## TLS Secret Name
       tls:
         - secretName: argocd-tls
           hosts:
-            - argocd.picluster.ricsanfre.com
+            - argocd.picluster.marmilan.com
       ## Default ingress path
       paths:
         - /
@@ -54,5 +54,5 @@ argo-cd:
         #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
         #   * 'ca-issuer' (CA-signed certificate, not valid)
         cert-manager.io/cluster-issuer: letsencrypt-issuer
-        cert-manager.io/common-name: argocd.picluster.ricsanfre.com
+        cert-manager.io/common-name: argocd.picluster.marmilan.com
 
