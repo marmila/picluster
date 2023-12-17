@@ -28,3 +28,7 @@ cert-manager:
 cert-manager-webhook-ionos:
   groupName: acme.marmilan.com
 
+# Extra args
+extraArgs:
+  - --dns01-recursive-nameservers-only
+  - --dns01-recursive-nameservers=217.160.81.33:53,217.160.83.118:53
