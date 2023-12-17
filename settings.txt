@@ -1,0 +1,13 @@
+{
+ "picluster.marmilan.com": {
+  "access_token": "MTJKL65KTz-ObDQ9aVX5oYtSoJG0lJIB7ko_SxP6K6c",
+  "access_token_expires_in": 604800,
+  "iat": 1702579493,
+  "protocols": [
+   "IPv4"
+  ],
+  "provider_name": "IONOS",
+  "refresh_token": "MTKVGgPhA4sHCseJAIIzDTnS7h8pxwctvAhX_8xWFjg",
+  "url_api": "https://api.domainconnect.ionos.com"
+ }
+}
