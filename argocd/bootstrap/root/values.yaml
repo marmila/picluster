@@ -1,5 +1,5 @@
 gitops:
-  repo: https://github.com/marmila/picluster
+  repo: https://github.com/marmila/picluster.git
   revision: master
 
 # List of application corresponding to different sync waves
