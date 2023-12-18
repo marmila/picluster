@@ -1,13 +1,5 @@
 gitops:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
   repo: https://github.com/marmila/picluster.git
-=======
-  repo: https://github.com/marmila/picluster
->>>>>>> Stashed changes
-=======
-  repo: https://github.com/marmila/picluster
->>>>>>> Stashed changes
   revision: master
 
 # List of application corresponding to different sync waves
