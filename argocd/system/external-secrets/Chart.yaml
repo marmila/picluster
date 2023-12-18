@@ -4,4 +4,8 @@ version: 0.0.0
 dependencies:
   - name: external-secrets
     version: 0.9.9
+<<<<<<< HEAD
     repository: https://charts.external-secrets.io
+=======
+    repository: https://charts.external-secrets.io
+>>>>>>> upstream/master
