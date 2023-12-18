@@ -31,4 +31,4 @@ cert-manager-webhook-ionos:
 # Extra args
 extraArgs:
   - --dns01-recursive-nameservers-only
-  - --dns01-recursive-nameservers=kube-dns.kube-system.svc.cluster.local:53
+  - --dns01-recursive-nameservers-only,--dns01-recursive-nameservers=91.80.35.134:53,91.80.35.166:53
