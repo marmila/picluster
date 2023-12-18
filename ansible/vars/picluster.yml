@@ -230,6 +230,7 @@ restic_environment:
 # Vault configuration
 #######################
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 vault_hostname: "vault.picluster.marmilan.com"
 =======
@@ -237,6 +238,9 @@ vault_hostname: "vault.picluster.ricsanfre.com"
 vault_version: 1.15.2
 
 >>>>>>> upstream/master
+=======
+vault_hostname: "vault.picluster.marmilan.com"
+>>>>>>> Stashed changes
 vault_dns: "{{ vault_hostname }}"
 vault_version: 1.15.2
 vault_enable_tls: true
