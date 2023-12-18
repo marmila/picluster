@@ -2,7 +2,7 @@
 title: Backup & Restore
 permalink: /docs/backup/
 description: How to deploy a backup solution based on Velero and Restic in our Raspberry Pi Kubernetes Cluster.
-last_modified_at: "13-10-2023"
+last_modified_at: "05-12-2023"
 ---
 
 ## Backup Architecture and Design
@@ -38,11 +38,11 @@ The backup architecture is the following:
   2) Filesystem level backup
   3) Application unfreeze.
 
-  Longhorn provides its own mechanisms for doing the backups and to take snapshots of the persistent volumes. See Longhorn [documentation](https://longhorn.io/docs/1.3.1/snapshots-and-backups/).
+  Longhorn provides its own mechanisms for doing the backups and to take snapshots of the persistent volumes. See Longhorn [documentation](https://longhorn.io/docs/latest/snapshots-and-backups/).
 
   Longhorn does not currently support application consistent volumes snapshots/backups, see [longhorn open issue #2128](https://github.com/longhorn/longhorn/issues/2128).
 
-  Longhorn does support, from release 1.2.4, [Kubernetes CSI snapshot API](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) to take snapshots/backups programmatically. See Longhorn documentation: [CSI Snapshot Support](https://longhorn.io/docs/1.3.1/snapshots-and-backups/csi-snapshot-support/).
+  Longhorn does support, from release 1.2.4, [Kubernetes CSI snapshot API](https://kubernetes.io/docs/concepts/storage/volume-snapshots/) to take snapshots/backups programmatically. See Longhorn documentation: [CSI Snapshot Support](https://longhorn.io/docs/latest/snapshots-and-backups/csi-snapshot-support/).
 
   Wiht this functionality application-consistent backups can be orchestrated:
 
@@ -901,7 +901,7 @@ spec:
     hooks: {}
     includedNamespaces:
     - '*'
-    included_resources:
+    includedResources:
     - '*'
     includeClusterResources: true
     metadata:

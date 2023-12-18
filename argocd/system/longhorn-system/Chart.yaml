@@ -4,4 +4,8 @@ version: 0.0.0
 dependencies:
   - name: longhorn
     version: 1.5.3
+<<<<<<< HEAD
     repository: https://charts.longhorn.io
+=======
+    repository: https://charts.longhorn.io
+>>>>>>> upstream/master
