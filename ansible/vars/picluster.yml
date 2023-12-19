@@ -230,10 +230,7 @@ restic_environment:
 # Vault configuration
 #######################
 vault_hostname: "vault.picluster.marmilan.com"
-<<<<<<< HEAD
-=======
 vault_version: 1.15.2
->>>>>>> 6652336 (fix merge issues)
 vault_dns: "{{ vault_hostname }}"
 vault_enable_tls: true
 custom_ca: false
