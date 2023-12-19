@@ -5,4 +5,7 @@ dependencies:
   - name: external-secrets
     version: 0.9.9
     repository: https://charts.external-secrets.io
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6652336 (fix merge issues)

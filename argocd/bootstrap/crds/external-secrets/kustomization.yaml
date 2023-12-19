@@ -5,4 +5,7 @@ resources:
 # helm chart version 0.9.9
 # external-secrets helm chart to be installed with value installCDRs=false
 - https://raw.githubusercontent.com/external-secrets/external-secrets/v0.9.9/deploy/crds/bundle.yaml
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6652336 (fix merge issues)
