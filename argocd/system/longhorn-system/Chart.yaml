@@ -5,7 +5,3 @@ dependencies:
   - name: longhorn
     version: 1.5.3
     repository: https://charts.longhorn.io
-<<<<<<< HEAD
-
-=======
->>>>>>> 6652336 (fix merge issues)
