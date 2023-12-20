@@ -8,8 +8,8 @@ dnsmasq_interface: 'eth0'
 dnsmasq_listen_address: '10.0.0.1'
 dnsmasq_domain_name: "{{ dns_domain }}"
 dnsmasq_upstream_dns_servers:
-  - 91.80.35.134
-  - 91.80.35.166
+  - 85.18.200.200
+  - 89.97.140.140
 dnsmasq_dhcp_range: '10.0.0.32,10.0.0.99'
 dnsmasq_additional_dhcp_hosts:
   ethernet_switch:
