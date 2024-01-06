@@ -194,7 +194,7 @@ existingSecret: ""
 smtpHost: "smtp.gmail.com"
 smtpPort: "587"
 smtpUser: "backupsmarco1@gmail.com"
-smtpPassword: "rdftypiufvltkleb"
+smtpPassword: ""
 smtpProtocol: ""
 ## @param containerPorts [object] Container ports
 ##
