@@ -1,4 +1,5 @@
 # Metal LB Ip address pool
 ipAddressPool:
   addresses:
-  - "10.0.0.100-10.0.0.200-93.34.120.139"
+  - "10.0.0.100-10.0.0.200"
+  - "93.34.120.139"
