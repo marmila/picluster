@@ -14,10 +14,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "${PROXY_OAUTH_CLIENT_SECRET}",
       "redirectUris": [
-        "https://oauth2-proxy.picluster.ricsanfre.com/oauth2/callback"
+        "https://oauth2-proxy.picluster.marmilan.com/oauth2/callback"
       ],
       "webOrigins": [
-        "https://oauth2-proxy.picluster.ricsanfre.com"
+        "https://oauth2-proxy.picluster.marmilan.com"
       ],
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
@@ -58,19 +58,19 @@
       "clientId": "${GRAFANA_OAUTH_CLIENT_ID}",
       "name": "Grafana",
       "description": "Grafana",
-      "rootUrl": "https://monitoring.picluster.ricsanfre.com/grafana",
-      "adminUrl": "https://monitoring.picluster.ricsanfre.com/grafana",
-      "baseUrl": "https://monitoring.picluster.ricsanfre.com/grafana",
+      "rootUrl": "https://monitoring.picluster.marmilan.com/grafana",
+      "adminUrl": "https://monitoring.picluster.marmilan.com/grafana",
+      "baseUrl": "https://monitoring.picluster.marmilan.com/grafana",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GRAFANA_OAUTH_CLIENT_SECRET}",
       "redirectUris": [
-        "https://monitoring.picluster.ricsanfre.com/grafana/login/generic_oauth"
+        "https://monitoring.picluster.marmilan.com/grafana/login/generic_oauth"
       ],
       "webOrigins": [
-        "https://monitoring.picluster.ricsanfre.com/grafana"
+        "https://monitoring.picluster.marmilan.com/grafana"
       ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
@@ -139,7 +139,7 @@
   "users": [
     {
       "username": "${PI_ADMIN_USERNAME}",
-      "email": "admin@picluster.ricsanfre.com",
+      "email": "admin@marmilan.com",
       "enabled": true,
       "emailVerified": true,
       "credentials": [
