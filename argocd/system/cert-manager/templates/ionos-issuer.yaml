@@ -24,10 +24,10 @@ spec:
             config:
               apiUrl: https://api.hosting.ionos.com/dns/v1
               publicKeySecretRef:
-                key: 156db4ef856a4df69ab4358393e6b344
+                key: IONOS_PUBLIC_PREFIX
                 name: ionos-secret
               secretKeySecretRef:
-                key: ymjvvRazlbO9rSf87OrR46jPGw_iM05bJocdCBlg2VJI9vjx3ErUl6h9A_IkMgOkl8LFQ549aeDWkb619UgQ7w
+                key: IONOS_SECRET
                 name: ionos-secret
 {{- end -}}
 {{- end -}}
