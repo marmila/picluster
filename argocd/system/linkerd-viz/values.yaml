@@ -19,7 +19,7 @@ ingress:
   # Enabling oauth2 through oauth2-proxy
   oauth2:
     enable: true
-    proxy: https://oauth2-proxy.picluster.ricsanfre.com
+    proxy: https://oauth2-proxy.picluster.marmilan.com
 
 ########################
 # linkerd-viz subchart
@@ -34,7 +34,7 @@ linkerd-viz:
     enabled: false
   # External Grafana
   grafana:
-    externalUrl: https://monitoring.picluster.ricsanfre.com/grafana/
+    externalUrl: https://monitoring.picluster.marmilan.com/grafana/
   # Disabling DNS rebinding protection. Only needed with Traefik Ingress
   # dashboard:
   #   enforcedHostRegexp: .*
