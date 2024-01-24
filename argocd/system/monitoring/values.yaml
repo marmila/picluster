@@ -21,10 +21,7 @@ k3sMetrics:
     - ip: 10.0.0.12
     - ip: 10.0.0.13
     - ip: 10.0.0.14
-    - ip: 10.0.0.15
     - ip: 10.0.0.20
-    - ip: 10.0.0.21
-    - ip: 10.0.0.22
 
 # Monitoring of external services
 externalServices:
@@ -157,7 +154,7 @@ kube-prometheus-stack:
         name: Keycloak-OAuth
         allow_sign_up: true
         client_id: grafana
-        client_secret: supersecret
+        # client_secret: supersecret
         scopes: openid email profile offline_access roles
         email_attribute_path: email
         login_attribute_path: username
