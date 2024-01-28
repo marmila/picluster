@@ -16,7 +16,7 @@ longhorn:
   defaultSettings:
     defaultDataPath: "/storage"
     # Backup S3 configuration
-    backupTarget: "s3://k3s-longhorn@eu-west-1/"
+    backupTarget: "s3://k3s-longhorn@eu-milan-1/"
     backupTargetCredentialSecret: longhorn-minio-secret
   # Ingress Resource. Longhorn dashboard.
   ingress:
