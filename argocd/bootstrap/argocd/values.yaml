@@ -25,26 +25,32 @@ argo-cd:
         return hs
       # Enabling Helm chart rendering with Kustomize
       kustomize.buildOptions: --enable-helm
+      ## Ignore resources
+      # https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#resource-exclusioninclusion
+      # Ignore VolumeSnapshot and VolumeSnapshotContent: Created by backup processes.
+      resource.exclusions: |
+        - apiGroups:
+          - snapshot.storage.k8s.io
+          kinds:
+          - VolumeSnapshot
+          - VolumeSnapshotContent
+          clusters:
+          - "*"
 
   server:
-    # Ingress Resource. LoSnghorn dashboard.
+    # Ingress Resource.
     ingress:
       ## Enable creation of ingress resource
       enabled: true
       ## Add ingressClassName to the Ingress
       ingressClassName: nginx
       # ingress host
-      hosts:
-        - argocd.picluster.marmilan.com
-      ## TLS Secret Name
-      tls:
-        - secretName: argocd-tls
-          hosts:
-            - argocd.picluster.marmilan.com
+      hostname: argocd.picluster.marmilan.com
       ## Default ingress path
-      paths:
-        - /
-
+      path: /
+      pathType: Prefix
+      # Enable tls. argocd-server-tls secret is created automatically for hostname
+      tls: true
       ## Ingress annotations
       annotations:
         # Linkerd configuration. Configure Service as Upstream

@@ -84,6 +84,10 @@ shutdown-k3s-master:
 shutdown-gateway:
 	${RUNNER} ansible -b -m shell -a "shutdown -h 1 min" gateway
 
+.PHONY: shutdown-picluster
+shutdown-picluster:
+	${RUNNER} ansible -b -m shell -a "shutdown -h 1 min" picluster
+
 .PHONY: get-argocd-passwd
 get-argocd-passwd:
 	kubectl get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' -n argocd | base64 -d;echo
@@ -91,3 +95,11 @@ get-argocd-passwd:
 .PHONY: get-elastic-passwd
 get-elastic-passwd:
 	kubectl get secret efk-es-elastic-user -o jsonpath='{.data.elastic}' -n logging | base64 -d;echo
+
+.PHONY: kubernetes-vault-config
+kubernetes-vault-config:
+	${RUNNER} ansible-playbook kubernetes_vault_config.yml
+
+.PHONY: get-pi-status
+get-pi-status:
+	${RUNNER} ansible -b -m shell -a "pi_throttling" raspberrypi
