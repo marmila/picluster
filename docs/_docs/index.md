@@ -3,26 +3,44 @@ title: What is this project about?
 permalink: /docs/home/
 redirect_from: /docs/index.html
 description: The scope of this project is to create a kubernetes cluster at home using Raspberry Pis and low cost mini PCs, and to automate its deployment and configuration applying IaC (infrastructure as a code) and GitOps methodologies with tools like Ansible and ArgoCD. How to automatically deploy K3s baesed kubernetes cluster, Longhorn as distributed block storage for PODs' persistent volumes, Prometheus as monitoring solution, EFK+Loki stack as centralized log management solution, Velero and Restic as backup solution and Linkerd as service mesh architecture.
-last_modified_at: "21-01-2024"
+last_modified_at: "04-02-2024"
 ---
 
 
 ## Scope
-The scope of this project is to create a kubernetes cluster at home using ARM/x86 bare metal nodes (**Raspberry Pis** and low cost refurbished **mini PCs**) and to automate its deployment and configuration applying **IaC (infrastructure as a code)** and **GitOps** methodologies with tools like [Ansible](https://docs.ansible.com/), [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [Argo CD](https://argo-cd.readthedocs.io/en/stable/).
 
-As part of the project, the goal is to use a lightweight Kubernetes flavor based on [K3S](https://k3s.io/) and deploy cluster basic services such as: 1) distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/), 2) backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/), 3) service mesh architecture, [Linkerd](https://linkerd.io/), and 4) observability platform based on metrics monitoring solution, [Prometheus](https://prometheus.io/), logging and analytics solution, EFḰ+LG stack ([Elasticsearch](https://www.elastic.co/elasticsearch/)-[Fluentd](https://www.fluentd.org/)/[Fluentbit](https://fluentbit.io/)-[Kibana](https://www.elastic.co/kibana/) + [Loki](https://grafana.com/oss/loki/)-[Grafana](https://grafana.com/oss/grafana/)), and distributed tracing solution, [Tempo](https://grafana.com/oss/tempo/).
+The main goal of  this project is to create a kubernetes cluster at home using ARM/x86 bare metal nodes (**Raspberry Pis** and low cost refurbished **mini PCs**) and to automate its deployment and configuration applying **IaC (infrastructure as a code)** and **GitOps** methodologies with tools like [Ansible](https://docs.ansible.com/), [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [Argo CD](https://argo-cd.readthedocs.io/en/stable/).
 
+The project scope includes the automation of the deployment and configuration of a lightweight Kubernetes flavor based on [K3S](https://k3s.io/),
+and deploy cluster basic services such as:
+- Distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/).
+- S3 Object storage, [Minio](https://min.io/).
+- Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/). 
+- Certificate management, [Cert-Manager](https://cert-manager.io).
+- Secrets Management solution with [Vault](https://www.vaultproject.io/) and [External Secrets](https://external-secrets.io/)
+- Identity Access Management(IAM) providing Single-sign On, [Keycloak](https://www.keycloak.org/)
+- Observability platform based on:
+   - Metrics monitoring solution, [Prometheus](https://prometheus.io/)
+   - Logging and analytics solution, combined EFK+LG stacks ([Elasticsearch](https://www.elastic.co/elasticsearch/)-[Fluentd](https://www.fluentd.org/)/[Fluentbit](https://fluentbit.io/)-[Kibana](https://www.elastic.co/kibana/) + [Loki](https://grafana.com/oss/loki/)-[Grafana](https://grafana.com/oss/grafana/))
+   - Distributed tracing solution, [Tempo](https://grafana.com/oss/tempo/).
+
+Also services needed to learn about microservices architectures are include as part of the scope
+
+- Service mesh architecture, [Linkerd](https://linkerd.io/)
+- API security using Oauth2.0 and OpenId Connect, using IAM solution, [Keycloak](https://www.keycloak.org/)
+- Streaming platform, [Kafka](https://kafka.apache.org/)
 
 ## Design Principles
 
 - Use hybrid x86/ARM bare metal nodes, combining in the same cluster Raspberry PI nodes (ARM) and x86 mini PCs (HP Elitedesk 800 G3).
 - Use lightweight Kubernetes distribution (K3S). Kubernetes distribution with a smaller memory footprint which is ideal for running on Raspberry PIs
-- Use of distributed storage block technology, instead of centralized NFS system, for pod persistent storage.  Kubernetes block distributed storage solutions, like Rook/Ceph or Longhorn, in their latest versions have included ARM 64 bits support.
-- Use of opensource projects under the [CNCF: Cloud Native Computing Foundation](https://www.cncf.io/) umbrella
+- Use distributed storage block technology, instead of centralized NFS system, for pod persistent storage.  Kubernetes block distributed storage solutions, like Rook/Ceph or Longhorn, in their latest versions have included ARM 64 bits support.
+- Use opensource projects under the [CNCF: Cloud Native Computing Foundation](https://www.cncf.io/) umbrella
 - Use latest versions of each opensource project to be able to test the latest Kubernetes capabilities.
-- Use of [cloud-init](https://cloudinit.readthedocs.io/en/latest/) to automate the initial OS installation.
-- Use of [Ansible](https://docs.ansible.com/) for automating the configuration of the cluster nodes, installation of kubernetes and external services, and triggering cluster bootstrap (ArgoCD bootstrap).
-- Use of [Argo CD](https://argo-cd.readthedocs.io/en/stable/) to automatically provision Kubernetes applications from git repository.
+- Automate deployment of cluster using IaC (infrastructure as a code) and GitOps methodologies with tools like:
+  - [cloud-init](https://cloudinit.readthedocs.io/en/latest/) to automate the initial OS installation of the cluster nodes.
+  - [Ansible](https://docs.ansible.com/) for automating the configuration of the cluster nodes, installation of kubernetes and external services, and triggering cluster bootstrap (ArgoCD bootstrap).
+  - [Argo CD](https://argo-cd.readthedocs.io/en/stable/) to automatically provision Kubernetes applications from git repository.
 
 
 ## Technology Stack
@@ -233,7 +251,7 @@ There is another list of services that I have decided to run outside the kuberen
 
 Minio backup servive is hosted in a VM running in Public Cloud, using [Oracle Cloud Infrastructure (OCI) free tier](https://www.oracle.com/es/cloud/free/).
 
-Vault service is running in `gateway` node, since Vault kubernetes authentication method need access to Kuberentes API, I won't host Vault service in Public Cloud.
+Vault service is running in one of the cluster nodes, `node1`, since Vault kubernetes authentication method need access to Kuberentes API, I won't host Vault service in Public Cloud.
 
 
 ## What I have built so far
@@ -310,42 +328,42 @@ The software used and the latest version tested of each component
 | Type | Software | Latest Version tested | Notes |
 |-----------| ------- |-------|----|
 | OS | Ubuntu | 22.04.2 | |
-| Control | Ansible | 2.14.5  | |
+| Control | Ansible | 2.16.3  | |
 | Control | cloud-init | 23.1.2 | version pre-integrated into Ubuntu 22.04.2 |
-| Kubernetes | K3S | v1.28.2 | K3S version|
+| Kubernetes | K3S | v1.29.1 | K3S version|
 | Kubernetes | Helm | v3.12 ||
 | Metrics | Kubernetes Metrics Server | v0.6.3 | version pre-integrated into K3S |
 | Kubernetes | etcd | v3.5.9-k3s1 | version pre-integrated into K3S |
-| Computing | containerd | v1.7.6-k3s1 | version pre-integrated into K3S |
-| Networking | Flannel | v0.22.2 | version pre-integrated into K3S |
+| Computing | containerd | v1.7.11-k3s2 | version pre-integrated into K3S |
+| Networking | Flannel | v0.24.0 | version pre-integrated into K3S |
 | Networking | CoreDNS | v1.10.1 | version pre-integrated into K3S |
-| Networking | Metal LB | v0.13.12 | Helm chart version:  0.13.12 |
+| Networking | Metal LB | v0.14.3 | Helm chart version:  0.14.3 |
 | Service Mesh | Linkerd | v2.14.9 | Helm chart version: linkerd-control-plane-1.16.10 |
-| Service Proxy | Traefik | v2.10.1 | Helm chart version: 23.1.0  |
-| Service Proxy | Ingress NGINX | v1.9.5 | Helm chart version: 4.9.0 |
+| Service Proxy | Traefik | v2.10.6 | Helm chart version: 26.0.0  |
+| Service Proxy | Ingress NGINX | v1.9.6 | Helm chart version: 4.9.1 |
 | Storage | Longhorn | v1.5.3 | Helm chart version: 1.5.3 |
 | Storage | Minio | RELEASE.2024-01-11T07-46-16Z | Helm chart version: 5.0.15 |
-| TLS Certificates | Certmanager | v1.13.2| Helm chart version: v1.13.2  |
-| Logging | ECK Operator |  2.11.0 | Helm chart version: 2.11.0 |
+| TLS Certificates | Certmanager | v1.14.2| Helm chart version: v1.14.2  |
+| Logging | ECK Operator |  2.11.1 | Helm chart version: 2.11.1 |
 | Logging | Elastic Search | 8.6.0 | Deployed with ECK Operator |
 | Logging | Kibana | 8.6.0 | Deployed with ECK Operator |
-| Logging | Fluentbit | 2.2.1 | Helm chart version: 0.42.0 |
+| Logging | Fluentbit | 2.2.2 | Helm chart version: 0.43.0 |
 | Logging | Fluentd | 1.15.3 | Helm chart version: 0.5.0 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.15.3|
-| Logging | Loki | 2.9.3 | Helm chart grafana/loki version: 5.41.7 |
-| Monitoring | Kube Prometheus Stack | v0.71.0 | Helm chart version: 56.0.1 |
-| Monitoring | Prometheus Operator | v0.71.0 | Installed by Kube Prometheus Stack. Helm chart version: 56.0.1  |
-| Monitoring | Prometheus | v2.49.1 | Installed by Kube Prometheus Stack. Helm chart version: 56.0.1 |
-| Monitoring | AlertManager | v0.26.0 | Installed by Kube Prometheus Stack. Helm chart version: 56.0.1 |
-| Monitoring | Grafana | 10.2.2 | Installed as dependency of Kube Prometheus Stack chart 56.0.1 |
-| Monitoring | Prometheus Node Exporter | v1.7.0 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 56.0.1 |
+| Logging | Loki | 2.9.4 | Helm chart grafana/loki version: 5.42.2 |
+| Monitoring | Kube Prometheus Stack | v0.71.2 | Helm chart version: 56.6.2 |
+| Monitoring | Prometheus Operator | v0.71.2 | Installed by Kube Prometheus Stack. Helm chart version: 56.6.2  |
+| Monitoring | Prometheus | v2.49.1 | Installed by Kube Prometheus Stack. Helm chart version: 56.6.2 |
+| Monitoring | AlertManager | v0.26.0 | Installed by Kube Prometheus Stack. Helm chart version: 56.6.2 |
+| Monitoring | Grafana | 10.3.0 | Installed as dependency of Kube Prometheus Stack chart 56.6.2 |
+| Monitoring | Prometheus Node Exporter | v1.7.0 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 56.6.2 |
 | Monitoring | Prometheus Elasticsearch Exporter | 1.7.0 | Helm chart version: prometheus-elasticsearch-exporter-5.4.0 |
-| Tracing | Grafana Tempo | 2.3.1 | Helm chart: tempo-distributed (1.8.0) |
-| Backup | Minio External (self-hosted) | RELEASE.2023-12-20T01:00:02Z | |
+| Tracing | Grafana Tempo | 2.3.1 | Helm chart: tempo-distributed (1.8.3) |
+| Backup | Minio External (self-hosted) | RELEASE.2024-01-31T20:20:33Z | |
 | Backup | Restic | 0.13.1 | |
-| Backup | Velero | 1.12.3 | Helm chart version: 5.2.2 |
+| Backup | Velero | 1.13.0 | Helm chart version: 5.3.0 |
 | Secrets | Hashicorp Vault | 1.15.4 | |
 | Secrets| External Secret Operator | 0.9.11 | Helm chart version: 0.9.11 |
-| SSO | Keycloak | 23.0.4 | Bitnami Helm chart version: 18.2.1 |
+| SSO | Keycloak | 23.0.6 | Bitnami Helm chart version: 18.4.0 |
 | SSO| Oauth2.0 Proxy | 7.5.1 | Helm chart version: 6.23.1 |
-| GitOps | Argo CD | v2.9.5 | Helm chart version: 5.53.3 |
+| GitOps | Argo CD | v2.10.0 | Helm chart version: 6.0.5 |
 {: .table .table-white .border-dark }

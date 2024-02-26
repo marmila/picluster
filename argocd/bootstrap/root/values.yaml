@@ -8,6 +8,11 @@ apps:
   - name: crds
     namespace: default
     path: argocd/bootstrap/crds
+    ignoreDifferences:
+      - group: "*"
+        kind: "*"
+        managedFieldsManagers:
+          - external-secrets
     syncWave: 0
     # External Secrets Operator
   - name: external-secrets
@@ -35,13 +40,13 @@ apps:
     path: argocd/system/linkerd
     syncWave: 5
     # Traefik Ingress Controller
-    # - name: traefik
-    #   namespace: traefik
-    #   path: argocd/system/traefik
-    #   syncWave: 6
-    #   helm:
-    #     # skip installation traefik CDRs
-    #     skipCrds: true
+  - name: traefik
+    namespace: traefik
+    path: argocd/system/traefik
+    syncWave: 6
+    helm:
+      # skip installation traefik CDRs
+      skipCrds: true
   - name: nginx
     namespace: nginx
     path: argocd/system/nginx
