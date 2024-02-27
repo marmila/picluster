@@ -28,7 +28,7 @@ dnsmasq_additional_dns_hosts:
   s3_server:
     desc: "S3 Server"
     hostname: s3
-    ip: 89.168.19.79
+    # ip: 89.168.19.79
     ip: 10.0.0.100
   elasticsearch:
     desc: "Elasticsearch server"
