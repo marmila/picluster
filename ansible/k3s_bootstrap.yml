@@ -112,4 +112,3 @@
 
     - name: Install cli utils.
       include_tasks: tasks/install_cli_utils.yml
-
