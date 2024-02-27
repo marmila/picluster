@@ -32,4 +32,3 @@ restic_backups_dirs:
     exclude:
       - pattern: '.cache'
       - pattern: '.ansible'
-
