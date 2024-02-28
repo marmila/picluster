@@ -60,12 +60,3 @@ all:
           hosts:
             node[3:4]:
             node-esp-1:
-    bootstrap:
-      hosts:
-        node2:
-    vault:
-      hosts:
-        node1:
-    haproxy:
-      hosts:
-        node1:
