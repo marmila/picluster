@@ -5,9 +5,7 @@
 <table>
   <tr>
     <td><img src="docs/assets/img/pi-cluster.png" width="400" alt="pi-cluster-1.0"/></td>
-    <td><img src="docs/assets/img/pi-cluster-2.0.png" width="360" /></td>
   </tr>
-    <td><img src="docs/assets/img/pi-cluster-3.0.png" width="600" /></td>
 </table>
 
 **K3S Kubernetes Cluster at home automated with Ansible and ArgoCD**
