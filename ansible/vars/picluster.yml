@@ -31,7 +31,7 @@ k3s_kubelet_config: |
 # --disable 'servicelb'
 # --disable 'traefik'
 # --disable 'local-storage'
-# --node-taint 'node-role.kubernetes.io/master=true:NoSchedule'
+# --node-taint 'node-role.kubernetes.io/control-plane:NoSchedule'
 # --kube-controller-manager-arg 'bind-address=0.0.0.0'
 # --kube-proxy-arg 'metrics-bind-address=0.0.0.0'
 # --kube-scheduler-arg 'bind-address=0.0.0.0'
@@ -47,7 +47,7 @@ k3s_server_config:
     - traefik
   write-kubeconfig-mode: 644
   node-taint:
-    - 'node-role.kubernetes.io/master=true:NoSchedule'
+    - 'node-role.kubernetes.io/control-plane:NoSchedule'
   etcd-expose-metrics: true
   kubelet-arg:
     - 'config=/etc/rancher/k3s/kubelet.config'
@@ -217,6 +217,8 @@ minio_users:
 # Restic configuration #
 ########################
 
+restic_version: 0.16.4
+
 # Restic S3 repository configuration
 restic_repository: "s3:{{ minio_url }}/restic"
 restic_use_ca_cert: true
@@ -230,7 +232,7 @@ restic_environment:
 # Vault configuration
 #######################
 vault_hostname: "vault.picluster.marmilan.com"
-vault_version: 1.15.4
+vault_version: 1.16.1
 vault_dns: "{{ vault_hostname }}"
 vault_enable_tls: true
 custom_ca: false
