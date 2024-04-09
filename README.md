@@ -4,7 +4,7 @@
 
 <table>
   <tr>
-    <td><img src="docs/assets/img/pi-cluster.png" width="400" alt="pi-cluster-1.0"/></td>
+    <td><img src="docs/assets/img/pi-cluster.png" width="600" alt="pi-cluster-1.0"/></td>
   </tr>
 </table>
 
