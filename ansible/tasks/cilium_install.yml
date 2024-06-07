@@ -5,7 +5,7 @@
   shell: |
     set -o pipefail
     kubectl kustomize --enable-helm --load-restrictor=LoadRestrictionsNone \
-     /pi-cluster/kubernetes/infrastructure/cilium/overlays/"{{overlay}}" | kubectl apply -f -
+     ../kubernetes/infrastructure/cilium/overlays/"{{overlay}}" | kubectl apply -f -
   args:
     executable: /bin/bash
   register: output
@@ -38,7 +38,7 @@
   shell: |
     set -o pipefail
     kubectl kustomize --enable-helm --load-restrictor=LoadRestrictionsNone \
-     /pi-cluster/kubernetes/infrastructure/cilium-config/overlays/"{{overlay}}" | kubectl apply -f -
+     ../kubernetes/infrastructure/cilium-config/overlays/"{{overlay}}" | kubectl apply -f -
   args:
     executable: /bin/bash
   register: output
