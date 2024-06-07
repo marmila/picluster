@@ -24,18 +24,18 @@ config:
     # Provider config
     provider="keycloak-oidc"
     provider_display_name="Keycloak"
-    redirect_url="https://oauth2-proxy.picluster.ricsanfre.com/oauth2/callback"
-    oidc_issuer_url="https://sso.picluster.ricsanfre.com/realms/picluster"
+    redirect_url="https://oauth2-proxy.picluster.marmilan.com/oauth2/callback"
+    oidc_issuer_url="https://sso.picluster.marmilan.com/realms/picluster"
     code_challenge_method="S256"
     ssl_insecure_skip_verify=true
     # Upstream config
     http_address="0.0.0.0:4180"
     upstreams="file:///dev/null"
     email_domains=["*"]
-    cookie_domains=["picluster.ricsanfre.com"]
+    cookie_domains=["picluster.marmilan.com"]
     cookie_secure=false
     scope="openid"
-    whitelist_domains=[".picluster.ricsanfre.com"]
+    whitelist_domains=[".picluster.marmilan.com"]
     insecure_oidc_allow_unverified_email="true"
 
 sessionStorage:
@@ -64,11 +64,11 @@ ingress:
     #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
     #   * 'ca-issuer' (CA-signed certificate, not valid)
     cert-manager.io/cluster-issuer: letsencrypt-issuer
-    cert-manager.io/common-name: oauth2-proxy.picluster.ricsanfre.com
+    cert-manager.io/common-name: oauth2-proxy.picluster.marmilan.com
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
   hosts:
-    - oauth2-proxy.picluster.ricsanfre.com
+    - oauth2-proxy.picluster.marmilan.com
   tls:
     - hosts:
-        - oauth2-proxy.picluster.ricsanfre.com
+        - oauth2-proxy.picluster.marmilan.com
       secretName: oauth2-proxy-tls
