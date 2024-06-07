@@ -90,12 +90,12 @@ ingress:
   ingressClassName: nginx
   # ingress host
   hosts:
-    - s3.picluster.ricsanfre.com
+    - s3.picluster.marmilan.com
   ## TLS Secret Name
   tls:
     - secretName: minio-tls
       hosts:
-        - s3.picluster.ricsanfre.com
+        - s3.picluster.marmilan.com
   ## Default ingress path
   path: /
   ## Ingress annotations
@@ -107,7 +107,7 @@ ingress:
     #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
     #   * 'ca-issuer' (CA-signed certificate, not valid)
     cert-manager.io/cluster-issuer: letsencrypt-issuer
-    cert-manager.io/common-name: s3.picluster.ricsanfre.com
+    cert-manager.io/common-name: s3.picluster.marmilan.com
 
 # console Ingress
 consoleIngress:
@@ -117,12 +117,12 @@ consoleIngress:
   ingressClassName: nginx
   # ingress host
   hosts:
-    - minio.picluster.ricsanfre.com
+    - minio.picluster.marmilan.com
   ## TLS Secret Name
   tls:
     - secretName: minio-console-tls
       hosts:
-        - minio.picluster.ricsanfre.com
+        - minio.picluster.marmilan.com
   ## Default ingress path
   path: /
   ## Ingress annotations
@@ -134,4 +134,4 @@ consoleIngress:
     #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
     #   * 'ca-issuer' (CA-signed certificate, not valid)
     cert-manager.io/cluster-issuer: letsencrypt-issuer
-    cert-manager.io/common-name: minio.picluster.ricsanfre.com
+    cert-manager.io/common-name: minio.picluster.marmilan.com
