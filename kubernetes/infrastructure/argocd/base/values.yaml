@@ -51,7 +51,7 @@ server:
     ## Add ingressClassName to the Ingress
     ingressClassName: nginx
     # ingress host
-    hostname: argocd.picluster.ricsanfre.com
+    hostname: argocd.picluster.marmilan.com
     ## Default ingress path
     path: /
     pathType: Prefix
