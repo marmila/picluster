@@ -6,5 +6,5 @@ metadata:
 spec:
   source:
     path: kubernetes/bootstrap/infra/overlays/dev
-    repoURL: https://github.com/ricsanfre/pi-cluster
+    repoURL: https://github.com/marmila/picluster
     targetRevision: master

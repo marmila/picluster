@@ -11,7 +11,7 @@ spec:
   project: picluster
   source:
     path: kubernetes/bootstrap/apps/overlays/prod
-    repoURL: https://github.com/ricsanfre/pi-cluster
+    repoURL: https://github.com/marmila/picluster
     targetRevision: master
   destination:
     namespace: argocd
