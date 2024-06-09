@@ -13,10 +13,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - kibana.picluster.ricsanfre.com
+        - kibana.picluster.marmilan.com
       secretName: kibana-tls
   rules:
-    - host: kibana.picluster.ricsanfre.com
+    - host: kibana.picluster.marmilan.com
       http:
         paths:
           - path: /
