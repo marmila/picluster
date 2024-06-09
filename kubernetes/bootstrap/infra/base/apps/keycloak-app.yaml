@@ -12,7 +12,7 @@ spec:
   project: picluster
   source:
     path: kubernetes/infrastructure/keycloak/overlays/prod
-    repoURL: https://github.com/marmila/picluster
+    repoURL: https://github.com/marmila/picluster.git
     targetRevision: master
   syncPolicy:
     automated:
