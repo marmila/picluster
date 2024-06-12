@@ -9,7 +9,7 @@ spec:
   project: picluster
   source:
     path: kubernetes/bootstrap/root-app/overlays/prod
-    repoURL: https://github.com/marmila/picluster.git
+    repoURL: https://github.com/marmila/picluster
     targetRevision: master
   destination:
     namespace: argocd
