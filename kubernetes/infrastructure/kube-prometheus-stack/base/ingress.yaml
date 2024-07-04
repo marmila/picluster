@@ -1,4 +1,5 @@
 ---
+<<<<<<< HEAD
 # Ingress Grafana
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -34,6 +35,8 @@ spec:
                   number: 80
 
 ---
+=======
+>>>>>>> upstream/master
 # Ingress Prometheus
 apiVersion: networking.k8s.io/v1
 kind: Ingress

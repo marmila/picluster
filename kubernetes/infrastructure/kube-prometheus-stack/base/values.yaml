@@ -90,6 +90,7 @@ prometheus:
         action: replace
         targetLabel: job
         replacement: prometheus
+<<<<<<< HEAD
 grafana:
   # Use an existing secret for the admin user.
   adminUser: ""
@@ -170,6 +171,8 @@ grafana:
   sidecar:
     dashboards:
       searchNamespace: ALL
+=======
+>>>>>>> upstream/master
 
 # Disabling monitoring of K8s services.
 # Monitoring of K3S components will be configured out of kube-prometheus-stack
@@ -204,3 +207,14 @@ defaultRules:
     kubernetesStorage: false
     kubernetesSystem: false
     kubeScheduler: false
+
+# Disabling instalation of Grafana sub-chart
+grafana:
+  enabled: false
+  # Enable deployment of kube-prometheus-stack grafana dashboards
+  forceDeployDashboards: true
+  # Adding grafana folder annotation
+  sidecar:
+    dashboards:
+      annotations:
+        grafana_folder: Kubernetes
