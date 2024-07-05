@@ -12,7 +12,7 @@ spec:
   project: picluster
   source:
     path: kubernetes/infrastructure/grafana/overlays/prod
-    repoURL: https://github.com/marmila/pi-cluster
+    repoURL: https://github.com/marmila/picluster
     targetRevision: master
   syncPolicy:
     automated:
