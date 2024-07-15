@@ -5,21 +5,23 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
-        path: /dev/nvme0n1
+        serial: 20502BF1DA1D
+        wwn: 500A07512BF1DA1D
+        path: /dev/sda
         wipe: superblock-recursive
         preserve: false
         name: ''
         grub_device: false
         type: disk
-        id: disk-nvme0n1
-      - device: disk-nvme0n1
+        id: disk-sda
+      - device: disk-sda
         size: 1075M
         wipe: superblock
         flag: boot
         number: 1
         preserve: false
         grub_device: true
-        path: /dev/nvme0n1p1
+        path: /dev/sda1
         type: partition
         id: partition-0
       - fstype: fat32
@@ -27,13 +29,13 @@ autoinstall:
         preserve: false
         type: format
         id: format-0
-      - device: disk-nvme0n1
+      - device: disk-sda
         size: 2G
         wipe: superblock
         number: 2
         preserve: false
         grub_device: false
-        path: /dev/nvme0n1p2
+        path: /dev/sda2
         type: partition
         id: partition-1
       - fstype: ext4
@@ -41,13 +43,13 @@ autoinstall:
         preserve: false
         type: format
         id: format-1
-      - device: disk-nvme0n1
+      - device: disk-sda
         size: -1
         wipe: superblock
         number: 3
         preserve: false
         grub_device: false
-        path: /dev/nvme0n1p3
+        path: /dev/sda3
         type: partition
         id: partition-2
       - name: ubuntu-vg

@@ -44,13 +44,18 @@ all:
           ansible-host: 10.0.0.20
           ip: 10.0.0.20
           mac: 90:1b:0e:b8:90:e8
+        node-esp-2:
+          hostname: node-esp-2
+          ansible-host: 10.0.0.21
+          ip: 10.0.0.21
+          mac: 90:1b:0e:b8:8e:a2
     raspberrypi:
       hosts:
         node[1:4]:
         gateway:
     x86:
       hosts:
-        node-esp-1:
+        node-esp-[1:2]:
     k3s_cluster:
       children:
         k3s_master:
@@ -59,4 +64,4 @@ all:
         k3s_worker:
           hosts:
             node[3:4]:
-            node-esp-1:
+            node-esp-[1:2]:
