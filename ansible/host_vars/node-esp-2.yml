@@ -5,7 +5,7 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
-        serial: CT500MX500SSD1_20502BF1DA1D
+        serial: 20502BF1DA1D
         wwn: 500A07512BF1DA1D
         path: /dev/sda
         wipe: superblock-recursive
