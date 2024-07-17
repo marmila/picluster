@@ -6,7 +6,7 @@ autoinstall:
     config:
       - ptable: gpt
         serial: CT500MX500SSD1_20502BF1DA1D
-        wwn: 0x500a07512bf1da1d
+        wwn: 500A07512BF1DA1D
         path: /dev/sda
         wipe: superblock-recursive
         preserve: false
