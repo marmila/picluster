@@ -46,8 +46,8 @@ all:
           mac: 90:1b:0e:b8:90:e8
         node-esp-2:
           hostname: node-esp-2
-          ansible-host: 10.0.0.21
-          ip: 10.0.0.21
+          ansible-host: 10.0.0.33
+          ip: 10.0.0.33
           mac: 90:1b:0e:b8:8e:a2
     raspberrypi:
       hosts:
