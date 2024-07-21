@@ -16,6 +16,10 @@ dnsmasq_additional_dhcp_hosts:
     desc: "Ethernet Switch"
     mac: e0:46:ee:11:69:f3
     ip: 10.0.0.2
+  node-esp-2:
+    desc: "node-esp-2"
+    mac: 90:1b:0e:b8:8e:a2
+    ip: 10.0.0.21
 dnsmasq_additional_dns_hosts:
   ntp_server:
     desc: "NTP Server"
