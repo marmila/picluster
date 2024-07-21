@@ -1,14 +1,14 @@
-# Increase the k8s api client rate limit to avoid being limited due to increased API usage 
+# Increase the k8s api client rate limit to avoid being limited due to increased API usage
 k8sClientRateLimit:
   qps: 50
   burst: 200
 
 
-# Avoid having to manually restart the Cilium pods on config changes 
+# Avoid having to manually restart the Cilium pods on config changes
 operator:
 # replicas: 1  # Uncomment this if you only have one node
   rollOutPods: true
-  
+
   # Install operator on master node
   nodeSelector:
     node-role.kubernetes.io/master: "true"
@@ -23,7 +23,7 @@ operator:
   dashboards:
     enabled: true
     annotations:
-      grafana_folder: Cilium  
+      grafana_folder: Cilium
 
 rollOutCiliumPods: true
 
@@ -116,7 +116,7 @@ hubble:
       enabled: true
       annotations:
         # Enable external authentication using Oauth2-proxy
-        nginx.ingress.kubernetes.io/auth-signin: https://oauth2-proxy.picluster.ricsanfre.com/oauth2/start?rd=https://$host$request_uri
+        nginx.ingress.kubernetes.io/auth-signin: https://oauth2-proxy.picluster.marmilan.com/oauth2/start?rd=https://$host$request_uri
         nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy.oauth2-proxy.svc.cluster.local/oauth2/auth
         nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
         nginx.ingress.kubernetes.io/auth-response-headers: Authorization
@@ -126,11 +126,11 @@ hubble:
         #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
         #   * 'ca-issuer' (CA-signed certificate, not valid)
         cert-manager.io/cluster-issuer: letsencrypt-issuer
-        cert-manager.io/common-name: hubble.picluster.ricsanfre.com
+        cert-manager.io/common-name: hubble.picluster.marmilan.com
       className: nginx
-      hosts: ["hubble.picluster.ricsanfre.com"]
+      hosts: ["hubble.picluster.marmilan.com"]
       tls:
         - hosts:
-          - hubble.picluster.ricsanfre.com
+          - hubble.picluster.marmilan.com
           secretName: hubble-tls
 
