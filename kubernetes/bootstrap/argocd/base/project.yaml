@@ -6,6 +6,7 @@ metadata:
 spec:
   sourceRepos:
     - 'https://github.com/marmila/*'
+    - 'https://istio-release.storage.googleapis.com/charts'
   destinations:
     - namespace: '*'
       server: '*'
