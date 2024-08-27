@@ -24,7 +24,7 @@ spec:
         compression: bzip2
         maxParallel: 8
       destinationPath: s3://k3s-barman/keycloak-db
-      endpointURL: https://s3.ricsanfre.com:9091
+      endpointURL: https://s3.marmilan.com:9091
       s3Credentials:
         accessKeyId:
           name: keycloak-minio-secret
