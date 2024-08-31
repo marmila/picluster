@@ -23,7 +23,7 @@ env:
         fieldPath: spec.nodeName
   # Specify TZ
   - name: TZ
-    value: "Europe/Madrid"
+    value: "Europe/Rome"
 # Fluentbit config
 config:
   # Helm chart combines service, inputs, outputs, custom_parsers and filters section
