@@ -3,3 +3,5 @@
 /certbot
 /certificates
 /docs/_site
+.vscode/
+
