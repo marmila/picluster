@@ -1,7 +1,7 @@
 ---
 
 - name: Install load balancer
-  hosts: haproxy
+  hosts: gateway
   gather_facts: true
   tags: [install]
   become: true

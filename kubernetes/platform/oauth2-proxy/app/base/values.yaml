@@ -52,4 +52,3 @@ redis:
     existingSecret: oauth2-proxy-secret
     existingSecretPasswordKey: redis-password
 
-
