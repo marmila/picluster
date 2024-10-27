@@ -7,7 +7,7 @@ metadata:
 spec:
   interval: 1m0s
   ref:
-    branch: master
+    branch: test-upstream-1.9.0
   url: https://github.com/marmila/picluster.git
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
