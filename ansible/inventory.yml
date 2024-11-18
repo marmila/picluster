@@ -3,11 +3,6 @@ all:
   children:
     control:
       hosts:
-        gateway:
-          hostname: gateway
-          ansible_host: 10.0.0.1
-          ip: 10.0.0.1
-          mac: d8:3a:dd:4a:08:f8
         pimaster:
           hostname: pimaster
           ansible_host: localhost

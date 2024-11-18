@@ -4,4 +4,4 @@
 /certificates
 /docs/_site
 .vscode/
-
+/docs/Gemfile.lock
