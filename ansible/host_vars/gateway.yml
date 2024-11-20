@@ -8,8 +8,8 @@ dnsmasq_interface: 'eth0'
 dnsmasq_listen_address: '10.0.0.1'
 dnsmasq_domain_name: "{{ dns_domain }}"
 dnsmasq_upstream_dns_servers:
-  - "/{{ dns_domain }}/10.0.0.11"
-  - "/0.10.in-addr.arpa/10.0.0.11"
+  - "/{{ dns_domain }}/10.0.0.1"
+  - "/0.10.in-addr.arpa/10.0.0.1"
   - 1.1.1.1
   - 8.8.8.8
 dnsmasq_dhcp_range: '10.0.0.100,10.0.0.250'
@@ -50,7 +50,7 @@ dnsmasq_discover_inventory: false
 #   vault_server:
 #     desc: "Vault server"
 #     hostname: vault
-#     ip: 10.0.0.1
+#     ip: 10.0.0.11
 dnsmasq_enable_tftp: false
 # dnsmasq_tftp_root: /srv/tftp
 dnsmasq_additional_conf: |-
@@ -64,9 +64,9 @@ dnsmasq_additional_conf: |-
   dhcp-boot=pxelinux.0
   # UEFI boot
   dhcp-match=set:efi-x86_64,option:client-arch,7
-  dhcp-boot=tag:efi-x86_64,bootx64.efi,node1,10.0.0.11
   # Ignore queries for domain "marmila.com"
   server=/marmila.com/
+  dhcp-boot=tag:efi-x86_64,bootx64.efi,gateway,10.0.0.1
 
 ####################
 # ntp role variables
