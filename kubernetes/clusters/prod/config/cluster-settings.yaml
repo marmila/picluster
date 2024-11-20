@@ -7,7 +7,7 @@ metadata:
 data:
   CLUSTER_DOMAIN: picluster.marmilan.com
   S3_BACKUP_SERVER: s3.marmilan.com
-  EXTERNAL_DNS_SERVER: 10.0.0.11
+  EXTERNAL_DNS_SERVER: 10.0.0.1
   LB_POOL_MIN: 10.0.0.50
   LB_POOL_MAX: 10.0.0.99
   NGINX_LOAD_BALANCER_IP: 10.0.0.50
