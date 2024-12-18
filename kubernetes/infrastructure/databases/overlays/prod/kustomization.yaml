@@ -8,7 +8,7 @@ resources:
 helmCharts:
   - name: community-operator
     repo: https://mongodb.github.io/helm-charts
-    version: 0.10.0
+    version: 0.12.0
     releaseName: "mongodb-community-operator"
     namespace: databases
     valuesFile: ../../base/mongodb-operator-values.yaml
