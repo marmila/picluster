@@ -17,7 +17,7 @@ helmCharts:
       - mongodb-operator-values.yaml
   - name: cloudnative-pg
     repo: https://cloudnative-pg.github.io/charts
-    version: 0.21.5
+    version: 0.23.0
     releaseName: "cloudnative-pg"
     namespace: databases
     valuesFile: ../../base/cloudnative-pg-values.yaml
