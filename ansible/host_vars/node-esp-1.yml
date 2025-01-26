@@ -1,5 +1,14 @@
 ---
 autoinstall:
+  early-commands:
+    - |
+      # Stop SSH to prevent interference during the installation process
+      systemctl stop ssh
+      # Clear any existing partition tables and create required partitions on /dev/sda
+      sgdisk --clear /dev/sda
+      sgdisk -n 1:4096:+1075M -c 1:"EFI System Partition" -t 1:ef00 /dev/sda
+      sgdisk -n 2:0:+2G -c 2:"Boot Partition" -t 2:8304 /dev/sda
+      sgdisk -n 3:0:0 -c 3:"LVM Physical Volume" -t 3:8e00 /dev/sda
   storage:
     grub:
       reorder_uefi: false
