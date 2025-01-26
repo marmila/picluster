@@ -93,10 +93,6 @@ autoinstall:
         type: mount
         id: mount-4
       - path: /boot
-        device: format-1
-        type: mount
-        id: mount-1
-      - path: /boot/efi
         device: format-0
         type: mount
         id: mount-0
