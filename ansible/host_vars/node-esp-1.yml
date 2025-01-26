@@ -5,8 +5,8 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
-        serial: CT480BX5_2420E8AEF620
-        wwn: 5000000000000001
+        serial: CT480BX500SSD1
+        wwn: 0x500a0751e8aef620
         path: /dev/sda
         wipe: superblock-recursive
         preserve: false
