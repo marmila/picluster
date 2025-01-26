@@ -5,8 +5,8 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
-        serial: KINGSTON_SA400S37480G_50026B7283150896
-        wwn: 0x50026b7283150896
+        serial: CT480BX5_2420E8AEF620
+        wwn: 5000000000000001
         path: /dev/sda
         wipe: superblock-recursive
         preserve: false
