@@ -11,7 +11,7 @@ autoinstall:
         wipe: superblock-recursive
         preserve: false
         name: ''
-        grub_device: false
+        grub_device: true
         type: disk
         id: disk-sda
       - device: disk-sda
@@ -20,8 +20,7 @@ autoinstall:
         flag: boot
         number: 1
         preserve: false
-        grub_device: true
-        path: /dev/sda1
+        grub_device: false
         type: partition
         id: partition-0
       - fstype: fat32
@@ -35,7 +34,6 @@ autoinstall:
         number: 2
         preserve: false
         grub_device: false
-        path: /dev/sda2
         type: partition
         id: partition-1
       - fstype: ext4
@@ -49,7 +47,6 @@ autoinstall:
         number: 3
         preserve: false
         grub_device: false
-        path: /dev/sda3
         type: partition
         id: partition-2
       - name: ubuntu-vg
