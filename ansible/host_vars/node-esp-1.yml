@@ -21,7 +21,6 @@ autoinstall:
         number: 1
         preserve: false
         grub_device: true
-        path: /dev/sda1
         type: partition
         id: partition-0
       - fstype: fat32
@@ -35,7 +34,6 @@ autoinstall:
         number: 2
         preserve: false
         grub_device: false
-        path: /dev/sda2
         type: partition
         id: partition-1
       - fstype: ext4
@@ -49,7 +47,6 @@ autoinstall:
         number: 3
         preserve: false
         grub_device: false
-        path: /dev/sda3
         type: partition
         id: partition-2
       - name: ubuntu-vg
@@ -63,7 +60,6 @@ autoinstall:
         size: 30G
         wipe: superblock
         preserve: false
-        path: /dev/ubuntu-vg/ubuntu-lv
         type: lvm_partition
         id: lvm_partition-0
       - fstype: ext4
@@ -80,7 +76,6 @@ autoinstall:
         size: -1
         wipe: superblock
         preserve: false
-        path: /dev/ubuntu-vg/lv-data
         type: lvm_partition
         id: lvm_partition-1
       - fstype: ext4
