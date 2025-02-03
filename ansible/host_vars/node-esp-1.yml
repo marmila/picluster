@@ -5,13 +5,9 @@ autoinstall:
       reorder_uefi: false
     config:
       - ptable: gpt
-        serial: CT480BX500SSD1_2420E8AEF620
-        wwn: 0x500a0751e8aef620
         path: /dev/sda
         wipe: superblock-recursive
         preserve: false
-        name: ''
-        grub_device: false
         type: disk
         id: disk-sda
       - device: disk-sda
@@ -37,7 +33,6 @@ autoinstall:
         wipe: superblock
         number: 2
         preserve: false
-        grub_device: false
         type: partition
         id: partition-boot
       - fstype: ext4
@@ -54,7 +49,6 @@ autoinstall:
         wipe: superblock
         number: 3
         preserve: false
-        grub_device: false
         type: partition
         id: partition-lvm
       - name: ubuntu-vg
@@ -95,4 +89,6 @@ autoinstall:
         device: format-data
         type: mount
         id: mount-data
+
+
 
