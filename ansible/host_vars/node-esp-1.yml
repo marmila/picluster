@@ -33,6 +33,7 @@ autoinstall:
         wipe: superblock
         number: 2
         preserve: false
+        grub_device: true
         type: partition
         id: partition-boot
       - fstype: ext4
@@ -89,6 +90,8 @@ autoinstall:
         device: format-data
         type: mount
         id: mount-data
+
+
 
 
 
