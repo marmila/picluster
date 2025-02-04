@@ -32,7 +32,7 @@ autoinstall:
       - id: ubuntu-vg-partition
         type: partition
         number: 3
-        device: sda
+        device: disk-sda
         size: -1
         wipe: superblock
         preserve: false
