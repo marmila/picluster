@@ -4,7 +4,7 @@ autoinstall:
     grub:
       reorder_uefi: false
     config:
-      - id: sda
+      - id: disk-sda
         type: disk
         ptable: gpt
         serial: CT480BX500SSD1_2420E8AEF620
