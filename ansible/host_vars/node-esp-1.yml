@@ -15,7 +15,7 @@ autoinstall:
       - id: bios-grub-partition
         type: partition
         number: 1
-        device: sda
+        device: disk-sda
         size: 1048576
         preserve: false
         grub_device: false
@@ -23,7 +23,7 @@ autoinstall:
       - id: boot-partition
         type: partition
         number: 2
-        device: sda
+        device: disk-sda
         size: 2G
         wipe: superblock
         preserve: false
@@ -85,3 +85,4 @@ autoinstall:
         type: mount
         device: data-format
         path: /storage
+
