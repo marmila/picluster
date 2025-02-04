@@ -4,7 +4,7 @@ autoinstall:
     grub:
       reorder_uefi: false
     config:
-      - id: disk-sda
+      - id: sda
         type: disk
         ptable: gpt
         serial: CT480BX500SSD1_2420E8AEF620
@@ -15,7 +15,7 @@ autoinstall:
       - id: bios-grub-partition
         type: partition
         number: 1
-        device: disk-sda
+        device: sda
         size: 1048576
         preserve: false
         grub_device: false
@@ -23,7 +23,7 @@ autoinstall:
       - id: boot-partition
         type: partition
         number: 2
-        device: disk-sda
+        device: sda
         size: 2G
         wipe: superblock
         preserve: false
