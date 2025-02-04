@@ -56,12 +56,14 @@ autoinstall:
       - id: ubuntu-lv
         type: lvm_partition
         volgroup: ubuntu-vg
+        name: ubuntu-lv
         size: 30G
         wipe: superblock
         preserve: false
       - id: lv-data
         type: lvm_partition
         volgroup: ubuntu-vg
+        name: lv-data
         size: -1
         wipe: superblock
         preserve: false
@@ -83,3 +85,4 @@ autoinstall:
         type: mount
         device: data-format
         path: /storage
+
