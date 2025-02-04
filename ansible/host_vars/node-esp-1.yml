@@ -16,7 +16,7 @@ autoinstall:
         type: partition
         number: 1
         device: sda
-        size: 1075M
+        size: 1126400000
         preserve: false
         grub_device: false
         flag: bios_grub
