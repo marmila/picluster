@@ -4,82 +4,83 @@ autoinstall:
     grub:
       reorder_uefi: false
     config:
-    - id: sda
-      type: disk
-      ptable: gpt
-      serial: CT480BX500SSD1_2420E8AEF620
-      wwn: 0x500a0751e8aef620
-      wipe: superblock
-      preserve: false
-      grub_device: true
-    - id: bios-grub-partition
-      type: partition
-      number: 1
-      device: sda
-      size: 1075M
-      preserve: false
-      grub_device: false
-      flag: bios_grub
-    - id: boot-partition
-      type: partition
-      number: 2
-      device: sda
-      size: 2G
-      wipe: superblock
-      preserve: false
-      grub_device: false
-      flag: ''
-    - id: ubuntu-vg-partition
-      type: partition
-      number: 3
-      device: sda
-      size: -1
-      wipe: superblock
-      preserve: false
-      grub_device: false
-      flag: ''
-    - id: boot-format
-      type: format
-      fstype: ext4
-      volume: boot-partition
-      preserve: false
-    - id: boot-mount
-      type: mount
-      device: boot-format
-      path: /boot
-    - id: ubuntu-vg
-      type: lvm_volgroup
-      name: ubuntu-vg
-      devices:
-      - ubuntu-vg-partition
-      preserve: false
-    - id: ubuntu-lv
-      type: lvm_partition
-      volgroup: ubuntu-vg
-      size: 30G
-      wipe: superblock
-      preserve: false
-    - id: lv-data
-      type: lvm_partition
-      volgroup: ubuntu-vg
-      size: -1
-      wipe: superblock
-      preserve: false
-    - id: root-format
-      type: format
-      volume: ubuntu-lv
-      preserve: false
-      fstype: ext4
-    - id: data-format
-      type: format
-      volume: lv-data
-      preserve: false
-      fstype: ext4
-    - id: root-mount
-      type: mount
-      device: root-format
-      path: /
-    - id: data-mount
-      type: mount
-      device: data-format
-      path: /storage
+      - id: sda
+        type: disk
+        ptable: gpt
+        serial: CT480BX500SSD1_2420E8AEF620
+        wwn: 0x500a0751e8aef620
+        wipe: superblock
+        preserve: false
+        grub_device: true
+      - id: bios-grub-partition
+        type: partition
+        number: 1
+        device: sda
+        size: 1075M
+        preserve: false
+        grub_device: false
+        flag: bios_grub
+      - id: boot-partition
+        type: partition
+        number: 2
+        device: sda
+        size: 2G
+        wipe: superblock
+        preserve: false
+        grub_device: false
+        flag: ''
+      - id: ubuntu-vg-partition
+        type: partition
+        number: 3
+        device: sda
+        size: -1
+        wipe: superblock
+        preserve: false
+        grub_device: false
+        flag: ''
+      - id: boot-format
+        type: format
+        fstype: ext4
+        volume: boot-partition
+        preserve: false
+      - id: boot-mount
+        type: mount
+        device: boot-format
+        path: /boot
+      - id: ubuntu-vg
+        type: lvm_volgroup
+        name: ubuntu-vg
+        devices:
+          - ubuntu-vg-partition
+        preserve: false
+      - id: ubuntu-lv
+        type: lvm_partition
+        volgroup: ubuntu-vg
+        size: 30G
+        wipe: superblock
+        preserve: false
+      - id: lv-data
+        type: lvm_partition
+        volgroup: ubuntu-vg
+        size: -1
+        wipe: superblock
+        preserve: false
+      - id: root-format
+        type: format
+        volume: ubuntu-lv
+        preserve: false
+        fstype: ext4
+      - id: data-format
+        type: format
+        volume: lv-data
+        preserve: false
+        fstype: ext4
+      - id: root-mount
+        type: mount
+        device: root-format
+        path: /
+      - id: data-mount
+        type: mount
+        device: data-format
+        path: /storage
+
