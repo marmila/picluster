@@ -83,4 +83,3 @@ autoinstall:
       type: mount
       device: data-format
       path: /storage
-
