@@ -33,7 +33,7 @@ autoinstall:
         type: partition
         number: 3
         device: sda
-        size: -1
+        size: "-1"
         wipe: superblock
         preserve: false
         grub_device: false
