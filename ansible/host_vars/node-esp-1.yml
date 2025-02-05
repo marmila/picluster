@@ -9,7 +9,7 @@ autoinstall:
         wipe: superblock-recursive
         preserve: false
         name: ''
-        grub_device: true
+        grub_device: false
         type: disk
         id: disk-sda
       - device: disk-sda
@@ -18,7 +18,7 @@ autoinstall:
         flag: boot
         number: 1
         preserve: false
-        grub_device: false
+        grub_device: true
         path: /dev/sda1
         type: partition
         id: partition-0
