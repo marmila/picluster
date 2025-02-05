@@ -1,6 +1,6 @@
 ---
 autoinstall:
- storage:
+storage:
   grub:
     reorder_uefi: false
   config:
@@ -100,4 +100,3 @@ autoinstall:
       device: format-0
       type: mount
       id: mount-0
-
