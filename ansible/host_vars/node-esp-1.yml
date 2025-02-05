@@ -3,85 +3,90 @@ autoinstall:
   storage:
     grub:
       reorder_uefi: false
+    swap:
+      size: 10G
+      maxsize: 30G
     config:
-      - id: sda
+      - id: disk0
         type: disk
+        name: ''
+        path: /dev/sda
         ptable: gpt
         serial: CT480BX500SSD1_2420E8AEF620
         wwn: 0x500a0751e8aef620
-        wipe: superblock
+        wipe: superblock-recursive
         preserve: false
         grub_device: true
-      - id: bios-grub-partition
-        type: partition
-        number: 1
-        device: sda
-        size: 1048576
-        preserve: false
-        grub_device: false
+      - device: disk0
         flag: bios_grub
-      - id: boot-partition
+        grub_device: false
+        id: partition-0
+        number: 1
+        preserve: false
+        size: 1048576
         type: partition
+      - device: disk0
+        flag: ''
+        grub_device: false
+        id: partition-1
         number: 2
-        device: sda
+        preserve: false
         size: 2G
-        wipe: superblock
-        preserve: false
-        grub_device: false
-        flag: ''
-      - id: ubuntu-vg-partition
         type: partition
-        number: 3
-        device: sda
-        size: -1
-        wipe: superblock
+        wipe: superblock-recursive
+      - fstype: ext4
+        id: format-0
         preserve: false
-        grub_device: false
+        type: format
+        volume: partition-1
+      - device: disk0
         flag: ''
-      - id: boot-format
-        type: format
-        fstype: ext4
-        volume: boot-partition
+        grub_device: false
+        id: partition-2
+        number: 3
         preserve: false
-      - id: boot-mount
-        type: mount
-        device: boot-format
-        path: /boot
-      - id: ubuntu-vg
-        type: lvm_volgroup
-        name: ubuntu-vg
-        devices:
-          - ubuntu-vg-partition
-        preserve: false
-      - id: ubuntu-lv
-        type: lvm_partition
-        volgroup: ubuntu-vg
-        name: ubuntu-lv
-        size: 30G
-        wipe: superblock
-        preserve: false
-      - id: lv-data
-        type: lvm_partition
-        volgroup: ubuntu-vg
-        name: lv-data
         size: -1
-        wipe: superblock
+        type: partition
+        wipe: superblock-recursive
+      - devices:
+          - partition-2
+        id: lvm_volgroup-0
+        name: ubuntu-vg
         preserve: false
-      - id: root-format
+        type: lvm_volgroup
+      - id: lvm_partition-0
+        name: ubuntu-lv
+        preserve: false
+        size: 30G
+        type: lvm_partition
+        volgroup: lvm_volgroup-0
+        wipe: superblock-recursive
+      - id: lvm_partition-1
+        name: lv-data
+        preserve: false
+        size: -1
+        type: lvm_partition
+        volgroup: lvm_volgroup-0
+        wipe: superblock-recursive
+      - fstype: ext4
+        id: format-1
+        preserve: false
         type: format
-        volume: ubuntu-lv
+        volume: lvm_partition-0
+      - fstype: ext4
+        id: format-2
         preserve: false
-        fstype: ext4
-      - id: data-format
         type: format
-        volume: lv-data
-        preserve: false
-        fstype: ext4
-      - id: root-mount
-        type: mount
-        device: root-format
+        volume: lvm_partition-1
+      - device: format-1
+        id: mount-1
         path: /
-      - id: data-mount
         type: mount
-        device: data-format
+      - device: format-2
+        id: mount-2
         path: /storage
+        type: mount
+      - device: format-0
+        id: mount-0
+        path: /boot
+        type: mount
