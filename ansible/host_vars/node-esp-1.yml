@@ -100,4 +100,3 @@ autoinstall:
       device: format-0
       type: mount
       id: mount-0
-
