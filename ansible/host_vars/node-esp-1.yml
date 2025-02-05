@@ -11,7 +11,7 @@ autoinstall:
            wipe: superblock-recursive
            preserve: false
            name: ''
-           grub_device: false
+           grub_device: true
            type: disk
            id: disk-sda
          - device: disk-sda
@@ -20,7 +20,7 @@ autoinstall:
            flag: boot
            number: 1
            preserve: false
-           grub_device: true
+           grub_device: false
            type: partition
            id: partition-0
          - fstype: fat32
