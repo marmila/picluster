@@ -14,7 +14,7 @@ dnsmasq_dhcp_range: '10.0.0.32,10.0.0.99'
 dnsmasq_additional_dhcp_hosts:
   ethernet_switch:
     desc: "Ethernet Switch"
-    mac: e0:46:ee:11:69:f3
+    mac: fc:22:f4:fb:48:48
     ip: 10.0.0.2
 dnsmasq_additional_dns_hosts:
   ntp_server:
