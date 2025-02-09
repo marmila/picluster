@@ -43,7 +43,7 @@ all:
           hostname: node5
           ansible_host: 10.0.0.15
           ip: 10.0.0.15
-          mac: d8:3a:dd:19:00:cb
+          mac: d8:3a:dd:fb:96:07
         node-esp-1:
           hostname: node-esp-1
           ansible-host: 10.0.0.20
