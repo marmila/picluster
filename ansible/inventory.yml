@@ -39,6 +39,11 @@ all:
           ansible_host: 10.0.0.14
           ip: 10.0.0.14
           mac: d8:3a:dd:19:00:cb
+        node5:
+          hostname: node5
+          ansible_host: 10.0.0.15
+          ip: 10.0.0.15
+          mac: d8:3a:dd:19:00:cb
         node-esp-1:
           hostname: node-esp-1
           ansible-host: 10.0.0.20
@@ -51,7 +56,7 @@ all:
           mac: 90:1b:0e:b8:8e:a2
     raspberrypi:
       hosts:
-        node[1:4]:
+        node[1:5]:
         gateway:
     x86:
       hosts:
@@ -63,5 +68,5 @@ all:
             node[1:2]:
         k3s_worker:
           hosts:
-            node[3:4]:
+            node[3:5]:
             node-esp-[1:2]:
