@@ -7,7 +7,7 @@ resources:
 helmCharts:
   - name: ztunnel
     repo: https://istio-release.storage.googleapis.com/charts
-    version: 1.22.3
+    version: 1.24.3
     releaseName: "ztunnel"
     namespace: istio-system
     includeCRDs: true
