@@ -5,8 +5,8 @@ metadata:
   name: cluster-settings
   namespace: flux-system
 data:
-  CLUSTER_DOMAIN: homelab.ricsanfre.com
-  S3_BACKUP_SERVER: s3.ricsanfre.com
+  CLUSTER_DOMAIN: homelab.marmilan.com
+  S3_BACKUP_SERVER: s3.marmilan.com
   EXTERNAL_DNS_SERVER: 10.0.0.11
   LB_POOL_MIN: 10.0.0.50
   LB_POOL_MAX: 10.0.0.99
