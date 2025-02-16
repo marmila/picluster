@@ -7,7 +7,7 @@ resources:
 helmCharts:
   - name: minio
     repo: https://charts.min.io/
-    version: 5.2.0
+    version: 5.4.0
     releaseName: "minio"
     namespace: minio
     valuesFile: ../../base/values.yaml
