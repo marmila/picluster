@@ -18,7 +18,7 @@ all:
           hostname: node1
           ansible_host: 10.0.0.11
           ip: 10.0.0.11
-          mac: d8:3a:dd:18:cb:cc
+          mac: d8:3a:dd:ee:02:dd
         node2:
           hostname: node2
           ansible_host: 10.0.0.12
@@ -28,7 +28,7 @@ all:
           hostname: node3
           ansible_host: 10.0.0.13
           ip: 10.0.0.13
-          mac: ed8:3a:dd:18:d2:47
+          mac: d8:3a:dd:18:d2:47
         node4:
           hostname: node4
           ansible_host: 10.0.0.14
@@ -38,12 +38,12 @@ all:
           hostname: node5
           ansible_host: 10.0.0.15
           ip: 10.0.0.15
-          mac: e4:5f:01:d9:ec:5c
+          mac: d8:3a:dd:fb:96:07
         node6:
           hostname: node6
           ansible_host: 10.0.0.16
           ip: 10.0.0.16
-          mac: d8:3a:dd:0d:be:c8
+          mac: d8:3a:dd:18:cb:cc
         node-esp-1:
           hostname: node-esp-1
           ansible_host: 10.0.0.20
@@ -68,7 +68,7 @@ all:
         k3s_worker:
           hosts:
             node[5:6]:
-            node-hp-[1:2]:
+            node-esp-[1:2]:
     dns:
       hosts:
         node1:

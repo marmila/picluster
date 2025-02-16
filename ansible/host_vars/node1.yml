@@ -52,15 +52,12 @@ bind9_zones:
       - label: node6
         type: A
         rdata: 10.0.0.16
-      - label: node-hp-1
+      - label: node-esp-1
         type: A
         rdata: 10.0.0.20
-      - label: node-hp-2
+      - label: node-esp-2
         type: A
         rdata: 10.0.0.21
-      - label: node-hp-3
-        type: A
-        rdata: 10.0.0.22
       - label: vault
         type: A
         rdata: 10.0.0.11
@@ -99,13 +96,10 @@ bind9_zones:
         rdata: "node6.{{ dns_domain }}."
       - label: 20.0
         type: PTR
-        rdata: "node-hp-1.{{ dns_domain }}."
+        rdata: "node-esp-1.{{ dns_domain }}."
       - label: 21.0
         type: PTR
-        rdata: "node-hp-2.{{ dns_domain }}."
-      - label: 22.0
-        type: PTR
-        rdata: "node-hp-3.{{ dns_domain }}."
+        rdata: "node-esp-2.{{ dns_domain }}."
 
 ############################
 # restic backup role variables

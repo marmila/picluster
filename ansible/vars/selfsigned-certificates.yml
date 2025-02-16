@@ -3,6 +3,6 @@
 ssl_key_size: 4096
 ssl_certificate_provider: selfsigned
 key_type: RSA
-country_name: ES
-email_address: admin@ricsanfre.com
-organization_name: Ricsanfre
+country_name: IT
+email_address: admin@marmilan.com
+organization_name: Marmilan

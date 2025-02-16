@@ -10,7 +10,7 @@
 k3s_version: v1.31.4+k3s1
 
 # k3s master node VIP (loadbalancer)
-k3s_api_vip: 10.0.0.11
+k3s_api_vip: 10.0.0.1
 
 # k3s shared token
 k3s_token: "{{ vault.cluster.k3s.token }}"
@@ -126,14 +126,14 @@ ionos_api_endpoint: https://api.hosting.ionos.com
 
 
 # issuer email
-acme_issuer_email: admin@ricsanfre.com
+acme_issuer_email: admin@marmilan.com
 
 ##########################
 # Minio S3 configuration #
 ##########################
 
 # Minio S3 Server
-minio_hostname: "s3.ricsanfre.com"
+minio_hostname: "s3.marmilan.com"
 minio_endpoint: "{{ minio_hostname }}:9091"
 minio_url: "https://{{ minio_hostname }}:9091"
 

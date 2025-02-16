@@ -2,7 +2,7 @@
 # Group all variables.
 
 # Remote user name
-ansible_user: ricsanfre
+ansible_user: marmila
 
 # Ansible ssh private key
 ansible_ssh_private_key_file: ~/.ssh/id_rsa
@@ -25,7 +25,7 @@ default_gateway: 10.0.0.1
 #######################
 # DNS server
 dns_server: 10.0.0.1
-dns_domain: homelab.ricsanfre.com
+dns_domain: homelab.marmilan.com
 
 ############################
 # restic backup role variables
