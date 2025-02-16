@@ -15,7 +15,7 @@ helmCharts:
       - cert-manager-values.yaml
   - name: cert-manager-webhook-ionos
     repo: https://fabmade.github.io/cert-manager-webhook-ionos
-    version: 1.0.2
+    version: 1.2.0
     releaseName: "cert-manager-webhook-ionos"
     namespace: cert-manager
     valuesFile: ../../base/ionos-webhook-values.yaml
