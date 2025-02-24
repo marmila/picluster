@@ -7,7 +7,7 @@ resources:
 helmCharts:
   - name: kiali-operator
     repo: https://kiali.org/helm-charts
-    version: 1.87.0
+    version: 2.6.0
     releaseName: kiali-operator
     namespace: kiali-operator
     includeCRDs: true
