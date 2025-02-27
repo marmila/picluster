@@ -11,12 +11,21 @@ ansible_ssh_private_key_file: ~/.ssh/id_rsa
 # Whether to use centralized SAN architecture or not
 centralized_san: false
 
+# GitOps Repo
+# Whether the repo is private or not
+git_private_repo: false
+
+###################
+# Default Gateway
+###################
+default_gateway: 10.0.0.1
+
 #######################
 # DNS configuration
 #######################
 # DNS server
 dns_server: 10.0.0.1
-dns_domain: picluster.marmilan.com
+dns_domain: homelab.marmilan.com
 
 ############################
 # restic backup role variables

@@ -3,12 +3,16 @@
   - home
   - architecture
   - ansible
+  - dev
 - title: Cluster Setup
   docs:
   - pimaster
   - gateway
+  - openwrt
+  - external
   - node
   - san
+  - dns
   - pxe-server
 - title: Nodes OS Setup
   docs:
@@ -27,6 +31,7 @@
   docs:
   - k3s-networking
   - cilium
+  - kube-dns
   - metallb
   - traefik
   - nginx
@@ -42,6 +47,7 @@
   - minio
 - title: Monitoring
   docs:
+  - metrics-server
   - observability
   - logging
   - loki
@@ -55,6 +61,7 @@
 - title: GitOps
   docs:
   - argocd
+  - fluxcd
 - title: Microservices
   docs:
   - databases

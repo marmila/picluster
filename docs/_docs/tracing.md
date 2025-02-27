@@ -47,13 +47,13 @@ Tempo will be installed using microservices mode configuring S3 Object Storage S
 
 ## Configure S3 Minio Server
 
-Minio Storage server is used as Tempo long-term data storage. 
+Minio Storage server is used as Tempo long-term data storage.
 
 Grafana Tempo needs to store two different types of data: chunks and indexes. Both of them can be stored in S3 server.
 
 {{site.data.alerts.note}}
 
-Tempo helm chart is able to install this Minio service as a subchart, but its installation will be disabled and Minio Storage Service already deployed in the cluster will be used as Tempo's backend. 
+Tempo helm chart is able to install this Minio service as a subchart, but its installation will be disabled and Minio Storage Service already deployed in the cluster will be used as Tempo's backend.
 
 As part of Minio Storage Service installation, Tempo's S3 bucket, policy and user is already configured.
 See documentation: [Minio S3 Object Storage Service](/docs/minio/).
@@ -65,7 +65,7 @@ See documentation: [Minio S3 Object Storage Service](/docs/minio/).
 Use Minio's `mc` command to create Tempo bucket and user
 
 ```shell
-mc mb <minio_alias>/k3s-tempo 
+mc mb <minio_alias>/k3s-tempo
 mc admin user add <minio_alias> tempo <user_password>
 ```
 {{site.data.alerts.note}}
@@ -189,9 +189,9 @@ Where `user_policy.json`, contains the following AWS access policies definition:
   kubectl get pods -l app.kubernetes.io/name=loki -n logging
   ```
 
-### GitOps installation (ArgoCD)
+### GitOps installation
 
-As an alternative, for GitOps deployments (using ArgoCD), instead of hardcoding minio credentials within Helm chart values, a external secret can be configured leveraging [Tempo's capability of using environment variables in config file](https://grafana.com/docs/tempo/latest/configuration/#use-environment-variables-in-the-configuration)
+As an alternative, for GitOps deployments, instead of hardcoding minio credentials within Helm chart values, a external secret can be configured leveraging [Tempo's capability of using environment variables in config file](https://grafana.com/docs/tempo/latest/configuration/#use-environment-variables-in-the-configuration)
 
 The following secret need to be created:
 ```yml
@@ -330,7 +330,7 @@ queryFrontend:
 minio:
   enabled: false
 ```
-  
+
 ## Linkerd traces integration
 
 Follow procedure described in ["Service Mesh (Linkerd) - Linkerd Jaeger extension installation"](/docs/service-mesh/#linkerd-jaeger-extension-installation) to enable linkerd distributing tracing capability.
@@ -342,10 +342,10 @@ The ingress is a key component for distributed tracing solution because it is re
 
 Distributed tracing systems all rely on propagate the trace context throuhg the chain of involved services. This trace contex is encoding in HTTP request headers. Of the available propagation protocols, B3 is the only one supported by Linkerd, and so this is the one to be used in the whole system.
 
-Traefik uses OpenTrace to export traces to different backends. 
+Traefik uses OpenTrace to export traces to different backends.
 
 To activate tracing using B3 propagation protocol, the following options need to be provided
-  
+
 ```
 --tracing.zipkin=true
 --tracing.zipkin.httpEndpoint=http://tempo-distributor.tracing.svc.cluster.local:9411/api/v2/spans
@@ -389,7 +389,7 @@ tracing:
     sameSpan: true
     id128Bit: true
     sampleRate: 1.0
-``` 
+```
 
 In Traefik's access logs, a new field appear `request_X-B3-Traceid` containing trace id that can be used to extrac Tempo traces information.
 
@@ -564,7 +564,7 @@ Linkerd's testing application emojivoto can be used to test the tracing solution
 
 - Step 5: Connect to Grafana, select Explorer and Loki data source
 
-  Filter logs usin LQL: 
+  Filter logs usin LQL:
   {% raw %}
   ```
   {app="ingress-nginx", container="stream-accesslog"} | json | line_format "{{.message}}" | json | request_host="emojivoto.picluster.ricsanfre.com" | uri =~ "/api/vote.+"
@@ -579,4 +579,3 @@ Linkerd's testing application emojivoto can be used to test the tracing solution
 
   ![emojivote-logs](/assets/img/emojivoto-loki-tempo.png)
 
-  

@@ -1,0 +1,76 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: picluster
+servers: 1
+agents: 2
+kubeAPI: # same as `--api-port myhost.my.domain:6445` (where the name would resolve to 127.0.0.1)
+  hostIP: {{ .host_ip }} # where the Kubernetes API will be listening on
+  hostPort: "6443"
+# Setting version of k3s
+image: rancher/k3s:v1.30.6-k3s1
+# Setting docker network to be used
+network: picluster
+options:
+  # Disable Load balancer
+  k3d:
+    disableLoadbalancer: true
+  # Extra arguments for k3s
+  k3s:
+    extraArgs:
+      - arg: --tls-san=127.0.0.1
+        nodeFilters:
+          - server:*
+      # Disable helmcontroller
+      - arg: --disable-helm-controller
+        nodeFilters:
+          - server:*
+      # Disable coreDNS
+      - arg: --disable=coredns
+        nodeFilters:
+          - server:*
+      # Disable traefik
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+      # Disable servicelb
+      - arg: --disable=servicelb
+        nodeFilters:
+          - server:*
+      # Disable local storage
+      - arg: --disable=local-storage
+        nodeFilters:
+          - server:*
+      # Disable metric server
+      - arg: --disable=metrics-server
+        nodeFilters:
+          - server:*
+      # Disable network-policy
+      - arg: --disable-network-policy
+        nodeFilters:
+         - server:*
+      # Disable kube-proxy
+      - arg: --disable-kube-proxy
+        nodeFilters:
+         - server:*
+      # Disable flannel-backend
+      - arg: --flannel-backend=none
+        nodeFilters:
+         - server:*
+      # Adding cluster PODs and Services CIDRs
+      - arg: --cluster-cidr={{ .cluster_subnet }}
+        nodeFilters:
+          - server:*
+      - arg: --service-cidr={{ .service_subnet }}
+        nodeFilters:
+          - server:*
+      # Exposing metrics
+      - arg: --kube-controller-manager-arg=bind-address=0.0.0.0
+        nodeFilters:
+          - server:*
+      - arg: --kube-scheduler-arg=bind-address=0.0.0.0
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

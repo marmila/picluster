@@ -2,15 +2,26 @@
 title: SSO with KeyCloak and Oauth2-Proxy
 permalink: /docs/sso/
 description: How to configure Single-Sign-On (SSO) in our Pi Kubernetes cluster.
-last_modified_at: "07-07-2024"
+last_modified_at: "09-09-2024"
 ---
 
 Centralized authentication and Single-Sign On can be implemented using [Keycloak](https://www.keycloak.org/).
-Keycloak is an opensource Identity Access Management solution, providing centralized authentication and authorization 
+Keycloak is an opensource Identity Access Management solution, providing centralized authentication and authorization
 services based on standard protocols and provides support for OpenID Connect, OAuth 2.0, and SAML.
 
-![keycloak-sso](/assets/img/keycloak-sso.png)
-
+<pre class="mermaid">
+sequenceDiagram
+  actor User
+  participant Keycloak
+  participant Application
+    User->>Application: User enters URL of an Application
+    Application->>Keycloak: Redirects to Keycloak
+    Keycloak->>User: Login page
+    User->>Keycloak: User gives credentials
+    Keycloak-->>Keycloak: Validates User
+    Keycloak->>Application: if Valid, Redirect to Application
+    Keycloak-->>User: Invalid credentials
+</pre>
 
 Some of the GUIs of the Pi Cluster, Grafana or Kibana, SSO can be configured, so authentication can be done
 using Keycloak instead of local accounts.
@@ -24,7 +35,7 @@ Follow instructions in [Documentation: Monitoring (Prometheus)](/docs/prometheus
 
 {{site.data.alerts.end}}
 
-For those applications not providing any authentication capability (i.e. Longhorn, Prometheus, Linkerd-viz), Ingress controller-based External Authentication can be configured.
+For those applications not providing any authentication capability (i.e. Longhorn, Prometheus, etc.), Ingress controller-based External Authentication can be configured.
 Ingress NGINX supports OAuth2-based external authentication mechanism using [Oauth2-Proxy](https://oauth2-proxy.github.io/oauth2-proxy/).
 See [Ingress NGINX external Oauth authentication document](https://kubernetes.github.io/ingress-nginx/examples/auth/oauth-external-auth/)
 Oauth2-proxy can be integrated with OpenId-Connect IAM, such us Keycloak.
@@ -59,11 +70,10 @@ This helm chart bootstraps a Keycloak deployment on Kubernetes using as backend 
     storageClass: longhorn
 
   # Run in production mode behind NGINX proxy terminating TLS sessions
-  # ref: https://www.keycloak.org/server/reverseproxy
-  # edge proxy mode: Enables communication through HTTP between the proxy and Keycloak.
-  # This mode is suitable for deployments with a highly secure internal network where the reverse proxy keeps a secure connection (HTTP over TLS) with clients while communicating with Keycloak using HTTP.
   production: true
-  proxy: edge
+  # ref: https://www.keycloak.org/server/reverseproxy
+  proxyHeaders: xforwarded
+
   # Admin user
   auth:
     adminUser: admin
@@ -87,23 +97,23 @@ This helm chart bootstraps a Keycloak deployment on Kubernetes using as backend 
     hostname: sso.picluster.ricsanfre.com
     tls: true
   ```
-  
+
   With this configuration:
-  - Keycloak is deployed in 'production proxy-edge': running behind NGINX proxy terminating TLS connections.
+  - Keycloak is deployed to run behind NGINX proxy terminating TLS connections. `proxyHeaders` variable need to be used.
   - PostgreSQL is deployed in standalone mode.
   - Ingress resource is configured
 
   {{site.data.alerts.note}}
-  With this configuration all passwords (Keycloak's admin password and postgreSQL passwords are generated randomly. 
+  With this configuration all passwords (Keycloak's admin password and postgreSQL passwords are generated randomly.
   If helm chart is upgraded, it might cause issues generating a new passwords if the existing ones are not provided when executing helm upgrade command.
   See details in [bitnami's keycloak helm chart documentation: How to manage passwords](https://github.com/bitnami/charts/tree/main/bitnami/keycloak#manage-secrets-and-passwords)
   {{site.data.alerts.end}}
-  
+
 - Step 5: Install Keycloak in `keycloak` namespace
   ```shell
   helm install keycloak bitnami/keycloak -f keycloak-values.yml --namespace keycloak
   ```
-  
+
 - Step 6: Check status of Keycloak pods
   ```shell
   kubectl get pods -n keycloak
@@ -114,7 +124,7 @@ This helm chart bootstraps a Keycloak deployment on Kubernetes using as backend 
   ```shell
   kubectl get secret keycloak -o jsonpath='{.data.admin-password}' -n keycloak | base64 -d && echo
   ```
-  
+
 - Step 8: connect to keycloak admin console
   https://sso.picluster.ricsanfre.com
 
@@ -122,7 +132,7 @@ This helm chart bootstraps a Keycloak deployment on Kubernetes using as backend 
 
 ### Alternative installation using external secret (GitOps)
 
-Keycloak admin password and postgreSQL passwords can be provided during helm installation in values.yaml file. 
+Keycloak admin password and postgreSQL passwords can be provided during helm installation in values.yaml file.
 Alternatively, it can be provided in an external secret.
 
 - Step 1: Create secret containing admin password and posgresql passwords:
@@ -147,7 +157,7 @@ Alternatively, it can be provided in an external secret.
   auth:
       existingSecret: keycloak-secret
       adminUser: admin
-  
+
   # postgresSQL
   postgresql:
     enabled: true
@@ -193,7 +203,7 @@ For example, using CloudNative-PG a, keycload database cluster can be created. S
   type: kubernetes.io/basic-auth
   data:
     username: <`echo -n 'keycloak' | base64`>
-    password: <`echo -n 'supersecret' | base64`>  
+    password: <`echo -n 'supersecret' | base64`>
   ```
 
 - Step 1. Create CloudNative PG database for keycloak
@@ -268,7 +278,7 @@ For example, using CloudNative-PG a, keycload database cluster can be created. S
   Open URL: https://sso.picluster.ricsanfre.com
 
 - Step 9: Create a new realm 'picluster'
-  
+
   Follow procedure in Keycloak documentation:[Keycloak: Creating a Realm](https://www.keycloak.org/docs/latest/server_admin/#proc-creating-a-realm_server_administration_guide)
 
 
@@ -282,57 +292,57 @@ Follow procedure in [Oauth2-Proxy: Keycloak OIDC Auth Provider Configuration](ht
 
 - Step 1: Create a new OIDC client in 'picluster' Keycloak realm by navigating to:
   Clients -> Create client
-  
+
   ![oauth2-proxy-client-1](/assets/img/oauth2-proxy-client-1.png)
-  
+
   - Provide the following basic configuration:
     - Client Type: 'OpenID Connect'
     - Client ID: 'oauth2-proxy'
   - Click Next.
-  
+
   ![oauth2-proxy-client-2](/assets/img/oauth2-proxy-client-2.png)
-  
+
   - Provide the following 'Capability config'
     - Client authentication: 'On'
     - Authentication flow
       - Standard flow 'selected'
       - Direct access grants 'deselect'
   - Click Next
-  
+
   ![oauth2-proxy-client-3](/assets/img/oauth2-proxy-client-3.png)
-  
+
   - Provide the following 'Logging settings'
     - Valid redirect URIs: https://ouath2-proxy.picluster.ricsanfre.com/oauth2/callback
   - Save the configuration.
 
 - Step 2: Locate oauth2-proxy client credentials
-  
+
   Under the Credentials tab you will now be able to locate oauth2-proxy client's secret.
-  
+
   ![oauth2-proxy-client-4](/assets/img/oauth2-proxy-client-4.png)
-  
+
 - Step 3: Configure a dedicated audience mapper for the client
 
   - Navigate to Clients -> oauth2-proxy client -> Client scopes.
-    
+
     ![oauth2-proxy-client-5](/assets/img/oauth2-proxy-client-5.png)
-    
+
   - Access the dedicated mappers pane by clicking 'oauth2-proxy-dedicated', located under Assigned client scope.
   (It should have a description of "Dedicated scope and mappers for this client")
   - Click on 'Configure a new mapper' and select 'Audience'
-  
+
     ![oauth2-proxy-client-6](/assets/img/oauth2-proxy-client-6.png)
-  
+
     ![oauth2-proxy-client-7](/assets/img/oauth2-proxy-client-7.png)
-  
+
     ![oauth2-proxy-client-8](/assets/img/oauth2-proxy-client-8.png)
-  
+
   - Provide following data:
     - Name 'aud-mapper-oauth2-proxy'
     - Included Client Audience select oauth2-proxy client's id from the dropdown.
     - Add to ID token 'On'
     - Add to access token 'On'
-    OAuth2 proxy can be set up to pass both the access and ID JWT tokens to your upstream services. 
+    OAuth2 proxy can be set up to pass both the access and ID JWT tokens to your upstream services.
   - Save the configuration.
 
 ### Automatic import of Realm configuration
@@ -357,12 +367,12 @@ New ConfigMap, containing the JSON files to be imported need to be mounted by ke
     name: keycloak-realm-configmap
     namespace: keycloak
   data:
-    picluster-realm.json: |  
+    picluster-realm.json: |
       # JSON file
   ```
 
 - Step 3: Apply configMap
-  
+
   ```shell
   kubectl apply -f keycloak-realm-configmap.yaml
   ```
@@ -413,7 +423,7 @@ New ConfigMap, containing the JSON files to be imported need to be mounted by ke
     # Oauth2 client configuration. From Keycloak configuration
     clientID: "oauth2-proxy"
     clientSecret: "supersecreto"
-    
+
     # Cookie secret
     # Create a new secret with the following command
     # openssl rand -base64 32 | head -c 32 | base64
@@ -468,16 +478,16 @@ New ConfigMap, containing the JSON files to be imported need to be mounted by ke
     tls:
       - hosts:
           - oauth2-proxy.picluster.ricsanfre.com
-        secretName: oauth2-proxy-tls  
+        secretName: oauth2-proxy-tls
   ```
 
   - Step 5: Install helm chart
-    
+
     ```shell
     helm install oauth2-proxy oauth2-proxy/oauth2-proxy -f oauth2-proxy-values.yml --namespace oauth2-proxy
     ```
 
-  - Step 6: Check status oauth2-proxy PODs 
+  - Step 6: Check status oauth2-proxy PODs
 
     ```shell
     kubectl --namespace=oauth2-proxy get pods -l "app=oauth2-proxy"
@@ -487,7 +497,7 @@ New ConfigMap, containing the JSON files to be imported need to be mounted by ke
 
 OAuth credentials (clientID, client secret), cookie secret and redis password can be provided from external secret
 
-{{site.data.alerts.note}}
+{{site.data.alerts.tip}} About ArgoCD and helm native commands
 
 Redis backend is installed using redis bitnami helm sub-chart. This helm chart creates a random credential for redis backend.
 When using ArgoCD, helm native commands, like `random` or `lookup`, used by the helm chart for generating this random secret are not supported and so oauth2-proxy fails to save any data to redis.
@@ -507,12 +517,12 @@ As workaround, the issue can be solved providing the credentials in a external s
       namespace: oauth2-proxy
   type: kubernetes.io/basic-auth
   data:
-    client-id: <`echo -n 'oauth2-proxy' | base64`> 
+    client-id: <`echo -n 'oauth2-proxy' | base64`>
     client-secret:  <`echo -n 'supersecret | base64`>
     cookie-secret: <`openssl rand -base64 32 | head -c 32 | base64`>
     redis-password: <`openssl rand -base64 32 | head -c 32 | base64`>
   ```
-  
+
   client-secret value should be taken from Oauth2-proxy client configuration
 
 - Step 2: Add existingSecret to oauth2-proxy-values.yaml and install helm chart
@@ -524,13 +534,13 @@ As workaround, the issue can be solved providing the credentials in a external s
     # clientID: "oauth2-proxy"
     # clientSecret: "supersecreto"
     # cookieSecret: "bG5pRDBvL0VaWis3dksrZ05vYnJLclRFb2VNcVZJYkg="
-  
+
   sessionStorage:
     type: redis
     redis:
       existingSecret: oauth2-proxy-secret
       passwordKey: redis-password
-  
+
   redis:
     enabled: true
     # standalone redis. No cluster
@@ -540,7 +550,7 @@ As workaround, the issue can be solved providing the credentials in a external s
       existingSecret: oauth2-proxy-secret
       existingSecretPasswordKey: redis-password
   ```
-  
+
 ## Configure Ingress external authentication
 
 Following annotations need to be added to any Ingress resource to use Oauth2-proxy authentication

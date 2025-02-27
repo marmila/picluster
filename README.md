@@ -8,7 +8,7 @@
   </tr>
 </table>
 
-**K3S Kubernetes Cluster at home automated with Ansible and ArgoCD**
+**K3S Kubernetes Cluster at home automated with Ansible and FluxCD**
 
 
 This is an educational project to build a hybrid x86/ARM Kubernetes cluster at home, using Raspberry Pi and refurbished x86 mini PCs, learn to deploy basic kubernetes services and automate its deployment and configuration applying IaC (infrastructure as a code) and GitOps methodologies.
@@ -16,13 +16,13 @@ This is an educational project to build a hybrid x86/ARM Kubernetes cluster at h
 
 The entire process for creating this cluster at home, from cluster design and architecture to step-by-step manual configuration guides, has been documented and it is published in the project website: https://picluster.ricsanfre.com.
 
-This repository contains all source code used to automate all manual tasks described in the documentation: Cloud-init's configuration files, Ansible's source code (playbooks/roles), and packaged Kubernetes applications (helm and kustomize) to be deployed using ArgoCD. 
+This repository contains all source code used to automate all manual tasks described in the documentation: Cloud-init's configuration files, Ansible's source code (playbooks/roles), and packaged Kubernetes applications (helm and kustomize) to be deployed using FluxCD.
 
 Since its deployment is completely automated, the cluster can be re-deployed in minutes as many times as needed for testing new cluster configurations, new software versions or just take you out of any mesh you could cause playing with the cluster.
 
 ## Scope
 
-The scope of this project is to build a hybrid x86/ARM kubernetes cluster at home, using low cost Raspeberry PIs and old refurbished mini PCs, and automate its deployment and configuration applying **IaC (infrastructure as a code)** and **GitOps** methodologies with tools like [Ansible](https://docs.ansible.com/), [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [Argo CD](https://argo-cd.readthedocs.io/en/stable/).
+The scope of this project is to build a hybrid x86/ARM kubernetes cluster at home, using low cost Raspeberry PIs and old refurbished mini PCs, and automate its deployment and configuration applying **IaC (infrastructure as a code)** and **GitOps** methodologies with tools like [Ansible](https://docs.ansible.com/), [cloud-init](https://cloudinit.readthedocs.io/en/latest/) and [Flux CD](https://fluxcd.io/).
 
 As part of the project, the goal is to use a lightweight Kubernetes flavor based on [K3S](https://k3s.io/) and deploy cluster basic services such as:
 - Distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/).
@@ -44,10 +44,10 @@ Also deployment of services for building a cloud-native microservices architectu
 
 ## Technology Stack
 
-The following picture shows the set of opensource solutions used so far in the cluster, which installation process has been documented and its deployment has been automated with Ansible/ArgoCD:
+The following picture shows the set of opensource solutions used so far in the cluster, which installation process has been documented and its deployment has been automated with Ansible/FluxCD:
 
 <p align="center">
-  <img src="docs/assets/img/pi-cluster-icons.png" width="500"/>
+  <img src="docs/assets/img/pi-cluster-tech-stack.png" width="500"/>
 </p>
 
 <div class="d-flex">
@@ -63,8 +63,8 @@ The following picture shows the set of opensource solutions used so far in the c
         <td>Automate OS configuration, external services installation and k3s installation and bootstrapping</td>
     </tr>
     <tr>
-        <td><img width="32" src="docs/assets/img/logos/argocd.svg"></td>
-        <td><a href="https://argoproj.github.io/cd">ArgoCD</a></td>
+        <td><img width="32" src="docs/assets/img/logos/flux-cd.png" alt="fluxcd logo"></td>
+        <td><a href="https://fluxcd.io/">FluxCD</a></td>
         <td>GitOps tool for deploying applications to Kubernetes</td>
     </tr>
     <tr>
@@ -76,6 +76,11 @@ The following picture shows the set of opensource solutions used so far in the c
         <td><img width="32" src="docs/assets/img/logos/ubuntu.svg"></td>
         <td><a href="https://ubuntu.com/">Ubuntu</a></td>
         <td>Cluster nodes OS</td>
+    </tr>
+    <tr>
+        <td><img width="32" src="docs/assets/img/logos/openwrt-icon.png" alt="openwrt logo"></td>
+        <td><a href="https://openwrt.org/">OpenWRT</a></td>
+        <td>Router/Firewall OS</td>
     </tr>
     <tr>
         <td><img width="32" src="docs/assets/img/logos/k3s.svg"></td>
@@ -98,6 +103,11 @@ The following picture shows the set of opensource solutions used so far in the c
         <td>Kubernetes DNS</td>
     </tr>
     <tr>
+        <td><img width="32" src="docs/assets/img/logos/external-dns.png" alt="external-dns logo"></td>
+        <td><a href="https://kubernetes-sigs.github.io/external-dns/">ExternalDNS</a></td>
+        <td>External DNS synchronization</td>
+    </tr>
+    <tr>
         <td><img width="32" src="docs/assets/img/logos/haproxy.svg"></td>
         <td><a href="https://www.haproxy.org/">HA Proxy</a></td>
         <td>Kubernetes API Load-balancer</td>
@@ -111,11 +121,6 @@ The following picture shows the set of opensource solutions used so far in the c
         <td><img width="32" src="docs/assets/img/logos/nginx.svg"></td>
         <td><a href="https://kubernetes.github.io/ingress-nginx/">Ingress NGINX</a></td>
         <td>Kubernetes Ingress Controller</td>
-    </tr> 
-    <tr>
-        <td><img width="32" src="/assets/img/logos/istio-icon-color.svg" alt="istio logo"></td>
-        <td><a href="https://istio.io/">Istio</a></td>
-        <td>Kubernetes Service Mesh</td>
     </tr>
     <tr>
         <td><img width="32" src="docs/assets/img/logos/longhorn.svg"></td>
@@ -123,7 +128,7 @@ The following picture shows the set of opensource solutions used so far in the c
         <td>Kubernetes distributed block storage</td>
     </tr>
     <tr>
-        <td><img width="60" src="docs/assets/img/logos/minio.svg"></td>
+        <td><img width="20" src="docs/assets/img/logos/minio.svg"></td>
         <td><a href="https://min.io/">Minio</a></td>
         <td>S3 Object Storage solution</td>
     </tr>
@@ -202,6 +207,26 @@ The following picture shows the set of opensource solutions used so far in the c
         <td><a href="https://grafana.com/oss/grafana/">Grafana</a></td>
         <td>Monitoring Dashboards</td>
     </tr>
+        <tr>
+        <td><img width="32" src="docs/assets/img/logos/istio-icon-color.svg" alt="istio logo"></td>
+        <td><a href="https://istio.io/">Istio</a></td>
+        <td>Kubernetes Service Mesh</td>
+    </tr>
+    <tr>
+        <td><img width="32" src="docs/assets/img/logos/apache_kafka.svg" alt="kafka logo"></td>
+        <td><a href="https://strimzi.io/">Strimzi Kafka</a></td>
+        <td>Kubernetes Operator for running Kafka streaming platform</td>
+    </tr>
+    <tr>
+        <td><img width="32" src="docs/assets/img/logos/cloudnative-pg.png" alt="cnpg logo"></td>
+        <td><a href="https://cloudnative-pg.io/">CloudNative PosgreSQL</a></td>
+        <td>Kubernetes Operator for running PosgreSQL </td>
+    </tr>
+        <tr>
+        <td><img width="32" src="docs/assets/img/logos/mongodb.svg" alt="mongodb logo"></td>
+        <td><a href="https://github.com/mongodb/mongodb-kubernetes-operator">MongoDB Kubernetes Operator</a></td>
+        <td>Kubernetes Operator for running MongoDB </td>
+    </tr>
 </table>
 </div>
 
@@ -232,9 +257,9 @@ Even whe the premise is to deploy all services in the kubernetes cluster, there 
 
    Currently only acme issuer (letsencytp) using IONOS as dns-01 challenge provider is configured. Check list of [supported dns01 providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers).
 
-### Self-hosted external services 
+### Self-hosted external services
 
-There is another list of services that I have decided to run outside the kuberentes cluster selfhosting them..
+There is another list of services that I have decided to run outside the kuberentes cluster selfhosting them.
 
 |  |External Service | Resource | Purpose |
 | --- | --- | --- | --- |
@@ -251,7 +276,7 @@ Home lab architecture, showed in the picture below, consist of a Kubernetes clus
 
 
 <p align="center">
-  <img src="docs/assets/img/picluster-architecture.png" width="500"/>
+  <img src="docs/assets/img/pi-cluster-architecture.png" width="500"/>
 </p>
 
 
@@ -259,11 +284,11 @@ See further details about the architecture and hardware in the [documentation](h
 
 ## Official Site
 
-You can browse more information about Pi Cluster Project on https://picluster.ricsanfre.com/. 
+You can browse more information about Pi Cluster Project on https://picluster.ricsanfre.com/.
 
 The content of this website and the source code to build it (Jekyll static based website) are also stored in this repo: `/docs` folder.
 
-## Usage 
+## Usage
 
 Check out the documentation [Quick Start guide](http://picluster.ricsanfre.com/docs/ansible/) to know how to use and tweak cloud-init files (`/cloud-init` folder), Ansible playbooks (`/ansible` folder) and packaged Kubernetes applications ( `/kubernetes` folder) contained in this repository, so you can use in for your own homelab.
 

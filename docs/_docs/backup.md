@@ -16,7 +16,7 @@ The backup architecture is the following:
 - OS filesystem backup
 
   Some OS configuration files should be backed up in order to being able to restore configuration at OS level.
-  For doing so, [Restic](https://restic.net) can be used. Restic provides a fast and secure backup program that can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io). 
+  For doing so, [Restic](https://restic.net) can be used. Restic provides a fast and secure backup program that can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io).
 
 
 - K3S cluster configuration backup and restore.
@@ -27,7 +27,7 @@ The backup architecture is the following:
 
   Since for the backup and restore is using standard Kubernetes API, Velero can be used as a tool for migrating the configuration from one kubernetes cluster to another having a differnet kubernetes flavor. From K3S to K8S for example.
 
-  Velero can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io). 
+  Velero can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io).
 
   Since Velero is a most generic way to backup any Kuberentes cluster (not just K3S) it will be used to implement my cluster K3S backup.
 
@@ -56,17 +56,17 @@ The backup architecture is the following:
   kubectl exec pod -- app_unfreeze_command
   ```
 
-  Velero also support CSI snapshot API to take Persistent Volumes snapshots, through CSI provider, Longorn, when backing-up the PODs. See Velero [CSI snapshot support documentation](https://velero.io/docs/v1.14/csi/).
+  Velero also support CSI snapshot API to take Persistent Volumes snapshots, through CSI provider, Longorn, when backing-up the PODs. See Velero [CSI snapshot support documentation](https://velero.io/docs/latest/csi/).
 
   Integrating Container Storage Interface (CSI) snapshot support into Velero and Longhorn enables Velero to backup and restore CSI-backed volumes using the [Kubernetes CSI Snapshot feature](https://kubernetes.io/docs/concepts/storage/volume-snapshots/).
 
-  For orchestrating application-consistent backups, Velero supports the definition of [backup hooks](https://velero.io/docs/v1.14/backup-hooks/), commands to be executed before and after the backup, that can be configured at POD level through annotations.
+  For orchestrating application-consistent backups, Velero supports the definition of [backup hooks](https://velero.io/docs/latest/backup-hooks/), commands to be executed before and after the backup, that can be configured at POD level through annotations.
 
   So Velero, with its buil-in functionality, CSI snapshot support and backup hooks, is able to perform the orchestration of application-consistent backups. Velero delegates the actual backup/restore of PV to the CSI provider, Longhorn.
 
   {{site.data.alerts.note}}
 
-  Velero also supports, Persistent Volumes backup/restore procedures using [File System Backup (FSB shortly) or Pod Volume Backup](https://velero.io/docs/v1.14/file-system-backup/).  [restic](restic.io) or [kopia](https://kopia.io/) can be used to transfer the data using the same S3 backend configured within Velero for backing up the cluster configuration. Velero node agent has to be installed to enable this functionality. FSB support is not enabled when deploying Velero, instead CSI snapshots will be used.
+  Velero also supports, Persistent Volumes backup/restore procedures using [File System Backup (FSB shortly) or Pod Volume Backup](https://velero.io/docs/latest/file-system-backup/).  [restic](https://restic.net/) or [kopia](https://kopia.io/) can be used to transfer the data using the same S3 backend configured within Velero for backing up the cluster configuration. Velero node agent has to be installed to enable this functionality. FSB support is not enabled when deploying Velero, instead CSI snapshots will be used.
 
   {{site.data.alerts.end}}
 
@@ -96,14 +96,14 @@ cd /tmp
 wget https://github.com/restic/restic/releases/download/v0.16.5/restic_0.16.5_linux_[amd64/arm64].bz2
 bzip2 -d /tmp/restic_0.16.5_linux_[amd64/arm64].bz2
 cp /tmp/restic_0.16.5_linux_[amd64/arm64] /usr/local/bin/restic
-chmod 755 /usr/local/bin/restic 
+chmod 755 /usr/local/bin/restic
 ```
 ### Create restic environment variables files
 
 restic repository info can be passed to `restic` command through environment variables instead of typing in as parameters with every command execution
 
 - Step 1: Create a restic config directory
-  
+
   ```shell
   sudo mkdir /etc/restic
   ```
@@ -121,7 +121,7 @@ restic repository info can be passed to `restic` command through environment var
 
   ```shell
   export $(grep -v '^#' /etc/restic/restic.conf | xargs -d '\n')
-  ```  
+  ```
   {{site.data.alerts.important}}
   This command need to be executed with any new SSH shell connection before executing any `restic` command. As an alternative that command can be added to the bash profile of the user.
   {{site.data.alerts.end}}
@@ -130,7 +130,7 @@ restic repository info can be passed to `restic` command through environment var
 
 In case Minio S3 server is using secure communications using a not valid certificate (self-signed or signed with custom CA), restic command must be used with `--cacert <path_to_CA.pem_file` option to let restic validate the server certificate.
 
-Copy CA.pem, used to sign Minio SSL certificate into `/etc/restic/ssl/CA.pem` 
+Copy CA.pem, used to sign Minio SSL certificate into `/etc/restic/ssl/CA.pem`
 
 {{site.data.alerts.note}}
 
@@ -219,11 +219,15 @@ Backup policies scheduling
 
 K3S distribution currently does not come with a preintegrated Snapshot Controller that is needed to enable CSI Snapshot feature. An external snapshot controller need to be deployed. K3S can be configured to use [kubernetes-csi/external-snapshotter](https://github.com/kubernetes-csi/external-snapshotter).
 
-To enable this feature, follow instructions in [Longhorn documentation - Enable CSI Snapshot Support](https://longhorn.io/docs/1.6.0/snapshots-and-backups/csi-snapshot-support/enable-csi-snapshot-support/).
+To enable this feature, follow instructions in [Longhorn documentation - Enable CSI Snapshot Support](https://longhorn.io/docs/latest/snapshots-and-backups/csi-snapshot-support/enable-csi-snapshot-support/).
 
 {{site.data.alerts.note}}
 
-In Longhorn 1.6.2, CSI Snapshots support is compatible with [kubernetes-csi/external-snapshotter](https://github.com/kubernetes-csi/external-snapshotter) release v6.3.2. Do not install latest version available of External Snapshotter.
+Each release of Longhorn is compatible with a specific version external-snapshotter. Do not install latest available version.
+
+For example, in Longhorn 1.7.2, CSI Snapshots support is compatible with [kubernetes-csi/external-snapshotter](https://github.com/kubernetes-csi/external-snapshotter) release v7.0.2.
+
+Check which version to use in [Longhorn documentation - Enable CSI Snapshot Support](https://longhorn.io/docs/latest/snapshots-and-backups/csi-snapshot-support/enable-csi-snapshot-support/).
 
 {{site.data.alerts.end}}
 
@@ -236,8 +240,8 @@ In Longhorn 1.6.2, CSI Snapshots support is compatible with [kubernetes-csi/exte
   kind: Kustomization
   namespace: kube-system
   resources:
-  - https://github.com/kubernetes-csi/external-snapshotter/client/config/crd/?ref=v6.3.2
-  - https://github.com/kubernetes-csi/external-snapshotter/deploy/kubernetes/snapshot-controller/?ref=v6.3.2
+  - https://github.com/kubernetes-csi/external-snapshotter/client/config/crd/?ref=v7.0.2
+  - https://github.com/kubernetes-csi/external-snapshotter/deploy/kubernetes/snapshot-controller/?ref=v7.0.2
   ```
 
 - Step Deploy Snapshot-Controller
@@ -328,7 +332,7 @@ defaultSettings:
 ### Scheduling longhorn volumes backup
 
 A Longhorn recurring job can be created for scheduling periodic backups/snapshots of volumes.
-See details in [Longhorn - Scheduling backups and snapshots](https://longhorn.io/docs/1.6.2/snapshots-and-backups/scheduling-backups-and-snapshots/).
+See details in [Longhorn - Scheduling backups and snapshots](https://longhorn.io/docs/latest/snapshots-and-backups/scheduling-backups-and-snapshots/).
 
 {{site.data.alerts.note}}
 
@@ -361,7 +365,7 @@ Since full cluster backup will be scheduled using Velero, including Longhorn's P
 
 - Apply manifest file
 
-  ```shell  
+  ```shell
   kubectl apply -f recurring_job.yml
   ```
 
@@ -409,18 +413,18 @@ VolumeSnapshotClass objects from CSI Snapshot API need to be configured
 
 Velero defines a set of Kuberentes' CRDs (Custom Resource Definition) and Controllers that process those CRDs to perform backups and restores.
 
-Velero as well provides a CLI to execute backup/restore commands using Kuberentes API. More details in official documentation, [How Velero works](https://velero.io/docs/v1.14/how-velero-works/)
+Velero as well provides a CLI to execute backup/restore commands using Kuberentes API. More details in official documentation, [How Velero works](https://velero.io/docs/latest/how-velero-works/)
 
 The complete backup workflow is the following:
 
 ![velero-backup-process](/assets/img/velero-backup-process.png)
 
-As storage provider, Minio will be used. See [Velero's installation documentation using Minio as backend](https://velero.io/docs/v1.15/contributions/minio/).
+As storage provider, Minio will be used. See [Velero's installation documentation using Minio as backend](https://velero.io/docs/latest/contributions/minio/).
 
 
 ### Configuring Minio bucket and user for Velero
 
-Velero requires an object storage bucket to store backups in. In Minio a dedicated S3 bucket is created for Velero (name: `k3s-velero`) 
+Velero requires an object storage bucket to store backups in. In Minio a dedicated S3 bucket is created for Velero (name: `k3s-velero`)
 
 A specific Minio user `velero` is configured with specic access policy to grant the user access to the bucket.
 
@@ -511,7 +515,7 @@ Installation using `Helm` (Release 3):
   ```
 
 - Step 4: Create values.yml for Velero helm chart deployment
-  
+
   ```yml
   # AWS backend plugin configuration
   initContainers:
@@ -591,7 +595,7 @@ Installation using `Helm` (Release 3):
   The chart configuration deploys the following velero plugin as `initContainers`:
   - `velero-plugin-for-aws` to enable S3 Minio as backup backend.
 
-  
+
   ```yml
   # AWS backend and CSI plugins configuration
   initContainers:
@@ -613,7 +617,7 @@ Installation using `Helm` (Release 3):
   # Disable VolumeSnapshotLocation CRD. It is not needed for CSI integration
   snapshotsEnabled: false
   ```
-  
+
 - Configure Minio S3 server as backup backend
 
   ```yml
@@ -638,16 +642,16 @@ Installation using `Helm` (Release 3):
         aws_secret_access_key: <minio_velero_pass> # Not encoded
 
   ```
-  
+
   Minio server connection data (`configuration.backupStorageLocation.config`) ,minio credentials (`credentials.secretContents`), and bucket(`configuration.backupStorageLocation.bucket`) to be used.
 
   {{site.data.alerts.note}}
    In case of using a self-signed certificate for Minio server, custom CA certificate must be passed as `configuration.backupStorageLocation.caCert` parameter (base64 encoded and removing any '\n' character)
   {{site.data.alerts.end}}
 
-#### GitOps installation (ArgoCD)
+#### GitOps installation
 
-As alternative, for GitOps deployment (ArgoCD), instead of putting minio credentials into helm values in plain text, a Secret can be used to store the credentials.
+As alternative, for GitOps deployment, instead of putting minio credentials into helm values in plain text, a Secret can be used to store the credentials.
 
 ```yml
 apiVersion: v1
@@ -680,7 +684,7 @@ credentials:
 
   1) Create manifest file: `nginx-example.yml`
 
-  
+
   ```yml
   ---
   apiVersion: v1
@@ -772,7 +776,7 @@ credentials:
   {{site.data.alerts.end}}
 
   2) Apply manifest file `nginx-example.yml`
-   
+
   ```shell
   kubectl apply -f nginx-example.yml
   ```
@@ -784,13 +788,13 @@ credentials:
   ```
 
   4) Create a backup for any object included in nginx-example namespace:
-  
+
   ```shell
-  velero backup create nginx-backup --include-namespaces nginx-example --wait  
+  velero backup create nginx-backup --include-namespaces nginx-example --wait
   ```
 
   5) Simulate a disaster:
-  
+
   ```shell
   kubectl delete namespace nginx-example
   ```
@@ -808,7 +812,7 @@ credentials:
   ```shell
   velero restore create --from-backup nginx-backup
   ```
-  
+
   8) Check the status of the restore:
 
   ```shell
@@ -822,7 +826,7 @@ credentials:
   ```
 
   9) Check nginx deployment and services are back
-  
+
   ```shell
   kubectl get deployments --namespace=nginx-example
   kubectl get services --namespace=nginx-example
@@ -838,7 +842,7 @@ Set up daily full backup can be on with velero CLI
 ```shell
 velero schedule create full --schedule "0 4 * * *"
 ```
-Or creating a 'Schedule' [kubernetes resource](https://velero.io/docs/v1.14/api-types/schedule/):
+Or creating a 'Schedule' [kubernetes resource](https://velero.io/docs/latest/api-types/schedule/):
 
 ```yml
 apiVersion: velero.io/v1
@@ -866,7 +870,7 @@ spec:
 ## References
 
 - [K3S Backup/Restore official documentation](https://rancher.com/docs/k3s/latest/en/backup-restore/)
-- [Longhorn Backup/Restore official documentation](https://longhorn.io/docs/1.5.1/snapshots-and-backups/)
+- [Longhorn Backup/Restore official documentation](https://longhorn.io/docs/latest/snapshots-and-backups/)
 - [Bare metal Minio documentation](https://docs.min.io/minio/baremetal/)
 - [Create a Multi-User MinIO Server for S3-Compatible Object Hosting](https://www.civo.com/learn/create-a-multi-user-minio-server-for-s3-compatible-object-hosting)
 - [Backup Longhorn Volumes to a Minio S3 bucket](https://www.civo.com/learn/backup-longhorn-volumes-to-a-minio-s3-bucket)

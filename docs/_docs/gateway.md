@@ -1,12 +1,17 @@
 ---
-title: Cluster Gateway
+title: Cluster Gateway (Ubuntu OS)
 permalink: /docs/gateway/
-description: How to configure a Raspberry Pi as router/firewall of our Kubernetes Cluster providing connectivity and basic services (DNS, DHCP, NTP, SAN).
-last_modified_at: "03-02-2024"
+description: How to configure a Raspberry Pi as router/firewall for our Kubernetes Cluster, runing Ubuntu OS, providing connectivity and basic services (DNS, DHCP, NTP, SAN).
+last_modified_at: "16-01-2025"
 ---
 
-One of the Raspeberry Pi (2GB), **gateway**, is used as Router and Firewall for the home lab, isolating the raspberry pi cluster from my home network.
-It will also provide DNS, NTP and DHCP services to my lab network. In case of deployment using centralized SAN storage architectural option, `gateway` is providing SAN services also.
+
+{{site.data.alerts.important}}
+Instead of configuring Ubuntu OS, running on a Raspberry Pi to provide Router/Firewall capabilities, a embedded device or Raspberry Pi running [OpenWRT](https://openwrt.org/) is currently being used in my homelab cluster. See details in ["Cluster Gateway (OpenWRT)"](/docs/openwrt/)
+{{site.data.alerts.end}}
+
+One of the Raspberry Pi (2GB), **gateway**, is used as Router and Firewall for the home lab, isolating the homelab network from my home network.
+It will also provide DNS, NTP and DHCP services to my lab network.
 
 This Raspberry Pi (gateway), is connected to my home network using its WIFI interface (wlan0) and to the LAN Switch using the eth interface (eth0).
 
@@ -15,16 +20,13 @@ In order to ease the automation with Ansible, OS installed on **gateway** is the
 
 ## Storage Configuration
 
-`gateway` node is based on a Raspberry Pi 4B 2GB booting from a USB Flash Disk or SSD Disk depending on storage architectural option selected.
-
-- Dedicated disks storage architecture: A Samsung USB 3.1 32 GB Fit Plus Flash Disk will be used connected to one of the USB 3.0 ports of the Raspberry Pi.
-- Centralized SAN architecture: Kingston A400 480GB SSD Disk and a USB3.0 to SATA adapter will be used connected to `gateway`. SSD disk for hosting OS and iSCSI LUNs.
+`gateway` node is based on a Raspberry Pi 4B 2GB booting from a USB Flash Disk.
 
 
 ## Network Configuration
 
 The WIFI interface (wlan0) will be used to be connected to my home network using static IP address (192.168.1.11/24), while ethernet interface (eth0) will be connected to the lan switch, lab network, using static IP address (10.0.0.1/24)
-Static IP addres in home network, will enable the configuration of static routes in my labtop and VM running on it (`pimaster`) to access the cluster nodes without fisically connect the laptop to the lan switch with an ethernet cable. 
+Static IP addres in home network, will enable the configuration of static routes in my labtop and VM running on it (`pimaster`) to access the cluster nodes without fisically connect the laptop to the lan switch with an ethernet cable.
 
 
 ## Unbuntu OS instalation
@@ -39,10 +41,10 @@ The installation procedure followed is the described in ["Ubuntu OS Installation
 
 `user-data` depends on the storage architectural option selected::
 
-| Dedicated Disks | Centralized SAN    |
-|--------------------| ------------- |
-|  [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/user-data) | [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/user-data-centralizedSAN) |
-{: .table .table-white .border-dark }
+| User Data |
+|--------------------|
+|  [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/user-data) |
+{: .table .border-dark }
 
 `network-config` is the same in both architectures:
 
@@ -50,53 +52,7 @@ The installation procedure followed is the described in ["Ubuntu OS Installation
 | Network configuration |
 |---------------------- |
 | [network-config]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/network-config) |
-{: .table .table-white .border-dark }
-
-### cloud-init partitioning configuration (Centralized SAN)
-
-By default, during first boot, cloud image partitions grow to fill the whole capacity of the SDCard/USB Flash Disk or SSD disk). So root partition (/) will grow to fill the full capacity of the disk.
-
-{{ site.data.alerts.note }}
-
-As a reference of how cloud images partitions grow in boot time check this blog [entry](https://elastisys.com/how-do-virtual-images-grow/).
-
-{{ site.data.alerts.end }}
-
-
-In case of centralized SAN, gateway's SSD Disk will be partitioned in boot time reserving 30 GB for root filesystem (OS installation) and the rest will be used for creating logical volumes (LVM), SAN LUNs to be mounted using iSCSI by the other nodes.
-
-cloud-init configuration `user-data` includes commands to be executed once in boot time, executing a command that changes partition table and creates a new partition before the automatic growth of root partitions to fill the entire disk happens.
-
-```yml
-bootcmd:
-  # Create second LVM partition. Leaving 30GB for root partition
-  # sgdisk /dev/sda -e .g -n=0:30G:0 -t 0:8e00
-  # First convert MBR partition to GPT (-g option)
-  # Second moves the GPT backup block to the end of the disk where it belongs (-e option)
-  # Then creates a new partition starting 10GiB into the disk filling the rest of the disk (-n=0:10G:0 option)
-  # And labels it as an LVM partition (-t option)
-  - [cloud-init-per, once, addpartition, sgdisk, /dev/sda, "-g", "-e", "-n=0:30G:0", -t, "0:8e00"]
-
-runcmd:
-  # reload partition table
-  - "sudo partprobe /dev/sda"
-```
-
-Command executed in boot time is
-
-```shell
-sgdisk /dev/sda -e .g -n=0:30G:0 -t 0:8e00
-```
-
-This command:
-  - First convert MBR partition to GPT (-g option)
-  - Second moves the GPT backup block to the end of the disk  (-e option)
-  - then creates a new partition starting 30GiB into the disk filling the rest of the disk (-n=0:10G:0 option)
-  - And labels it as an LVM partition (-t option)
-
-LVM logical volumes creation using the new partition,`/dev/sda3`, (LUNs) have been automated with Ansible developing the ansible role: **ricsanfre.storage** for managing LVM.
-
-Specific ansible variables to be used by this role are stored in [`ansible/vars/centralized_san/centralized_san_target.yml`]({{ site.git_edit_address }}/ansible/vars/centralized_san/centralized_san_target.yml)
+{: .table .border-dark }
 
 
 ### cloud-init: network configuration
@@ -109,18 +65,29 @@ version: 2
 ethernets:
   eth0:
     dhcp4: false
-    addresses: [10.0.0.1/24]
+    dhcp6: false
+    optional: true
+    addresses:
+     - 10.0.0.1/24
 wifis:
   wlan0:
     dhcp4: false
+    dhcp6: false
     optional: true
     access-points:
-      "<SSID_NAME>":
-        password: "<SSID_PASSWD>"
-    addresses: [192.168.1.11/24]
-    gateway4: 192.168.1.1
+      <SSID_NAME>:
+        password: <SSID_PASSWD>
+    addresses:
+     - 192.168.1.11/24
+    routes:
+      - to: default
+        via: 192.168.1.1
     nameservers:
-      addresses: [80.58.61.250,80.58.61.254]
+      addresses:
+        - 1.1.1.1
+        - 8.8.8.8
+      search:
+        - homelab.ricsanfre.com
 ```
 
 It assigns static IP address 10.0.0.1 to eth0 port and configures wifi interface (wlan0) to have static IP address in home network (192.168.1.1). DNS servers of my ISP are also configured.
@@ -131,12 +98,14 @@ After booting from the USB3.0 external storage for the first time, the Raspberry
 
 Initial configuration tasks includes: removal of snap package, and Raspberry PI specific configurations tasks such as: intallation of fake hardware clock, installation of some utility packages scripts and change default GPU Memory plit configuration. See instructions in ["Ubuntu OS initial configurations"](/docs/os-basic/).
 
-For automating all this initial configuration tasks, ansible role **basic_setup** has been developed.
 
 ## Router/Firewall Configuration
 
-For automating configuration tasks, ansible role [**ricsanfre.firewall**](https://galaxy.ansible.com/ricsanfre/firewall) has been developed.
+{{site.data.alerts.note}}
 
+For automating configuration tasks, ansible role [**ricsanfre.firewall**](https://galaxy.ansible.com/ricsanfre/firewall) can be used.
+
+{{site.data.alerts.end}}
 
 ### Enabling IP Forwarding
 
@@ -182,7 +151,6 @@ As a modular example:
   `/etc/nftables.conf`
   ```
   #!/usr/sbin/nft -f
-  # Ansible managed
 
   # clean
   flush ruleset
@@ -318,7 +286,7 @@ As a modular example:
   ```
 
 - Output traffic filtering rules
-  
+
   `/etc/nftables.d/filter-output.nft`
   ```
   chain output {
@@ -347,7 +315,7 @@ As a modular example:
 
     }
   ```
-  
+
   These forwarding rules enables:
 
   - Outgoing traffic (from the cluster): all tcp/udp traffic is allowed.
@@ -371,8 +339,8 @@ As a modular example:
     ```
     # 250 port-forwarding from wan
     iifname $wan_interface oifname $lan_interface ip daddr 10.0.0.11 tcp dport 8080 ct state new accept
-    ``` 
-    
+    ```
+
     This rule enables incoming traffic to node1 in port 8080 which can be used to configure port-forward feature to access to any service.
 
     ```shell
@@ -403,7 +371,7 @@ As a modular example:
     }
 
   ```
-  
+
 
 {{site.data.alerts.important}} **About iptables rules persistency**
 
@@ -423,12 +391,6 @@ Rules are stored in the following location:
 
 {{site.data.alerts.end}}
 
-### Configuring Ansible Role
-
-nftables default rules establish by the role can be updated by changing roles variables for `gateway` host (see `gateway` host variables in [`ansible/host_vars/gateway.yml`]({{ site.git_edit_address }}/ansible/host_vars/gateway.yml) file)
-
-The rules configured for `gateway` allow incoming traffic (icmp, http, https, iscsi, ssh, dns, dhcp, ntp and snmp) and forward http, https, ssh, dns and ntp traffic.
-
 
 ### Configuring static routes to access to cluster from home network
 
@@ -445,10 +407,10 @@ This route need to be added to my Laptop and the VM running `pimaster` node
   ```
 
 - Adding static route in Linux VM running on my laptop (VirtualBox)
-  
+
   Modify `/etc/netplan/50-cloud-init.yaml` for adding the static route
-    
-  ```yml 
+
+  ```yml
   network:
   version: 2
   ethernets:
@@ -459,7 +421,7 @@ This route need to be added to my Laptop and the VM running `pimaster` node
       dhcp4: yes # Home network IP address
       routes:
       - to: 10.0.0.0/24 #Cluster Lab Network
-        via: 192.168.1.11 #`gateway` static ip address in home network        
+        via: 192.168.1.11 #`gateway` static ip address in home network
   ```
   {{site.data.alerts.note}}
 
@@ -467,12 +429,19 @@ This route need to be added to my Laptop and the VM running `pimaster` node
   - **Eth0** (enp0s3) connected to VBox **Host-Only adapter** (laptop only connection)
   - **Eth1** (enp0s8) connected to VBox **Bridge adapter** (home network connection)
 
-  {{site.data.alerts.end}}  
+  {{site.data.alerts.end}}
 
 ## DHCP/DNS Configuration
 
-`dnsmasq` will be used as lightweigh DHCP/DNS server
-For automating configuration tasks, ansible role [**ricsanfre.dnsmasq**](https://galaxy.ansible.com/ricsanfre/dnsmasq) has been developed.
+`dnsmasq` will be used as lightweight DHCP/DNS server.
+
+DNS configured as Resolver/Forwarder. See more details in [PiCluster - DNS Architecture](/docs/dns/).
+
+{{site.data.alerts.note}}
+For automating configuration tasks, ansible role [**ricsanfre.dnsmasq**](https://galaxy.ansible.com/ricsanfre/dnsmasq) can be used.
+{{site.data.alerts.end}}
+
+Manual installation process is the following:
 
 - Step 1. Install dnsmasq
 
@@ -485,29 +454,25 @@ For automating configuration tasks, ansible role [**ricsanfre.dnsmasq**](https:/
   Edit file `/etc/dnsmasq.d/dnsmasq.conf`
 
   ```
-  # Our DHCP service will be providing addresses over our eth0 adapter
+  # Our DHCP/DNS service will be providing services over eth0 adapter
   interface=eth0
 
   # We will listen on the static IP address we declared earlier
   listen-address= 10.0.0.1
 
-  # Pre-allocate a bunch of IPs on the 10.0.0.0/8 network for the Raspberry Pi nodes
-  # DHCP will allocate these for 12 hour leases, but will always assign the same IPs to the same Raspberry Pi
-  # devices, as you'll populate the MAC addresses below with those of your actual Pi ethernet interfaces
+  # DHCP IP range
+  dhcp-range=10.0.0.100,10.0.0.249,12h
 
-  dhcp-range=10.0.0.32,10.0.0.128,12h
-
-  # DNS nameservers
-  server=80.58.61.250
-  server=80.58.61.254
+  # Upstream nameservers
+  server=/homelab.ricsanfre.com/10.0.11
+  server=1.1.1.1
+  server=8.8.8.8
 
   # Bind dnsmasq to the interfaces it is listening on (eth0)
   bind-interfaces
 
   # Never forward plain names (without a dot or domain part)
   domain-needed
-
-  local=/picluster.ricsanfre.com/
 
   domain=picluster.ricsanfre.com
 
@@ -521,103 +486,29 @@ For automating configuration tasks, ansible role [**ricsanfre.dnsmasq**](https:/
   # log-queries
   # log-dhcp
 
-  # DHCP configuration based on inventory
-  dhcp-host=e4:5f:01:28:36:98,10.0.0.1
-  dhcp-host=08:00:27:f3:6b:dd,10.0.0.10
-  dhcp-host=dc:a6:32:9c:29:b9,10.0.0.11
-  dhcp-host=e4:5f:01:2d:fd:19,10.0.0.12
-  dhcp-host=e4:5f:01:2f:49:05,10.0.0.13
-  dhcp-host=e4:5f:01:2f:54:82,10.0.0.14
-  dhcp-host=e4:5f:01:d9:ec:5c,10.0.0.15
-  dhcp-host=d8:3a:dd:0d:be:c8,10.0.0.16
-
-  # Adding additional DHCP hosts
-  # Ethernet Switch
-  dhcp-host=94:a6:7e:7c:c7:69,10.0.0.2
-
-  # DNS configuration based on inventory
-  host-record=gateway.picluster.ricsanfre.com,10.0.0.1
-  host-record=pimaster.picluster.ricsanfre.com,10.0.0.10
-  host-record=node1.picluster.ricsanfre.com,10.0.0.11
-  host-record=node2.picluster.ricsanfre.com,10.0.0.12
-  host-record=node3.picluster.ricsanfre.com,10.0.0.13
-  host-record=node4.picluster.ricsanfre.com,10.0.0.14
-  host-record=node5.picluster.ricsanfre.com,10.0.0.15
-  host-record=node6.picluster.ricsanfre.com,10.0.0.16
-
-  # Adding additional DNS
-  # NTP Server
-  host-record=ntp.picluster.ricsanfre.com,10.0.0.1
-  # DNS Server
-  host-record=dns.picluster.ricsanfre.com,10.0.0.1
-  ```
-
-  {{site.data.alerts.note}}
-
-  Additional DNS records can be added for the different services exposed by the cluster. For example:
-
-  - S3/Vault service DNS name pointing to `node1`
-    ```
-    # S3 Server
-    host-record=s3.picluster.ricsanfre.com,10.0.0.11
-    # Vault server
-    host-record=vault.picluster.ricsanfre.com,10.0.0.11
-    ```
-  - Monitoring DNS service pointing to Ingress Controller IP address (from MetaLB pool)
-    ```
-    # Monitoring
-    host-record=monitoring.picluster.ricsanfre.com,10.0.0.100
-    ```
-
-  {{site.data.alerts.end}}
-
 - Step 3. Restart dnsmasq service
 
   ```shell
   sudo systemctl restart dnsmasq
   ```
 
-### Configuring Ansible Role
-
-DHCP static IP leases and DNS records are taken automatically from ansible inventory file for those hosts with `ip`, `hostname` and `mac` variables are defined. See [`ansible/inventory.yml`]({{ site.git_edit_address }}/ansible/inventory.yml) file.
-
-```yml
-...
-    cluster:
-      hosts:
-        node1:
-          hostname: node1
-          ansible_host: 10.0.0.11
-          ip: 10.0.0.11
-          mac: dc:a6:32:9c:29:b9
-        node2:
-          hostname: node2
-          ansible_host: 10.0.0.12
-          ip: 10.0.0.12
-          mac: e4:5f:01:2d:fd:19
-...
-```
-
-Additional DHCP static IP leases and DNS records can be added using `dnsmasq_additional_dhcp_hosts` and `dnsmasq_additional_dns_hosts` role variables.
-
-DNS/DHCP specific configuration, dnsmasq role variables for `gateway` host, are located in [`ansible/host_vars/gateway.yml`]({{ site.git_edit_address }}/ansible/host_vars/gateway.yml) file.
 
 ### Useful Commands
 
 1. Check DHCP leases in DHCP server
 
    See file `/var/lib/misc/dnsmasq.leases`
-	
+
 2. Check DHCP lease in DHCP Clients
 
    See file `/var/lib/dhcp/dhclient.leases`
-	
+
 3. Release DHCP current lease (DHCP client)
-   
+
    ```shell
    sudo dhclient -r <interface>
    ```
-	
+
 4. Obtain a new DHCP lease (DHCP client)
 
    ```shell
@@ -639,7 +530,7 @@ DNS/DHCP specific configuration, dnsmasq role variables for `gateway` host, are 
    1662325795 e4:5f:01:2f:49:05 10.0.0.13 node3 ff:2b:f0:10:76:00:02:00:00:ab:11:f4:83:c3:e4:cd:06:92:25
    1662325796 dc:a6:32:9c:29:b9 10.0.0.11 node1 ff:38:f0:78:87:00:02:00:00:ab:11:f1:8d:67:ed:9f:35:f9:9b
    ```
- 
+
    Format in the file is:
 
    ```shell
@@ -685,7 +576,9 @@ Since ntp and ntpdate are deprecated **chrony** package will be used for configu
 
 **gateway** will be hosting a NTP server and the rest of cluster nodes will be configured as NTP Clients.
 
-For automating ntp configuration tasks on all nodes (gateway and node1-5), ansible role [**ricsanfre.ntp**](https://galaxy.ansible.com/ricsanfre/ntp) has been created.
+{{site.data.alerts.note}}
+For automating ntp configuration tasks, ansible role [**ricsanfre.ntp**](https://galaxy.ansible.com/ricsanfre/ntp) can be used
+{{site.data.alerts.end}}
 
 - Step 1. Install chrony
 
@@ -700,7 +593,7 @@ For automating ntp configuration tasks on all nodes (gateway and node1-5), ansib
   - In **gateway**
 
     Configure NTP servers and allow serving NTP to lan clients.
-	
+
     ```
     pool 0.ubuntu.pool.ntp.org iburst
     pool 1.ubuntu.pool.ntp.org iburst
@@ -713,7 +606,7 @@ For automating ntp configuration tasks on all nodes (gateway and node1-5), ansib
   - In **node1-5**:
 
     Configure gateway as NTP server
-   
+
     ```
     server 10.0.0.1
     ```
@@ -729,31 +622,19 @@ Check time synchronization with Chronyc
 	 ```
 
 2. Checking Chrony is running and view the peers and servers to which it is connected
-    
+
 	 ```shell
    chronyc activity
 	 ```
 
 3. To view a detailed list of time servers, their IP addresses, time skew, and offset
-    
+
 	 ```shell
    chronyc sources
 	 ```
 
 4. Confirm that the chrony is synchronized
-   
+
    ```shell
    chronyc tracking
 	 ```
-
-## iSCSI configuration. Centralized SAN
-
-`gateway` has to be configured as iSCSI Target to export LUNs mounted by `node1-node6`
-
-iSCSI configuration in `gateway` has been automated developing a couple of ansible roles: **ricsanfre.storage** for managing LVM and **ricsanfre.iscsi_target** for configuring a iSCSI target.
-
-Specific `gateway` ansible variables to be used by these roles are stored in [`ansible/vars/centralized_san/centralized_san_target.yml`]({{ site.git_edit_address }}/ansible/vars/centralized_san/centralized_san_target.yml)
-
-Further details about iSCSI configurations and step-by-step manual instructions are defined in ["Cluster SAN installation"](/docs/san/).
-
-`gateway` exposes a dedicated LUN of 100 GB for each of the clusters nodes.

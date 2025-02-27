@@ -7,13 +7,13 @@ last_modified_at: "27-12-2022"
 
 [HashiCorp Vault](https://www.vaultproject.io/) is used as Secret Management solution for Raspberry PI cluster. All cluster secrets (users, passwords, api tokens, etc) will be securely encrypted and stored in Vault.
 
-Vault will be deployed as a external service, not running as a Kuberentes service, so it can be used by GitOps solution, ArgoCD, to deploy automatically all cluster services.
+Vault will be deployed as a external service, not running as a Kuberentes service, so it can be used by GitOps solution, ArgoCD/FluxCD, to deploy automatically all cluster services.
 
 Vault could be installed as Kuberentes service, deploying it using an official Helm Chart or a community operator like [Banzai Bank-Vault](https://banzaicloud.com/products/bank-vaults/).
 
 Installing Vault as Kubernetes service will drive us to a chicken/egg situation if we want to use Vault as only source of secrets/credentials for all Kuberentes services deployed. Vault requires to have Block storage solution (Longhorn) deployed first since its POD needs Perstistent Volumes, and to install Longhorn, a few secrets need to be provided to configure its backup (Minio credentials).
 
-[External Secrets Operator](https://external-secrets.io/) will be used to automatically generate the Kubernetes Secrets from Vault data that is needed to deploy the different services using ArgoCD.
+[External Secrets Operator](https://external-secrets.io/) will be used to automatically generate the Kubernetes Secrets from Vault data that is needed to deploy the different services using FluxCD/ArgoCD.
 
 ![picluster-secretsmanagement-architecture](/assets/img/vault-externalsecrets.png)
 
@@ -29,7 +29,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
 
   vault user is a system user, not login allowed
   ```shell
-  sudo groupadd vault 
+  sudo groupadd vault
   sudo useradd vault -g vault -r -s /sbin/nologin
   ```
 - Step 2. Create vault's storage directory
@@ -99,7 +99,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
     {{site.data.alerts.end}}
 
   2. Create a TLS certificate for Vault server signed using the custom CA
-    
+
      ```shell
      openssl req -new -nodes -newkey rsa:4096 \
                  -keyout vault.key \
@@ -401,7 +401,7 @@ A systemd service can be created to automatically unseal vault every time it is 
       then
           echo "$(timestamp): Vault Sealed. Trying to unseal" | tee -a $LOG
           # Get keys from json file
-          for i in `jq -r '.keys[]' $KEYS_FILE` 
+          for i in `jq -r '.keys[]' $KEYS_FILE`
             do curl $CURL_PARAMS --request PUT --data "{\"key\": \"$i\"}" $URL/v1/sys/unseal
           done
       sleep 10
@@ -533,7 +533,7 @@ Testing policies:
   VAULT_TOKEN=$READ_TOKEN
   vault kv put secret/secret1 user="user1" password="s1cret0"
   ```
-  
+
   Permission denied error:
 
   ```
@@ -565,7 +565,7 @@ Testing policies:
   ```
 
 - Secret can be read using both tokens
- 
+
   ```shell
   vault kv get secret/secret1
   ```
@@ -603,8 +603,8 @@ Enabling [Vault kubernetes auth method](https://developer.hashicorp.com/vault/do
   ```
 
 - Step 2. Create service account `vault-auth` to be used by Vault kuberentes authentication
- 
-  ```yml 
+
+  ```yml
   ---
   apiVersion: v1
   kind: ServiceAccount
@@ -651,7 +651,7 @@ Enabling [Vault kubernetes auth method](https://developer.hashicorp.com/vault/do
   ```
 
 - Step 5. Get Service Account token
-  
+
   ```shell
   KUBERNETES_SA_SECRET_NAME=$(kubectl get secrets --output=json -n vault | jq -r '.items[].metadata | select(.name|startswith("vault-auth")).name')
   TOKEN_REVIEW_JWT=$(kubectl get secret $KUBERNETES_SA_SECRET_NAME -n vault -o jsonpath='{.data.token}' | base64 --decode)
@@ -765,7 +765,7 @@ External Secrets Operator is installed through its helm chart.
              mountPath: "kubernetes"
              role: "external-secrets"
   ```
-  
+
   Check ClusterSecretStore status
 
   ```shell

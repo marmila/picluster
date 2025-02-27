@@ -49,14 +49,14 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
   gnupg \
   lsb-release
   ```
-	
+
 - Step 3. Add docker´s official GPG	key
 
-  ```shell	
+  ```shell
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   ```
-	
-- Step 4: Add x86_64 repository	
+
+- Step 4: Add x86_64 repository
 
   ```shell
   echo \
@@ -77,13 +77,13 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
     ```shell
     sudo groupadd docker
     ```
-    
+
   - Add user to docker group
 
     ```shell
     sudo usermod -aG docker $USER
     ```
-    
+
 - Step 7: Configure Docker to start on boot
 
   ```shell
@@ -94,11 +94,11 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
 - Step 8: Configure docker daemon.
 
   - Edit file `/etc/docker/daemon.json`
-	
+
     Set storage driver to overlay2 and to use systemd for the management of the container’s cgroups.
     Optionally default directory for storing images/containers can be changed to a different disk partition (example /data).
     Documentation about the possible options can be found [here](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file)
-  	
+
     ```json
     {
         "exec-opts": ["native.cgroupdriver=systemd"],
@@ -107,9 +107,9 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
         "max-size": "100m"
         },
         "storage-driver": "overlay2",
-        "data-root": "/data/docker"  
+        "data-root": "/data/docker"
     }
-    ```	
+    ```
   - Restart docker
 
     ```shell
@@ -123,7 +123,7 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
 
 
 - Step 2: Download binary and install in /usr/local/bin
-  
+
   ```shell
   sudo curl -L "https://github.com/docker/compose/releases/download/v2.16.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   ```
@@ -145,27 +145,28 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
 The following directory/files structure is needed for the ansible runtime environment (`ansible-runner`)
 
 ```
-├── ansible-runner
-│   ├── build
+📁
+├── 📁 ansible-runner
+│   ├── 📁 build
 │   │   ├── requirements.txt
 │   │   └── requirements.yml
-│   ├── certbot
-│   │   ├── config
-│   │   ├── log
-│   │   └── work
+│   ├── 📁 certbot
+│   │   ├── 📁 config
+│   │   ├── 📁 log
+│   │   └── 📁 work
 │   ├── docker-compose.yaml
 │   ├── Dockerfile
-│   └── runner
-│       ├── .ssh
-│       ├── .vault
-│       ├── .gnugp
-│       └── scripts
+│   └── 📁 runner
+│       ├── 📁 .ssh
+│       ├── 📁 .vault
+│       ├── 📁 .gnugp
+│       └── 📁 scripts
 │           ├── generate_gpg_key.sh
 │           └── generate_vault_password.sh
-├── ansible
+├──📁 ansible
     ├── ansible.cfg
     ├── inventory.yml
-    ├── roles 
+    ├── 📁 roles
 ```
 
 Where:
@@ -179,7 +180,7 @@ Where:
 This docker image contains all packages needed for running ansible and bootstraping the cluster.
 
 ```
-├── build
+├── 📁 build
 │   ├── requirements.txt
 │   └── requirements.yml
 │   └── ansible_runner_setup.yml
@@ -188,6 +189,8 @@ This docker image contains all packages needed for running ansible and bootstrap
 
 `Dockerfile`:
 ```dockerfile
+FROM ghcr.io/helmfile/helmfile:v0.167.1 AS helmfile
+
 FROM python:slim
 ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=--ignore-certs
 ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS=--ignore-certs
@@ -213,6 +216,8 @@ RUN ANSIBLE_GALAXY_DISABLE_GPG_VERIFY=1 ansible-galaxy collection install $ANSIB
 # Configure ansible-runner
 RUN ansible-playbook ansible_runner_setup.yml
 
+# Copy helmfile
+COPY --from=helmfile /usr/local/bin/helmfile /usr/local/bin/helmfile
 
 ENV USER runner
 ENV FOLDER /home/runner
@@ -241,6 +246,7 @@ The image automatically installs:
 - Certbot PIP package: `certbot`
 - Additional PIP packages in `build/requirements.txt` (packages needed by Ansible modules or cerbot plugins)
 - `helm` and `kubectl` binaries installation using Ansible (`build/ansible_runner_config.yaml`)
+- `helmfile` binary. [Helmfile](https://github.com/helmfile/helmfile) is used during bootstrap process to orchestrate the deployment of some HelmCharts.
 
 
 #### Docker-compose file
@@ -260,11 +266,13 @@ services:
     volumes:
       - ./../ansible:/runner
       - ./../kubernetes:/kubernetes
+      - ./../metal/x86/pxe-files:/metal/x86/pxe-files
       - ./runner/.gnupg:/home/runner/.gnupg
       - ./runner/.vault:/home/runner/.vault
       - ./runner/.secrets:/home/runner/.secrets
       - ./runner/scripts:/home/runner/scripts
       - ./runner/.ssh:/home/runner/.ssh
+      - ./runner/.kube:/home/runner/.kube
       - ./certbot/log:/var/log/letsencrypt
       - ./certbot/config:/etc/letsencrypt
       - ./certbot/work:/var/lib/letsencrypt
@@ -278,7 +286,7 @@ This docker-compose file build and start `ansible-runner` docker container and m
 docker-compose up --detach
 ```
 
-Any command, including ansible's commands, can be executed using the container 
+Any command, including ansible's commands, can be executed using the container
 
 ```shell
 docker exec -it ansible-runner <command>
@@ -296,13 +304,13 @@ docker exec -it ansible-runner /bin/bash
 Ansible source code is structured following [typical directory layout](https://docs.ansible.com/ansible/latest/tips_tricks/sample_setup.html#sample-directory-layout):
 
 ```
-ansible
-├── host_vars
-├── group_vars
-├── vars
-├── tasks
-├── templates
-├── roles
+📁 ansible
+├── 📁 host_vars
+├── 📁 group_vars
+├── 📁 vars
+├── 📁 tasks
+├── 📁 templates
+├── 📁 roles
 ├── ansible.cfg
 ├── inventory.yml
 ├── playbook1.yml
@@ -343,7 +351,7 @@ All ansible commands (`ansible`, `ansible-galaxy`, `ansible-playbook`, `ansible-
 ### Encrypting secrets/key variables
 
 
-[Ansible Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) can be used to encrypt secrets and keys stored in ansible variables. 
+[Ansible Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) can be used to encrypt secrets and keys stored in ansible variables.
 
 To simplify the encryption/decryption, all secrets/key/passwords variables are stored in a dedicated file, `vars/vault.yml`, so this file can be encrypted using Ansible Vault
 
@@ -386,7 +394,7 @@ The manual steps to encrypt passwords/keys used in all Playbooks is the followin
    After executing the command the file `vault.yml` is encrypted. Yaml content file is not readable.
 
    {{site.data.alerts.note}}
-  
+
    The file can be decrypted using the following command
 
    ```shell
@@ -398,7 +406,7 @@ The manual steps to encrypt passwords/keys used in all Playbooks is the followin
    File can be viewed decrypted without modifiying the file using the command
 
    ```shell
-   ansible-vault view vault.yaml 
+   ansible-vault view vault.yaml
    ```
    {{site.data.alerts.end}}
 
@@ -423,12 +431,12 @@ Linux GPG will be used to encrypt Ansible Vault passphrase and automatically obt
 
   In Linux GPG encryption can be used to encrypt/decrypt passwords and tokens data using a GPG key-pair
 
-  GnuPG package has to be installed and a GPG key pair need to be created for encrytion/decryption 
+  GnuPG package has to be installed and a GPG key pair need to be created for encrytion/decryption
 
   - Step 1. Install GnuPG packet
 
     ```shell
-    sudo apt install gnupg 
+    sudo apt install gnupg
     ```
 
     Check if it is installed
@@ -496,7 +504,7 @@ Linux GPG will be used to encrypt Ansible Vault passphrase and automatically obt
   - Step 1. Install pwgen packet
 
       ```shell
-      sudo apt install pwgen 
+      sudo apt install pwgen
       ```
 
   - Step 2: Generate Vault password and encrypt it using GPG. Store the result as a file in $HOME/.vault
@@ -506,7 +514,7 @@ Linux GPG will be used to encrypt Ansible Vault passphrase and automatically obt
     pwgen -n 71 -C | head -n1 | gpg --armor --recipient <recipient> -e -o $HOME/.vault/vault_passphrase.gpg
     ```
 
-    where `<recipient>` must be the email address configured during GPG key creation. 
+    where `<recipient>` must be the email address configured during GPG key creation.
 
   - Step 3: Generate a script `vault_pass.sh`
 
@@ -520,11 +528,11 @@ Linux GPG will be used to encrypt Ansible Vault passphrase and automatically obt
     [defaults]
     vault_password_file=vault_pass.sh
     ```
-  
+
   {{site.data.alerts.note}}
   If this repository is clone steps 3 and 4 are not needed since the files are already there.
-  {{site.data.alerts.end}}  
-  
+  {{site.data.alerts.end}}
+
 - Encrypt vautl.yaml file using ansible-vault and GPG password
 
   ```shell
@@ -562,14 +570,14 @@ vboxmanage modifyvm <pimaster-VM> --nested-hw-virt on
   ```
 
 - Step 2. Enable on boot and start libvirtd service (If it is not enabled already):
-  
+
   ```shell
   sudo systemctl enable libvirtd
   sudo systemctl start libvirtd
   ```
 
 - Step 3. Add the user to libvirt group
-  
+
   ```shell
   sudo usermod -a -G libvirtd $USER
   ```
@@ -585,7 +593,7 @@ vboxmanage modifyvm <pimaster-VM> --nested-hw-virt on
   ```
 
 - Step 2. Install vagrant
-  
+
   ```shell
   sudo apt install vagrant
   ```
@@ -610,7 +618,7 @@ In order to run Vagrant virtual machines on KVM, you need to install the vagrant
 
   ```shell
   vagrant plugin install vagrant-mutate
-  ```` 
+  ````
 
 ### Installing Ansible and Molecule testing environment
 
@@ -624,7 +632,7 @@ Python Ansible and Molecule packages and its dependencies installed using Pip mi
 Installation of the whole Ansible environment can be done using a python virtual environment.
 
 - Step 1. Install python Virtual Env and Pip3 package
-  
+
   ```shell
   sudo apt-get install python3-venv python3-pip
   ```
@@ -640,7 +648,7 @@ Installation of the whole Ansible environment can be done using a python virtual
   ```shell
   source ansible/bin/activate
   ```
-  
+
   {{site.data.alerts.note}}
   For deactivating the Virtual environment execute command `deactivate`
   {{site.data.alerts.end}}
@@ -707,6 +715,6 @@ In directory `$HOME/.ssh/` public and private key files can be found for the use
 Content of the id_rsa.pub file has to be used as `ssh_authorized_keys` of UNIX user created in cloud-init `user-data`
 
 ```shell
-cat id_rsa.pub 
+cat id_rsa.pub
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDsVSvxBitgaOiqeX4foCfhIe4yZj+OOaWP+wFuoUOBCZMWQ3cW188nSyXhXKfwYK50oo44O6UVEb2GZiU9bLOoy1fjfiGMOnmp3AUVG+e6Vh5aXOeLCEKKxV3I8LjMXr4ack6vtOqOVFBGFSN0ThaRTZwKpoxQ+pEzh+Q4cMJTXBHXYH0eP7WEuQlPIM/hmhGa4kIw/A92Rm0ZlF2H6L2QzxdLV/2LmnLAkt9C+6tH62hepcMCIQFPvHVUqj93hpmNm9MQI4hM7uK5qyH8wGi3nmPuX311km3hkd5O6XT5KNZq9Nk1HTC2GHqYzwha/cAka5pRUfZmWkJrEuV3sNAl ansible@pimaster
 ```

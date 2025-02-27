@@ -1,6 +1,6 @@
 ---
 
-- name: Configure Pi Cluster Gateway
+- name: Configure Pi Cluster Gateway (Ubuntu)
   hosts: gateway
   gather_facts: true
   tags: [gateway]
@@ -19,9 +19,10 @@
     - role: ricsanfre.security
       tags: [security]
 
-    # DNS/DHCP server configuration
+    # DNS Resolver Forwarder configuration
+    # DHCP server configuration
     - role: ricsanfre.dnsmasq
-      tags: [dnsmasq]
+      tags: [dns]
 
     # Update DNS server to point to DNSmasq
     - role: dns
@@ -35,9 +36,27 @@
     - role: ricsanfre.ntp
       tags: [ntp]
 
-    # PXE server
-    - role: pxe-server
-      tags: [pxe]
+- name: Configure External Node
+  hosts: node1
+  gather_facts: true
+  tags: [external]
+  become: true
+  pre_tasks:
+    - name: Include vault variables
+      include_vars: "vars/vault.yml"
+      tags: ["always"]
+  roles:
+    # OS basic setup tasks
+    - role: basic_setup
+      tags: [os]
+
+    # Security Hardening
+    - role: ricsanfre.security
+      tags: [security]
+
+    # NTP Client configuration
+    - role: ricsanfre.ntp
+      tags: [ntp]
 
   tasks:
     # Aditional Tasks in case alternative architecture (centralized SAN)
@@ -59,7 +78,7 @@
       tags: [iscsi]
 
 - name: Configure Pi Cluster Nodes
-  hosts: picluster
+  hosts: k3s_cluster
   gather_facts: true
   tags: [node]
   become: true
@@ -108,6 +127,6 @@
           include_role:
             name: ricsanfre.iscsi_initiator
           vars:
-            - open_iscsi_automatic_startup: true
+            open_iscsi_automatic_startup: true
       when: not centralized_san
       tags: [storage]

@@ -11,10 +11,6 @@ In June 2020, Elastic [announced](https://www.elastic.co/blog/elasticsearch-on-a
 To facilitate the deployment on a Kubernetes cluster [ECK project](https://github.com/elastic/cloud-on-k8s) was created.
 ECK ([Elastic Cloud on Kubernetes](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)) automates the deployment, provisioning, management, and orchestration of ELK Stack (Elasticsearch, Kibana, APM Server, Enterprise Search, Beats, Elastic Agent, and Elastic Maps Server) on Kubernetes based on the operator pattern.
 
-{{site.data.alerts.note}}
-Logstash deployment is not supported by ECK operator
-{{site.data.alerts.end}}
-
 ECK Operator will be used to deploy Elasticsearh and Kibana.
 
 ## ECK Operator installation
@@ -45,7 +41,7 @@ ECK Operator will be used to deploy Elasticsearh and Kibana.
 Basic instructions can be found in [ECK Documentation: "Deploy and elasticsearch cluster"](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html)
 
 - Step 1: Create a manifest file containing basic configuration: one node elasticsearch using Longhorn as storageClass and 5GB of storage in the volume claims.
-  
+
   ```yml
   apiVersion: elasticsearch.k8s.elastic.co/v1
   kind: Elasticsearch
@@ -59,7 +55,7 @@ Basic instructions can be found in [ECK Documentation: "Deploy and elasticsearch
       count: 1    # One node elastic search cluster
       config:
         node.store.allow_mmap: false # Disable memory mapping
-      volumeClaimTemplates: 
+      volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data
           spec:
@@ -75,7 +71,7 @@ Basic instructions can be found in [ECK Documentation: "Deploy and elasticsearch
           disabled: true
 
   ```
-  
+
   - About Virtual Memory configuration (mmap)
 
     By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices. To disable this default mechanism add the following configuration option:
@@ -122,15 +118,15 @@ Basic instructions can be found in [ECK Documentation: "Deploy and elasticsearch
 
     By default ECK configures secured communications with auto-signed SSL certificates. Access to its service endpoint on port 9200 is only available through https.
 
-    Disabling TLS automatic configuration in Elasticsearch HTTP server enables Linkerd (Cluster Service Mesh) to gather more statistics about connections. Linkerd is parsing plain text traffic (HTTP) instead of encrypted (HTTPS).
-    
-    Linkerd service mesh will enforce secure communications using TLS between all PODs.
-  
+    Disabling TLS automatic configuration in Elasticsearch HTTP server enables Cluster Service Mesh to gather more statistics about connections. Service Mesh is parsing plain text traffic (HTTP) instead of encrypted (HTTPS).
+
+    Cluster service mesh will enforce secure communications using TLS between all PODs.
+
   - About limiting resources assigned to ES
 
     In Kubernetes, limits in the consumption of resources (CPU and memory) can be assigned to PODs. See ["Kubernetes Doc - Resource Management for Pods and Containers"](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
 
-    `resource requests` defines the minimum amount of resources that must be available for a Pod to be scheduled; `resource limits` defines the maximum amount of resources that a Pod is allowed to consume. 
+    `resource requests` defines the minimum amount of resources that must be available for a Pod to be scheduled; `resource limits` defines the maximum amount of resources that a Pod is allowed to consume.
 
     When you specify the `resource request` for containers in a Pod, the kube-scheduler uses this information to decide which node to place the Pod on. When you specify a `resource limit` for a container, the kubelet enforces those limits so that the running container is not allowed to use more of that resource than the limit you set. The kubelet also reserves at least the request amount of that system resource specifically for that container to use.
 
@@ -160,18 +156,18 @@ Basic instructions can be found in [ECK Documentation: "Deploy and elasticsearch
     ```
 
 - Step 2: Apply manifest
-  
+
   ```shell
   kubectl apply -f manifest.yml
   ```
 - Step 3: Check Elasticsearch status
-  
+
   ```shell
   kubectl get elasticsearch -n logging
   NAME   HEALTH   NODES   VERSION   PHASE   AGE
   efk    yellow   1       8.1.2    Ready   139m
   ```
-   
+
   {{site.data.alerts.note}}
 
   Elasticsearch status `HEALTH=yellow` indicates that only one node of the Elasticsearch is running (no HA mechanism), `PHASE=Ready` indicates that the server is up and running
@@ -240,7 +236,7 @@ To allow fluentd and prometheus exporter to access our elasticsearch cluster, we
           'cluster:monitor/state',
           'cluster:monitor/nodes/info',
           'cluster:monitor/prometheus/metrics'
-        ] 
+        ]
         indices:
         - names: [ '*' ]
           privileges: [ 'indices:admin/aliases/get', 'indices:admin/mappings/get', 'indices:monitor/stats', 'indices:data/read/search' ]
@@ -309,7 +305,7 @@ By default Elasticsearh HTTP service is accesible through Kubernetes `ClusterIP`
 This exposure will be useful for doing remote configurations on Elasticsearch through its API from `pimaster` node. For example: to configure backup snapshots.
 
 - Step 1. Create the ingress rule manifest
-  
+
   ```yml
   ---
   # HTTPS Ingress
@@ -340,8 +336,8 @@ This exposure will be useful for doing remote configurations on Elasticsearch th
                   port:
                     number: 9200
   ```
-  
-  ingress NGINX exposes elasticsearch server as `elasticsearch.picluster.ricsanfre.com` virtual host, routing rules are configured for redirecting all incoming HTTP traffic to HTTPS and TLS is enabled using a certificate generated by Cert-manager. 
+
+  ingress NGINX exposes elasticsearch server as `elasticsearch.picluster.ricsanfre.com` virtual host, routing rules are configured for redirecting all incoming HTTP traffic to HTTPS and TLS is enabled using a certificate generated by Cert-manager.
 
   See [Ingress NGINX configuration document](/docs/nginx/) for furher details.
 
@@ -379,7 +375,7 @@ This exposure will be useful for doing remote configurations on Elasticsearch th
 ## Kibana installation
 
 - Step 1. Create a manifest file
-  
+
   ```yml
   apiVersion: kibana.k8s.elastic.co/v1
   kind: Kibana
@@ -412,13 +408,13 @@ This exposure will be useful for doing remote configurations on Elasticsearch th
   Kibana status `HEALTH=green` indicates that Kibana is up and running.
 
   {{site.data.alerts.end}}
-  
+
 ### Ingress rule for Kibana
 
 Make accesible Kibana UI from outside the cluster through Ingress Controller
 
 - Step 1. Create the ingress rule manifest
-  
+
   ```yml
   ---
   # HTTPS Ingress
@@ -449,7 +445,7 @@ Make accesible Kibana UI from outside the cluster through Ingress Controller
                   port:
                     number: 5601
   ```
-  
+
 - Step 2: Apply manifest
   ```shell
   kubectl apply -f manifest.yml
@@ -478,7 +474,7 @@ This configuration must be done once data from fluentd has been inserted in ES: 
 
   ![Kibana-setup-2](/assets/img/kibana-setup-2.png)
 
-- Step 4: Set index pattern to fluentd-* and timestamp field to @timestamp and click on "Create Index" 
+- Step 4: Set index pattern to fluentd-* and timestamp field to @timestamp and click on "Create Index"
 
   ![Kibana-setup-3](/assets/img/kibana-setup-3.png)
 
@@ -517,7 +513,7 @@ For doing the installation [prometheus-elasticsearch-exporter official helm](htt
   es:
     uri: http://efk-es-http:9200
   ```
-  
+
   This config passes ElasticSearch API endpoint (`uri`) and the needed credentials through environement variables(`ES_USERNAME` and `ES_PASSWORD`). The `es-prometheus-user-file-realm` secret was created above when in [Elasticsearch authentication](#elasticsearch-authentication)
 
 - Step 3: Install prometheus-elasticsearh-exporter in the logging namespace with the overriden values

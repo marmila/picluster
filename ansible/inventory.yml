@@ -3,11 +3,6 @@ all:
   children:
     control:
       hosts:
-        gateway:
-          hostname: gateway
-          ansible_host: 10.0.0.1
-          ip: 10.0.0.1
-          mac: d8:3a:dd:4a:08:f8
         pimaster:
           hostname: pimaster
           ansible_host: localhost
@@ -51,18 +46,17 @@ all:
           mac: d8:3a:dd:18:cb:cc
         node-esp-1:
           hostname: node-esp-1
-          ansible-host: 10.0.0.20
+          ansible_host: 10.0.0.20
           ip: 10.0.0.20
           mac: 90:1b:0e:b8:90:e8
         node-esp-2:
           hostname: node-esp-2
-          ansible-host: 10.0.0.21
+          ansible_host: 10.0.0.21
           ip: 10.0.0.21
           mac: 90:1b:0e:b8:8e:a2
     raspberrypi:
       hosts:
         node[1:6]:
-        gateway:
     x86:
       hosts:
         node-esp-[1:2]:
@@ -75,3 +69,18 @@ all:
           hosts:
             node[5:6]:
             node-esp-[1:2]:
+    dns:
+      hosts:
+        node1:
+    pxe:
+      hosts:
+        node1:
+    vault:
+      hosts:
+        node1:
+    haproxy:
+      hosts:
+        node1:
+    san:
+      hosts:
+        node1:

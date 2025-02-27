@@ -2,7 +2,7 @@
 title: K3S Installation
 permalink: /docs/k3s-installation/
 description: How to install K3s, a lightweight kubernetes distribution, in our Pi Kuberentes cluster. Single master node and high availability deployment can be used.
-last_modified_at: "02-06-2024"
+last_modified_at: "28-09-2024"
 ---
 
 
@@ -28,7 +28,7 @@ Control-plane nodes will be configured so no load is deployed in it.
     cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
     br_netfilter
     EOF
-    
+
     cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
     net.bridge.bridge-nf-call-ip6tables = 1
     net.bridge.bridge-nf-call-iptables = 1
@@ -87,9 +87,9 @@ In this configuration, each agent node is registered to the same server node. A 
 
   After installation, we will see that `kubelet` (k3s-server process) has taken [systemd's inhibitor lock](https://www.freedesktop.org/wiki/Software/systemd/inhibit/), which is the mechanism used by Kubernetes to implement the gracefully shutdown the pods.
 
-    ```shell  
+    ```shell
     sudo systemd-inhibit --list
-    WHO                          UID USER PID  COMM            WHAT     WHY                                                       MODE 
+    WHO                          UID USER PID  COMM            WHAT     WHY                                                       MODE
     ModemManager                 0   root 728  ModemManager    sleep    ModemManager needs to reset devices                       delay
     Unattended Upgrades Shutdown 0   root 767  unattended-upgr shutdown Stop ongoing upgrades or perform upgrades before shutdown delay
     kubelet                      0   root 4474 k3s-server      shutdown Kubelet needs time to handle node shutdown                delay
@@ -117,7 +117,7 @@ In this configuration, each agent node is registered to the same server node. A 
 
 
     <br>
-    
+
     {{site.data.alerts.important}}
 
     Avoid the use of documented taint `k3s-controlplane=true:NoExecute` used to avoid deployment of pods on master node. We are interested on running certain pods on master node, like the ones needed to collect logs/metrics from the master node.
@@ -129,8 +129,8 @@ In this configuration, each agent node is registered to the same server node. A 
     Metal-lb, load balancer to be used within the cluster, uses this tolerance as well, so daemonset metallb-speaker can be deployed on master node.
 
     Other Daemonset pods, like fluent-bit, have to specify this specific tolerance to be able to get logs from master nodes.
-    
-    See this [K3S PR](https://github.com/k3s-io/k3s/pull/1275) where this feature was introduced.  
+
+    See this [K3S PR](https://github.com/k3s-io/k3s/pull/1275) where this feature was introduced.
     {{site.data.alerts.end}}
 
 - Step 3: Install Helm utility
@@ -173,7 +173,7 @@ In this configuration, each agent node is registered to the same server node. A 
   - `--kube-proxy-arg 'metrics-bind-address=0.0.0.0'` to enable kube-proxy metrics scraping from a external node
 
   <br>
- 
+
 - Step 3: Specify role label for worker nodes
 
   From master node, assign a role label to worker nodes, so when executing `kubectl get nodes` command ROLE column show worker role for workers nodes.
@@ -280,7 +280,7 @@ To install and configure HAProxy:
 
   With this configuration haproxy will balance requests to API server (TCP port 6443), following a round-robin balancing method, between the 3 master nodes configured.
 
-  IP address to be used for kubernetes API, will be gateway's IP address. 
+  IP address to be used for kubernetes API, will be gateway's IP address.
 
 - Step 3: Restart HAProxy
 
@@ -303,7 +303,7 @@ Embedded etcd data store will be used. Installation procedure is described in K3
 
   ```shell
   sudo mkdir -p /etc/rancher/k3s
-  ``` 
+  ```
 
 - Step 2: Create token file in all nodes
 
@@ -331,7 +331,7 @@ Embedded etcd data store will be used. Installation procedure is described in K3
 
 - Step 4: Prepare K3s config file
 
-  Create file `/etc/rancher/k3s/config.yaml` containing all configuration options needed. They are equivalent to the K3s arguments 
+  Create file `/etc/rancher/k3s/config.yaml` containing all configuration options needed. They are equivalent to the K3s arguments
 
   ```yml
   token-file: /etc/rancher/k3s/cluster-token
@@ -401,7 +401,7 @@ Embedded etcd data store will be used. Installation procedure is described in K3
 
   ```shell
   sudo mkdir -p /etc/rancher/k3s
-  ``` 
+  ```
 
 - Step 2: Create token file in all nodes
 
@@ -463,6 +463,36 @@ K3S master nodes need to be installed with the following additional options:
 
 - `--flannel-backend=none`: to disable Fannel instalation
 - `--disable-network-policy`: Most CNI plugins come with their own network policy engine, so it is recommended to set --disable-network-policy as well to avoid conflicts.
+
+
+## K3S Auto-deployed Add-ons
+
+K3s provides the capability to automatically deploy manifest files (AddOns). On server nodes, any file found in `/var/lib/rancher/k3s/server/manifests` is automatically deployed to Kubernetes in a manner similar to `kubectl apply` command, both on startup and when the file is changed on disk. Deleting files out of this directory will not delete the corresponding resources from the cluster.
+
+K3s comes with a number of packaged components that are deployed as AddOns via that manifests directory: coredns, traefik, local-storage, and metrics-server.
+
+Manifests are tracked as `AddOn` custom resources (CRD) in the `kube-system` namespace.
+
+Installation of this addOns can be disabled during k3s installation adding:
+
+- `--disable '<addon>'`: Where `<addon>` can be `coredns`, `traefik`, `local-storage` or `metric-server`
+
+K3s includes also a built-in Helm Controller that manages installing, upgrading/reconfiguring, and uninstalling Helm charts using a `HelmChart` Custom Resource Definition (CRD). Paired with auto-deploying AddOn manifests, installing a Helm chart can be automated by creating a single manifiest file on `/var/lib/rancher/k3s/server/manifests`.
+
+K3s uses this built-in helm chart controller only to deploy traefik. Rest of add-ons are instralled using Kubernetes manifest files.
+
+HelmChart controller can be disabled to avoid conflicts with other controllers (i.e.: Helm Controller deployed by GitOps solution FluxCD) and all the add-ons can be installed manually, following same installation process of any other K8S distribution.
+
+To disable K3s HelmChart Controller the following additional installation option need to be added:
+
+- `--disable-helm-controller`: to disable K3s helm controller
+
+If HelmChart controller is disabled Traefik add-ons need to be disabled as well
+
+- `--disable 'traefik'`: to disable Traefik installation
+
+
+See further details in [K3s documentationt - Managing k3s packaged components](https://docs.k3s.io/installation/packaged-components)
 
 ## Remote Access
 
@@ -572,7 +602,7 @@ On each master node, execute
 
 K3s cluster installation and reset procedures have been automated with Asible playbooks
 
-For installing the cluster execute: 
+For installing the cluster execute:
 ```shell
 ansible-playbook k3s_install.yml
 ```

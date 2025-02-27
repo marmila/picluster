@@ -3,5 +3,6 @@
 /certbot
 /certificates
 /docs/_site
+/docs/Gemfile.lock
 .vscode/
 

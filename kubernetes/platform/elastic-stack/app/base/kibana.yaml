@@ -1,0 +1,23 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: efk
+  namespace: elastic
+  # annotations:
+  #   "helm.sh/hook": post-install,post-upgrade
+spec:
+  # renovate: datasource=github-releases depName=elastic/elasticsearch
+  version: 8.15.0
+  count: 1
+  elasticsearchRef:
+    name: efk
+  podTemplate:
+    spec:
+      # Limiting Resources consumption
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: "1Gi"
+          limits:
+            memory: "1Gi" 
