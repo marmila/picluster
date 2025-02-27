@@ -136,11 +136,7 @@
 ## Install Hashicorp Vault Server
 
 - name: Install Vault Server
-<<<<<<< HEAD
-  hosts: gateway
-=======
   hosts: vault
->>>>>>> release-1.10.0
   gather_facts: true
   tags: [vault]
   become: true
@@ -227,11 +223,7 @@
 
 ## Load all credentials into Hashicorp Vault Server
 - name: Load Vault Credentials
-<<<<<<< HEAD
-  hosts: gateway
-=======
   hosts: vault
->>>>>>> release-1.10.0
   gather_facts: true
   tags: [vault, credentials]
   become: false
