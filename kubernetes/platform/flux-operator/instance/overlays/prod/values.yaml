@@ -2,8 +2,8 @@
 instance:
   sync:
     kind: GitRepository
-    url: https://github.com/ricsanfre/pi-cluster
-    ref: refs/heads/master
+    url: https://github.com/marmila/picluster
+    ref: refs/heads/release-1.10.0
     path: kubernetes/clusters/prod
     interval: 1h
   kustomize:
