@@ -50,7 +50,9 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
   lsb-release
   ```
 
+  
 - Step 3. Add docker´s official GPG key
+
 
   ```shell
   sudo install -m 0755 -d /etc/apt/keyrings
@@ -58,7 +60,11 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
   sudo chmod a+r /etc/apt/keyrings/docker.asc
   ```
 
-- Step 4: Add x86_64 repository
+  
+- Step 4: Add x86_64 repository 
+=======
+
+
 
   ```shell
   echo \
@@ -97,9 +103,11 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
 
   - Edit file `/etc/docker/daemon.json`
 
+  
     Set storage driver to overlay2 and to use systemd for the management of the container’s cgroups.
     Optionally default directory for storing images/containers can be changed to a different disk partition (example /data).
     Documentation about the possible options can be found [here](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file)
+    
 
     ```json
     {
@@ -111,7 +119,11 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
         "storage-driver": "overlay2",
         "data-root": "/data/docker"
     }
+
+    ``` 
+=======
     ```
+
   - Restart docker
 
     ```shell
