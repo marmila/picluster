@@ -1,5 +1,5 @@
-IMG=ubuntu-22.04.5-live-server-arm64.iso
-URL_IMG=https://cdimage.ubuntu.com/releases/jammy/release/${IMG}
+IMG=ubuntu-22.04.5-live-server-amd64.iso
+URL_IMG=https://releases.ubuntu.com/jammy/${IMG}
 ISO_MOUNT=/tmp/iso-disk
 OUT_BOOT_FILES=pxe-files/boot/
 
