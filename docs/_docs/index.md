@@ -13,7 +13,7 @@ The main goal of  this project is to create a kubernetes cluster at home using A
 The project scope includes the automatic installation and configuration of a lightweight Kubernetes flavor based on [K3S](https://k3s.io/), and deployment of cluster basic services such as:
 - Distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/).
 - S3 Object storage, [Minio](https://min.io/).
-- Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/). 
+- Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/).
 - Certificate management, [Cert-Manager](https://cert-manager.io).
 - Secrets Management solution with [Vault](https://www.vaultproject.io/) and [External Secrets](https://external-secrets.io/)
 - Identity Access Management(IAM) providing Single-sign On, [Keycloak](https://www.keycloak.org/)
@@ -118,7 +118,7 @@ The following picture shows the set of opensource solutions used for building th
         <td><img width="32" src="/assets/img/logos/nginx.svg" alt="nginx logo"></td>
         <td><a href="https://kubernetes.github.io/ingress-nginx/">Ingress NGINX</a></td>
         <td>Kubernetes Ingress Controller</td>
-    </tr> 
+    </tr>
     <tr>
         <td><img width="32" src="/assets/img/logos/longhorn.svg" alt="longhorn logo"></td>
         <td><a href="https://longhorn.io/">Longhorn</a></td>
@@ -256,7 +256,7 @@ Even whe the premise is to deploy all services in the kubernetes cluster, there 
 
    Currently only acme issuer (letsencytp) using IONOS as dns-01 challenge provider is configured. Check list of [supported dns01 providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers).
 
-### Self-hosted external services 
+### Self-hosted external services
 
 There is another list of services that I have decided to run outside the kubernetes cluster selfhosting them.
 
@@ -305,8 +305,8 @@ From software perspective, I have developed the following:
 
 2. Automate initial OS installation in x86_64 nodes using PXE server and Ubuntu's **auto-install** template files.
 
-3. **Ansible** playbook and roles for configuring cluster nodes and installating and bootstraping K3S cluster  
-   
+3. **Ansible** playbook and roles for configuring cluster nodes and installating and bootstraping K3S cluster
+
    Source code can be found in Pi Cluster Git repository under [`/ansible`]({{site.git_address}}/tree/master/ansible) directory.
 
    Aditionally several ansible roles have been developed to automate different configuration tasks on Ubuntu-based servers that can be reused in other projects. These roles are used by Pi-Cluster Ansible Playbooks
@@ -314,7 +314,7 @@ From software perspective, I have developed the following:
    Each ansible role source code can be found in its dedicated Github repository and is published in Ansible-Galaxy to facilitate its installation with `ansible-galaxy` command.
 
    | Ansible role | Description | Github |
-   | ---| --- | --- | 
+   | ---| --- | --- |
    |  [ricsanfre.security](https://galaxy.ansible.com/ricsanfre/security) | Automate SSH hardening configuration tasks  | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-security)|
    | [ricsanfre.ntp](https://galaxy.ansible.com/ricsanfre/ntp)  | Chrony NTP service configuration | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-ntp) |
    | [ricsanfre.firewall](https://galaxy.ansible.com/ricsanfre/firewall) | NFtables firewall configuration | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-firewall) |
@@ -328,7 +328,7 @@ From software perspective, I have developed the following:
    | [ricsanfre.minio](https://galaxy.ansible.com/ricsanfre/minio)| Configure Minio S3 server | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-minio) |
    | [ricsanfre.backup](https://galaxy.ansible.com/ricsanfre/backup)| Configure Restic | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-backup) |
    | [ricsanfre.vault](https://galaxy.ansible.com/ricsanfre/vault)| Configure Hashicorp Vault | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-vault) |
-   {: .table .border-dark } 
+   {: .table .border-dark }
 
 4. **Packaged Kuberentes applications** (Helm, Kustomize, manifest files) to be deployed using FluxCD
 

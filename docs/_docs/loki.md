@@ -12,7 +12,7 @@ Loki architecture is displayed in the following picture (source: [Grafana docume
 
 ![LOKI-Architecture-Components](/assets/img/loki_architecture_components.svg)
 
-All Loki components are included within a single binary (docker image) that  supports three different deployments modes where the above components can be started in different PODs 
+All Loki components are included within a single binary (docker image) that  supports three different deployments modes where the above components can be started in different PODs
 
 - Monolithic
 
@@ -28,7 +28,7 @@ All Loki components are included within a single binary (docker image) that  sup
 
 - Microservices
   In this deployment each individual Loki component can be started in an independent process (container).
-  
+
 
 Further details in Loki architecture documentation: [Loki components](https://grafana.com/docs/loki/latest/fundamentals/architecture/components/) and [deployment modes](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/)
 
@@ -39,13 +39,13 @@ Loki will be installed using Simple scalable deployment mode using as S3 Object 
 
 ## Configure S3 Minio Server
 
-Minio Storage server is used as Loki long-term data storage. 
+Minio Storage server is used as Loki long-term data storage.
 
 Grafana Loki needs to store two different types of data: chunks and indexes. Both of them can be stored in S3 server.
 
 {{site.data.alerts.note}}
 
-Loki helm chart is able to install this Minio service as a subchart, but its installation will be disabled and Minio Storage Service already deployed in the cluster will be used as Loki's backend. 
+Loki helm chart is able to install this Minio service as a subchart, but its installation will be disabled and Minio Storage Service already deployed in the cluster will be used as Loki's backend.
 
 As part of Minio Storage Service installation, loki's S3 bucket, policy and user is already configured.
 See documentation: [Minio S3 Object Storage Service](/docs/minio/).
@@ -57,7 +57,7 @@ See documentation: [Minio S3 Object Storage Service](/docs/minio/).
 Use Minio's `mc` command to create loki bucket and user
 
 ```shell
-mc mb <minio_alias>/k3s-loki 
+mc mb <minio_alias>/k3s-loki
 mc admin user add <minio_alias> loki <user_password>
 ```
 {{site.data.alerts.note}}
@@ -97,10 +97,10 @@ Where `user_policy.json`, contains the following AWS access policies definition:
             "arn:aws:s3:::k3s-loki",
             "arn:aws:s3:::k3s-loki/*"
         ]
-    }  
+    }
   ]
 }
-``` 
+```
 
 See further details in [Loki-Storage documentation](https://grafana.com/docs/loki/latest/operations/storage/)
 
@@ -109,7 +109,7 @@ See further details in [Loki-Storage documentation](https://grafana.com/docs/lok
 Installation from helm chart. There are two alternatives:
 
 - [Loki-stack helm chart](https://github.com/grafana/helm-charts/tree/main/charts/loki-stack). With this helm chart the complete PLG stack can be installed.
-  
+
   This helm chart will not be used because we are only interested in deploying Loki component. Promtail will not be used and Grafana will be deployed as part of kube-prometheus-stack.
 
 - [Loki-helm chart v3.x](https://github.com/grafana/loki/tree/main/production/helm/loki). Used for [Monolithic](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/#monolithic-mode) and Simple scalable deployment modes](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/#simple-scalable-deployment-mode).

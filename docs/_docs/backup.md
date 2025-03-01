@@ -16,7 +16,7 @@ The backup architecture is the following:
 - OS filesystem backup
 
   Some OS configuration files should be backed up in order to being able to restore configuration at OS level.
-  For doing so, [Restic](https://restic.net) can be used. Restic provides a fast and secure backup program that can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io). 
+  For doing so, [Restic](https://restic.net) can be used. Restic provides a fast and secure backup program that can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io).
 
 
 - K3S cluster configuration backup and restore.
@@ -27,7 +27,7 @@ The backup architecture is the following:
 
   Since for the backup and restore is using standard Kubernetes API, Velero can be used as a tool for migrating the configuration from one kubernetes cluster to another having a differnet kubernetes flavor. From K3S to K8S for example.
 
-  Velero can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io). 
+  Velero can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io).
 
   Since Velero is a most generic way to backup any Kuberentes cluster (not just K3S) it will be used to implement my cluster K3S backup.
 
@@ -96,14 +96,14 @@ cd /tmp
 wget https://github.com/restic/restic/releases/download/v0.16.5/restic_0.16.5_linux_[amd64/arm64].bz2
 bzip2 -d /tmp/restic_0.16.5_linux_[amd64/arm64].bz2
 cp /tmp/restic_0.16.5_linux_[amd64/arm64] /usr/local/bin/restic
-chmod 755 /usr/local/bin/restic 
+chmod 755 /usr/local/bin/restic
 ```
 ### Create restic environment variables files
 
 restic repository info can be passed to `restic` command through environment variables instead of typing in as parameters with every command execution
 
 - Step 1: Create a restic config directory
-  
+
   ```shell
   sudo mkdir /etc/restic
   ```
@@ -121,7 +121,7 @@ restic repository info can be passed to `restic` command through environment var
 
   ```shell
   export $(grep -v '^#' /etc/restic/restic.conf | xargs -d '\n')
-  ```  
+  ```
   {{site.data.alerts.important}}
   This command need to be executed with any new SSH shell connection before executing any `restic` command. As an alternative that command can be added to the bash profile of the user.
   {{site.data.alerts.end}}
@@ -130,7 +130,7 @@ restic repository info can be passed to `restic` command through environment var
 
 In case Minio S3 server is using secure communications using a not valid certificate (self-signed or signed with custom CA), restic command must be used with `--cacert <path_to_CA.pem_file` option to let restic validate the server certificate.
 
-Copy CA.pem, used to sign Minio SSL certificate into `/etc/restic/ssl/CA.pem` 
+Copy CA.pem, used to sign Minio SSL certificate into `/etc/restic/ssl/CA.pem`
 
 {{site.data.alerts.note}}
 
@@ -365,7 +365,7 @@ Since full cluster backup will be scheduled using Velero, including Longhorn's P
 
 - Apply manifest file
 
-  ```shell  
+  ```shell
   kubectl apply -f recurring_job.yml
   ```
 
@@ -424,7 +424,7 @@ As storage provider, Minio will be used. See [Velero's installation documentatio
 
 ### Configuring Minio bucket and user for Velero
 
-Velero requires an object storage bucket to store backups in. In Minio a dedicated S3 bucket is created for Velero (name: `k3s-velero`) 
+Velero requires an object storage bucket to store backups in. In Minio a dedicated S3 bucket is created for Velero (name: `k3s-velero`)
 
 A specific Minio user `velero` is configured with specic access policy to grant the user access to the bucket.
 
@@ -515,7 +515,7 @@ Installation using `Helm` (Release 3):
   ```
 
 - Step 4: Create values.yml for Velero helm chart deployment
-  
+
   ```yml
   # AWS backend plugin configuration
   initContainers:
@@ -595,7 +595,7 @@ Installation using `Helm` (Release 3):
   The chart configuration deploys the following velero plugin as `initContainers`:
   - `velero-plugin-for-aws` to enable S3 Minio as backup backend.
 
-  
+
   ```yml
   # AWS backend and CSI plugins configuration
   initContainers:
@@ -617,7 +617,7 @@ Installation using `Helm` (Release 3):
   # Disable VolumeSnapshotLocation CRD. It is not needed for CSI integration
   snapshotsEnabled: false
   ```
-  
+
 - Configure Minio S3 server as backup backend
 
   ```yml
@@ -642,7 +642,7 @@ Installation using `Helm` (Release 3):
         aws_secret_access_key: <minio_velero_pass> # Not encoded
 
   ```
-  
+
   Minio server connection data (`configuration.backupStorageLocation.config`) ,minio credentials (`credentials.secretContents`), and bucket(`configuration.backupStorageLocation.bucket`) to be used.
 
   {{site.data.alerts.note}}
@@ -684,7 +684,7 @@ credentials:
 
   1) Create manifest file: `nginx-example.yml`
 
-  
+
   ```yml
   ---
   apiVersion: v1
@@ -776,7 +776,7 @@ credentials:
   {{site.data.alerts.end}}
 
   2) Apply manifest file `nginx-example.yml`
-   
+
   ```shell
   kubectl apply -f nginx-example.yml
   ```
@@ -788,13 +788,13 @@ credentials:
   ```
 
   4) Create a backup for any object included in nginx-example namespace:
-  
+
   ```shell
-  velero backup create nginx-backup --include-namespaces nginx-example --wait  
+  velero backup create nginx-backup --include-namespaces nginx-example --wait
   ```
 
   5) Simulate a disaster:
-  
+
   ```shell
   kubectl delete namespace nginx-example
   ```
@@ -812,7 +812,7 @@ credentials:
   ```shell
   velero restore create --from-backup nginx-backup
   ```
-  
+
   8) Check the status of the restore:
 
   ```shell
@@ -826,7 +826,7 @@ credentials:
   ```
 
   9) Check nginx deployment and services are back
-  
+
   ```shell
   kubectl get deployments --namespace=nginx-example
   kubectl get services --namespace=nginx-example

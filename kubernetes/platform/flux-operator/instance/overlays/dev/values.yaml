@@ -3,6 +3,6 @@ instance:
   sync:
     kind: GitRepository
     url: https://github.com/marmila/picluster
-    ref: refs/heads/release-1.10.0
+    ref: refs/heads/master
     path: kubernetes/cluster/dev
     interval: 1h

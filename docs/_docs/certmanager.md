@@ -31,7 +31,7 @@ This issuer type is typically used in a private Public Key Infrastructure (PKI) 
 
 ### ACME issuers (Lets Encrypt)
 
-The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. See section [Let's Encrypt certificates](#lets-encrypt-certificates). 
+The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. See section [Let's Encrypt certificates](#lets-encrypt-certificates).
 
 
 {{site.data.alerts.important}}
@@ -55,7 +55,7 @@ Cert-manager add a set of Kubernetes custom resource (CRD):
 
 - `Certificate`, resources that represent a human readable definition of a certificate request that need to be generated and keep up to date by an issuer.
 
-In order to generate new TLS certificates a `Certificate` resource can be created. 
+In order to generate new TLS certificates a `Certificate` resource can be created.
 
 ```yml
 apiVersion: cert-manager.io/v1
@@ -319,7 +319,7 @@ Execute all the following commands from $HOME directory.
   dns_ionos_secret = verysecureapikeysecret
   dns_ionos_endpoint = https://api.hosting.ionos.com
   ```
-  
+
   In this file, IONOS API key prefix and secret need to be provided
 
 - Step 7. Change permission of `ionos-credentials.ini` file
@@ -345,7 +345,7 @@ Execute all the following commands from $HOME directory.
   -m <your-email> \
   -d <host_dns>
   ```
-  
+
   Signed certificate will be stored in letsencrypt/config.
 
   {{site.data.alerts.note}}
@@ -478,10 +478,10 @@ In case of using DNS split horizong architecture where a internal DNS server is 
 
 HTTP validation method requires to actually expose a "challenge URL" in the Public Internet using the DNS domain associated to the TLS certificate.
 
-HTTP validation method is as follows: 
-1. Cert-manager issues a certificate request to Let's Encrypt. 
-2. Let's Encrypt requests an ownership verification challenge in response. 
-The challenge will be to put an HTTP resource at a specific URL under the domain name that the certificate is being requested for. The theory is that if we can put that resource at that URL and Let's Encrypt can retrieve it remotely, then we must really be the owners of the domain. Otherwise, either we could not have placed the resource in the correct place, or we could not have manipulated DNS to allow Let's Encrypt to get to it. 
+HTTP validation method is as follows:
+1. Cert-manager issues a certificate request to Let's Encrypt.
+2. Let's Encrypt requests an ownership verification challenge in response.
+The challenge will be to put an HTTP resource at a specific URL under the domain name that the certificate is being requested for. The theory is that if we can put that resource at that URL and Let's Encrypt can retrieve it remotely, then we must really be the owners of the domain. Otherwise, either we could not have placed the resource in the correct place, or we could not have manipulated DNS to allow Let's Encrypt to get to it.
 3. Cert-manager puts the resource in the right place and automatically creates a temporary Ingress record that will route traffic to the correct place. If Let's Encrypt can read the challenge and it is correct, it will issue the certificates back to cert-manager.
 4. Cert-manager will then store the certificates as secrets, and our website (or whatever) will use those certificates for securing our traffic with TLS.
 

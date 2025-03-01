@@ -178,8 +178,8 @@ Installation using `Helm` (Release 3):
       # Secret defined in nginx namespace
       nginx.ingress.kubernetes.io/auth-secret: nginx/basic-auth-secret
       # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      # Possible Cluster-Issuer values: 
-      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
+      # Possible Cluster-Issuer values:
+      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
       #   * 'ca-issuer' (CA-signed certificate, not valid)
       cert-manager.io/cluster-issuer: letsencrypt-issuer
       cert-manager.io/common-name: longhorn.picluster.ricsanfre.com
@@ -222,9 +222,9 @@ There is a known issue with accessing Longhorn UI from Traefik 2.x that makes Lo
 - Step 1. Create a manifest file `longhorn_ingress.yml`
 
   Two Ingress resources will be created, one for HTTP and other for HTTPS. Traefik middlewares, HTTPS redirect, basic authentication and X-Forwareded-Proto headers will be used.
-  
+
   ```yml
-  # Solving API issue. 
+  # Solving API issue.
   ---
   apiVersion: traefik.containo.us/v1alpha1
   kind: Middleware
@@ -248,7 +248,7 @@ There is a known issue with accessing Longhorn UI from Traefik 2.x that makes Lo
       # Enable TLS
       traefik.ingress.kubernetes.io/router.tls: "true"
       # Use Basic Auth Midleware configured
-      traefik.ingress.kubernetes.io/router.middlewares: 
+      traefik.ingress.kubernetes.io/router.middlewares:
         traefik-basic-auth@kubernetescrd,
         longhorn-system-svc-longhorn-headers@kubernetescrd
       # Enable cert-manager to create automatically the SSL certificate and store in Secret
@@ -317,7 +317,7 @@ Ansible playbook has been developed for automatically create this testing POD `r
   ```
 
 - Step 2. Create manifest file `longhorn_test.yml`
-  
+
   ```yml
   ---
   apiVersion: v1
