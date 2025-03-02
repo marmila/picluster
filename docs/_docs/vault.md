@@ -2,7 +2,7 @@
 title: Secret Management (Vault)
 permalink: /docs/vault/
 description: How to deploy Hashicorp Vault as a Secret Manager for our Raspberry Pi Kubernetes Cluster.
-last_modified_at: "27-12-2022"
+last_modified_at: "02-03-2025"
 ---
 
 [HashiCorp Vault](https://www.vaultproject.io/) is used as Secret Management solution for Raspberry PI cluster. All cluster secrets (users, passwords, api tokens, etc) will be securely encrypted and stored in Vault.
@@ -37,7 +37,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
   ```shell
   sudo mkdir /var/lib/vault
   chown -R vault:vault /var/lib/vault
-  chmod -R 750 /vault/lib/vault
+  chmod -R 750 /var/lib/vault
   ```
 
 - Step 3. Create vault's config directories
@@ -56,7 +56,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
   ```shell
   sudo mkdir /var/log/vault
   chown -R vault:vault /var/log/vault
-  chmod -R 750 /vault/log/vault
+  chmod -R 750 /var/log/vault
   ```
 - Step 5. Download server binary (`vault`) and copy them to `/usr/local/bin`
 
@@ -71,7 +71,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
 
 - Step 6. Create Vault TLS certificate
 
-  In case you have your own domain, a valid TLS certificate signed by [Letsencrypt](https://letsencrypt.org/) can be obtained for Minio server, using [Certbot](https://certbot.eff.org/).
+  In case you have your own domain, a valid TLS certificate signed by [Letsencrypt](https://letsencrypt.org/) can be obtained for Vault server, using [Certbot](https://certbot.eff.org/).
 
   See certbot installation instructions in [CertManager - Letsencrypt Certificates Section](/docs/certmanager/#installing-certbot-ionos). Those instructions indicate how to install certbot using DNS challenge with IONOS DNS provider (my DNS provider). Similar procedures can be followed for other DNS providers.
 
@@ -268,7 +268,7 @@ Instead of installing Vault using official Ubuntu packages, installation will be
 
   {{site.data.alerts.note}}
 
-  VAULT_CACERT variable is only needed if Vault's TLS certifica is signed using custom CA. This will be used by vault client to validate Vault's certificate.
+  VAULT_CACERT variable is only needed if Vault's TLS certificate is signed using custom CA. This will be used by vault client to validate Vault's certificate.
 
   {{site.data.alerts.end}}
 

@@ -128,13 +128,13 @@ Ubuntu live ISO need to be served by the HTTP server
 - Step 1. Download Ubuntu 22.04 server live ISO
 
   ```shell
-  wget http://cdimage.ubuntu.com/ubuntu-server/jammy/daily-live/current/jammy-live-server-amd64.iso
+  wget https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso
   ```
 
 - Step 2. Copy to images directory
 
   ```shell
-  cp jammy-live-server-amd64.iso /var/www/html/images/.
+  cp ubuntu-22.04.5-live-server-amd64.iso /var/www/html/images/.
   ```
 
 #### Serving cloud-init files via HTTP
@@ -240,13 +240,13 @@ TFTP server will be installed in external services node: `node1`
 - Step 1. Download Ubuntu 22.04 server live ISO
 
   ```shell
-  wget http://cdimage.ubuntu.com/ubuntu-server/jammy/daily-live/current/jammy-live-server-amd64.iso
+  wget https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso
   ```
 
 - Step 2. Mount the ISO file
 
   ```shell
-  mount jammy-live-server-amd64.iso /mnt
+  mount ubuntu-22.04.5-live-server-amd64.iso /mnt
   ```
 
 - Step 3. Copy linux kernel and initrd files to TFTP server root
@@ -312,7 +312,7 @@ TFTP server will be installed in external services node: `node1`
 
   menuentry 'Install Ubuntu 22.04' {
           gfxmode $linux_gfx_mode
-          linux vmlinuz ip=dhcp url=http://10.0.0.11/images/jammy-live-server-amd64.iso autoinstall ds=nocloud-net\;s=http://10.0.0.11/ks/${net_default_mac}/ cloud-config-url=/dev/null
+          linux vmlinuz ip=dhcp url=http://10.0.0.11/images/ubuntu-22.04.5-live-server-amd64.iso autoinstall ds=nocloud-net\;s=http://10.0.0.11/ks/${net_default_mac}/ cloud-config-url=/dev/null
           initrd initrd
   }
   ```
@@ -355,7 +355,7 @@ TFTP server will be installed in external services node: `node1`
           menu default
           kernel vmlinuz
           initrd initrd
-          append ip=dhcp url=http://10.0.0.11/images/jammy-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://10.0.0.11/ks/10:e7:c6:16:54:10/ cloud-config-url=/dev/null
+          append ip=dhcp url=http://10.0.0.11/images/ubuntu-22.04.5-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://10.0.0.11/ks/10:e7:c6:16:54:10/ cloud-config-url=/dev/null
   prompt 0
   timeout 300
   ```
@@ -383,14 +383,14 @@ Testing with servers with less than 5 GB of memory, for example for testing PXE 
 - Step 3: Mount ubuntu ISO file
 
   ```shell
-  sudo mount /var/www/html/images/jammy-live-server-amd64.iso /mnt/jammy-live-server-amd64-iso-nfs/
+  sudo mount /var/www/html/images/ubuntu-22.04.5-live-server-amd64.iso /mnt/jammy-live-server-amd64-iso-nfs/
   ```
 
   Configure mount on start
 
   Add to `/etc/fstab` file the following line
   ```
-  /var/www/html/images/jammy-live-server-amd64.iso /mnt/jammy-live-server-amd64-iso-nfs iso9660 loop 0 0
+  /var/www/html/images/ubuntu-22.04.5-live-server-amd64.iso /mnt/jammy-live-server-amd64-iso-nfs iso9660 loop 0 0
   ```
 
 - Step 4: Configure NFS
