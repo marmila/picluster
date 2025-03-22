@@ -2,8 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "github>ricsanfre/pi-cluster//.github/renovate/customManagers.json5",
-    "github>ricsanfre/pi-cluster//.github/renovate/grafanaDashboards.json5"
+    "github>marmila/picluster//.github/renovate/customManagers.json5",
+    "github>marmila/picluster//.github/renovate/grafanaDashboards.json5"
   ],
   "flux": {
     "fileMatch": [
