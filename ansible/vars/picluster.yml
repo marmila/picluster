@@ -100,7 +100,7 @@ k3s_registries:
 # FluxCD #
 ##########
 # renovate: datasource=github-releases depName=fluxcd/flux2
-fluxcd_version: "v2.4.0"
+fluxcd_version: "v2.5.1"
 
 ###########
 # Ingress #
@@ -273,7 +273,7 @@ restic_environment:
 
 vault_hostname: "vault.{{ dns_domain }}"
 # renovate: datasource=github-releases depName=hashicorp/vault
-vault_version: 1.18.4
+vault_version: 1.19.0
 
 vault_dns: "{{ vault_hostname }}"
 vault_enable_tls: true
@@ -332,7 +332,7 @@ minio_longhorn_key: "{{ vault.minio.longhorn.key }}"
 #######################
 
 # renovate: datasource=github-releases depName=istio/istio
-istio_version: 1.24.3
+istio_version: 1.25.0
 
 ###################
 # Logging Secrets #
