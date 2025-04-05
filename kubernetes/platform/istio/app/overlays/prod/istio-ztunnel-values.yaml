@@ -1,14 +1,1 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: istio-ztunnel-overlay-values
-  namespace: istio-system
-data:
-  values.yaml: |
-    # Production-specific settings
-    resources:
-      limits:
-        cpu: 800m
-        memory: 512Mi
-
+# istio-ztunnel helm values (prod patch)
