@@ -1,1 +1,12 @@
-# istio-ztunnel helm values (base)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-ztunnel-base-values
+  namespace: istio-system
+data:
+  values.yaml: |
+    # Core fix for Istio issue #55355
+    resourceName: ztunnel
+    serviceAccount:
+      create: true
