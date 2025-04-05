@@ -1,1 +1,10 @@
-# istio-ztunnel helm values (base)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-ztunnel-base-values
+  namespace: flux-system
+data:
+  values.yaml: |
+    # Fix for Istio issue #55355
+    resourceName: ztunnel
