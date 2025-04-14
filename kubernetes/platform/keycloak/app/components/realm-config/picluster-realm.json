@@ -189,7 +189,7 @@
   },
   "users": [
     {
-      "username": "pimaster",
+      "username": "piadmin",
       "email": "admin@marmilan.com",
       "enabled": true,
       "emailVerified": true,
