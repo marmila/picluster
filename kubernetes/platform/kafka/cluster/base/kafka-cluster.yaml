@@ -31,7 +31,17 @@ spec:
         class: longhorn
         size: 5Gi
         deleteClaim: true
-
+    template:
+      pod:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/arch
+                      operator: In
+                      values:
+                        - amd64
   zookeeper:
     replicas: 3
     storage:
