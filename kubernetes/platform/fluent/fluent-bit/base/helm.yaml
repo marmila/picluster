@@ -8,7 +8,11 @@ spec:
   chart:
     spec:
       chart: fluent-bit
+<<<<<<< HEAD
       version: 0.48.9
+=======
+      version: 0.48.10
+>>>>>>> upstream/master
       sourceRef:
         kind: HelmRepository
         name: fluent

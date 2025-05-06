@@ -8,13 +8,13 @@ spec:
   chart:
     spec:
       chart: kube-prometheus-stack
-      version: 69.8.2
+      version: 71.2.0
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
         namespace: flux-system
   releaseName: kube-prometheus-stack
-  targetNamespace: monitoring
+  targetNamespace: kube-prom-stack
   install:
     crds: Skip
     remediation:

@@ -2,11 +2,22 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: cluster
-  namespace: kafka
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
 spec:
   kafka:
-    version: 3.8.0
-    replicas: 3
+    version: 4.0.0
+    metadataVersion: 4.0-IV3
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                    - amd64
     listeners:
       - name: plain
         port: 9092
@@ -22,44 +33,7 @@ spec:
       transaction.state.log.min.isr: 2
       default.replication.factor: 3
       min.insync.replicas: 2
-      inter.broker.protocol.version: "3.8"
-    storage:
-      type: jbod
-      volumes:
-      - id: 0
-        type: persistent-claim
-        class: longhorn
-        size: 5Gi
-        deleteClaim: true
-    template:
-      pod:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: kubernetes.io/arch
-                      operator: In
-                      values:
-                        - amd64
-  zookeeper:
-    replicas: 3
-    storage:
-      type: persistent-claim
-      size: 512Mi
-      deleteClaim: true
-      class: longhorn
-    template:
-      pod:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: kubernetes.io/arch
-                      operator: In
-                      values:
-                        - amd64
   entityOperator:
     topicOperator: {}
     userOperator: {}
+
