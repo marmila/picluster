@@ -3,7 +3,7 @@ instance:
   sync:
     kind: GitRepository
     url: https://github.com/marmila/picluster
-    ref: refs/heads/master
+    ref: refs/heads/test-upstream-merge
     path: kubernetes/clusters/prod
     interval: 1h
   kustomize:
