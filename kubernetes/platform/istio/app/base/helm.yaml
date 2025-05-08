@@ -48,11 +48,7 @@ spec:
   chart:
     spec:
       chart: cni
-<<<<<<< HEAD
-      version: 1.25.0
-=======
       version: 1.25.2
->>>>>>> upstream/master
       sourceRef:
         kind: HelmRepository
         name: istio
@@ -85,11 +81,7 @@ spec:
   chart:
     spec:
       chart: istiod
-<<<<<<< HEAD
-      version: 1.25.0
-=======
       version: 1.25.2
->>>>>>> upstream/master
       sourceRef:
         kind: HelmRepository
         name: istio
@@ -123,11 +115,7 @@ spec:
   chart:
     spec:
       chart: ztunnel
-<<<<<<< HEAD
-      version: 1.25.0
-=======
       version: 1.25.2
->>>>>>> upstream/master
       sourceRef:
         kind: HelmRepository
         name: istio
