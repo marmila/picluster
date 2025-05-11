@@ -17,8 +17,8 @@ cr:
         url: "http://kube-prometheus-stack-prometheus.kube-prom-stack:9090/"
       grafana:
         enabled: true
-        # Grafana service name is "grafana" and is in the "monitoring" namespace.
-        in_cluster_url: 'http://grafana.monitoring.svc.cluster.local/grafana/'
+        # Grafana service name is "grafana" and is in the "grafana" namespace.
+        in_cluster_url: 'http://grafana.grafana.svc.cluster.local/grafana/'
         # Public facing URL of Grafana
         url: 'https://monitoring.${CLUSTER_DOMAIN}/grafana/'
         auth:
