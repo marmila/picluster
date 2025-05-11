@@ -14,17 +14,21 @@ cr:
     external_services:
       prometheus:
         # Prometheus service
-        url: "http://kube-prometheus-stack-prometheus.kube-prom-stack:9090/"
+        url: "http://kube-prometheus-stack-prometheus.kube-prom-stack.svc.cluster.local:9090/"  # [MODIFIED] Added full FQDN for reliable DNS resolution
+        health_check_url: "http://kube-prometheus-stack-prometheus.kube-prom-stack.svc.cluster.local:9090/-/healthy"  # [ADDED] Health check endpoint
       grafana:
         enabled: true
         # Grafana service name is "grafana" and is in the "grafana" namespace.
-        in_cluster_url: 'http://grafana.grafana.svc.cluster.local/grafana/'
+        in_cluster_url: 'http://grafana.grafana.svc.cluster.local:3000/'  # [MODIFIED] Changed to standard Grafana port 3000
         # Public facing URL of Grafana
         url: 'https://monitoring.${CLUSTER_DOMAIN}/grafana/'
         auth:
           # Use same OAuth2.0 token used for accesing Kiali
           type: bearer
           use_kiali_token: true
+        dashboards:  # [ADDED] Dashboard configuration
+          - name: "Istio Service Dashboard"  # Default Istio dashboard
+            title: "Istio Service Dashboard"
       tracing:
         # Enabled by default. Kiali will anyway fallback to disabled if
         # Tempo is unreachable.
@@ -51,6 +55,9 @@ cr:
               #   * 'ca-issuer' (CA-signed certificate, not valid)
               cert-manager.io/cluster-issuer: letsencrypt-issuer
               cert-manager.io/common-name: kiali.${CLUSTER_DOMAIN}
+              # [ADDED] Timeout settings to prevent UI disconnections
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+              nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
           spec:
             rules:
             - host: kiali.${CLUSTER_DOMAIN}
