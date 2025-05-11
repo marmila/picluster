@@ -154,7 +154,7 @@ minio_root_user: "root"
 minio_root_password: "{{ vault.minio.root.key }}"
 
 # Minio site region configuration
-minio_site_region: "eu-milan-1"
+minio_site_region: "eu-west-1"
 
 # Enabling TLS
 minio_enable_tls: true
