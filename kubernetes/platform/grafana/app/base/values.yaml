@@ -10,6 +10,7 @@ admin:
 # Install required plugins
 plugins:
   - grafana-piechart-panel
+
 # Relabel job name of Grafana's metrics
 serviceMonitor:
   enabled: true
@@ -24,40 +25,41 @@ datasources:
       - { name: Prometheus, orgId: 1 }
       - { name: Tempo, orgId: 1 }
     datasources:
-    - name: Prometheus
-      type: prometheus
-      uid: prometheus
-      access: proxy
-      url: http://kube-prometheus-stack-prometheus.kube-prom-stack.svc.cluster.local:9090/prometheus
-      isDefault: true
-    - name: Alertmanager
-      type: alertmanager
-      uid: alertmanager
-      url: http://kube-prometheus-stack-alertmanager.kube-prom-stack.svc.cluster.local:9093/alertmanager
-      jsonData:
-        implementation: prometheus
-    - name: Loki
-      type: loki
-      uid: loki
-      access: proxy
-      url: http://loki-read-headless.loki.svc.cluster.local:3100
-      jsonData:
-        derivedFields:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://kube-prometheus-stack-prometheus.kube-prom-stack.svc.cluster.local:9090/prometheus
+        isDefault: true
+      - name: Alertmanager
+        type: alertmanager
+        uid: alertmanager
+        url: http://kube-prometheus-stack-alertmanager.kube-prom-stack.svc.cluster.local:9093/alertmanager
+        jsonData:
+          implementation: prometheus
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki-read-headless.loki.svc.cluster.local:3100
+        jsonData:
+          derivedFields:
             # Traefik traces integration
             # - datasourceUid: tempo
             #   matcherRegex: '"request_X-B3-Traceid":"(\w+)"'
             #   name: TraceID
             #   url: $${__value.raw}
             # NGINX traces integration
-          - datasourceUid: tempo
-            matcherRegex: '"trace_id": "(\w+)"'
-            name: TraceID
-            url: $${__value.raw}
-    - name: Tempo
-      uid: tempo
-      type: tempo
-      access: proxy
-      url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3100
+            - datasourceUid: tempo
+              matcherRegex: '"trace_id": "(\w+)"'
+              name: TraceID
+              url: $${__value.raw}
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3100
+
 ##
 ## Provisioning sidecars
 ##
@@ -84,35 +86,23 @@ sidecar:
     # Search for ConfigMaps containing `grafana_datasource` label
     label: grafana_datasource
     labelValue: "1"
-# Added to use the OIDC client secret from a Kubernetes secret via envFrom and environment variable
-extraEnvFrom:
-  - secretRef:
-      name: grafana-client-secret
 
-extraEnv:
-  - name: GF_AUTH_GENERIC_OAUTH_ENABLED
-    value: "true"
-  - name: GF_AUTH_GENERIC_OAUTH_NAME
-    value: "Keycloak"
-  - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
-    value: "grafana"
-  - name: GF_AUTH_GENERIC_OAUTH_SCOPES
-    value: "openid email profile"
-  - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
-    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/auth"
-  - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
-    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/token"
-  - name: GF_AUTH_GENERIC_OAUTH_API_URL
-    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/userinfo"
-  - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
-    value: "email"
-  - name: GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH
-    value: "preferred_username"
-  - name: GF_SERVER_ROOT_URL
-    value: "https://monitoring.${CLUSTER_DOMAIN}/grafana/"
-  - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: grafana-client-secret
-        key: CLIENT_SECRET
+# Added to use the OIDC client secret from a Kubernetes secret via envFrom
+envFromSecrets:
+  - grafana-client-secret
+
+grafana.ini:
+  server:
+    root_url: "https://monitoring.${CLUSTER_DOMAIN}/grafana/"
+  auth.generic_oauth:
+    enabled: true
+    name: Keycloak
+    client_id: grafana
+    client_secret: $__env{CLIENT_SECRET}
+    scopes: openid email profile
+    auth_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/auth"
+    token_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/token"
+    api_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/userinfo"
+    email_attribute_path: email
+    login_attribute_path: preferred_username
 
