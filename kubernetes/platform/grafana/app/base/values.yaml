@@ -7,41 +7,9 @@ admin:
   userKey: admin-user
   passwordKey: admin-password
 
-# OAuth Configuration
-env:
-  GF_AUTH_DISABLE_LOGIN_FORM: "true"
-  GF_AUTH_OAUTH_AUTO_LOGIN: "true"
-  GF_AUTH_SIGNOUT_REDIRECT_URL: "https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/logout?redirect_uri=https://monitoring.${CLUSTER_DOMAIN}/grafana"
-
-envFromSecret: grafana-oidc  # Reference to the secret containing client-secret
-
-grafana.ini:
-  server:
-    root_url: https://monitoring.${CLUSTER_DOMAIN}/grafana
-    serve_from_sub_path: true
-
-  auth:
-    disable_login_form: true
-    oauth_auto_login: true
-    signout_redirect_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/logout?redirect_uri=https://monitoring.${CLUSTER_DOMAIN}/grafana
-
-  auth.generic_oauth:
-    enabled: true
-    name: Keycloak
-    client_id: grafana
-    client_secret: "$__env{client-secret}"  # From grafana-oidc secret
-    scopes: "openid profile email"
-    auth_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/auth
-    token_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/token
-    api_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/userinfo
-    allowed_domains: ${CLUSTER_DOMAIN}
-    role_attribute_path: "contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'editor') && 'Editor' || 'Viewer'"
-    tls_skip_verify_insecure: true  # Only for testing with self-signed certs
-
 # Install required plugins
 plugins:
   - grafana-piechart-panel
-
 # Relabel job name of Grafana's metrics
 serviceMonitor:
   enabled: true
@@ -75,6 +43,12 @@ datasources:
       url: http://loki-read-headless.loki.svc.cluster.local:3100
       jsonData:
         derivedFields:
+            # Traefik traces integration
+            # - datasourceUid: tempo
+            #   matcherRegex: '"request_X-B3-Traceid":"(\w+)"'
+            #   name: TraceID
+            #   url: $${__value.raw}
+            # NGINX traces integration
           - datasourceUid: tempo
             matcherRegex: '"trace_id": "(\w+)"'
             name: TraceID
@@ -84,19 +58,29 @@ datasources:
       type: tempo
       access: proxy
       url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3100
-
-# Provisioning sidecars
+##
+## Provisioning sidecars
+##
 sidecar:
   dashboards:
+    # Enable dashboard sidecar
     enabled: true
+    # Enable discovery in all namespaces
     searchNamespace: ALL
+    # Search for ConfigMaps containing `grafana_dashboard` label
     label: grafana_dashboard
+    # Annotation containing the folder where sidecar will place the dashboard.
     folderAnnotation: grafana_folder
     provider:
+      # disableDelete to activate a import-only behaviour
       disableDelete: true
+      # allow Grafana to replicate dashboard structure from filesystem
       foldersFromFilesStructure: true
   datasources:
+    # Enable datasource sidecar
     enabled: true
+    # Enable discovery in all namespaces
     searchNamespace: ALL
+    # Search for ConfigMaps containing `grafana_datasource` label
     label: grafana_datasource
     labelValue: "1"
