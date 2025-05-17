@@ -90,6 +90,26 @@ extraEnvFrom:
       name: grafana-client-secret
 
 extraEnv:
+  - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+    value: "true"
+  - name: GF_AUTH_GENERIC_OAUTH_NAME
+    value: "Keycloak"
+  - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+    value: "grafana"
+  - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+    value: "openid email profile"
+  - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/auth"
+  - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/token"
+  - name: GF_AUTH_GENERIC_OAUTH_API_URL
+    value: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/userinfo"
+  - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
+    value: "email"
+  - name: GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH
+    value: "preferred_username"
+  - name: GF_SERVER_ROOT_URL
+    value: "https://monitoring.${CLUSTER_DOMAIN}/grafana/"
   - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
