@@ -84,4 +84,15 @@ sidecar:
     # Search for ConfigMaps containing `grafana_datasource` label
     label: grafana_datasource
     labelValue: "1"
+# Added to use the OIDC client secret from a Kubernetes secret via envFrom and environment variable
+extraEnvFrom:
+  - secretRef:
+      name: grafana-client-secret
+
+extraEnv:
+  - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: grafana-client-secret
+        key: CLIENT_SECRET
 
