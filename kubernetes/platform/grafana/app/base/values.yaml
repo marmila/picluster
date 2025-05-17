@@ -112,6 +112,6 @@ grafana.ini:
 
 # Mount secret with client_secret used by OIDC
 envFromSecrets:
-  - name: grafana-client-secret
+  - name: grafana-oidc
     mountPath: /etc/secrets
     defaultMode: 0440
