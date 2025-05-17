@@ -86,23 +86,3 @@ sidecar:
     # Search for ConfigMaps containing `grafana_datasource` label
     label: grafana_datasource
     labelValue: "1"
-
-# Added to use the OIDC client secret from a Kubernetes secret via envFrom
-envFromSecrets:
-  - grafana-client-secret
-
-grafana.ini:
-  server:
-    root_url: "https://monitoring.${CLUSTER_DOMAIN}/grafana/"
-  auth.generic_oauth:
-    enabled: true
-    name: Keycloak
-    client_id: grafana
-    client_secret: $__env{CLIENT_SECRET}
-    scopes: openid email profile
-    auth_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/auth"
-    token_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/token"
-    api_url: "https://sso.${CLUSTER_DOMAIN}/auth/realms/picluster/protocol/openid-connect/userinfo"
-    email_attribute_path: email
-    login_attribute_path: preferred_username
-
