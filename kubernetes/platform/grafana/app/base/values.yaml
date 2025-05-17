@@ -84,3 +84,34 @@ sidecar:
     # Search for ConfigMaps containing `grafana_datasource` label
     label: grafana_datasource
     labelValue: "1"
+
+##
+## Enable OIDC login via Keycloak
+##
+grafana.ini:
+  server:
+    root_url: https://grafana.${CLUSTER_DOMAIN}
+  auth:
+    disable_login_form: true
+    disable_signout_menu: false
+  auth.generic_oauth:
+    enabled: true
+    name: Keycloak
+    client_id: grafana
+    client_secret: $__file{/etc/secrets/client-secret}
+    scopes: openid profile email
+    auth_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/auth
+    token_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/token
+    api_url: https://sso.${CLUSTER_DOMAIN}/realms/picluster/protocol/openid-connect/userinfo
+    email_attribute_path: email
+    login_attribute_path: preferred_username
+    role_attribute_path: realm_access.roles
+    allow_sign_up: true
+    use_pkce: true
+    tls_skip_verify_insecure: true
+
+# Mount secret with client_secret used by OIDC
+envFromSecrets:
+  - name: grafana-client-secret
+    mountPath: /etc/secrets
+    defaultMode: 0440
