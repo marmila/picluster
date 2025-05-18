@@ -18,13 +18,13 @@ cr:
       grafana:
         enabled: true
         # Grafana service name is "grafana" and is in the "grafana" namespace.
-        in_cluster_url: 'http://grafana.grafana.svc.cluster.local/'
+        in_cluster_url: 'http://grafana.grafana.svc.cluster.local/grafana/'
         # Public facing URL of Grafana
         url: 'https://monitoring.${CLUSTER_DOMAIN}/grafana/'
         auth:
           # Use same OAuth2.0 token used for accesing Kiali - disabled for testing purposes
-          type: none
-          use_kiali_token: false
+          type: bearer
+          use_kiali_token: true
       tracing:
         # Enabled by default. Kiali will anyway fallback to disabled if
         # Tempo is unreachable.
