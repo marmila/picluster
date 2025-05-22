@@ -60,8 +60,8 @@ prometheus:
     # Enable WAL compression
     walCompression: true
     # Retention data configuration
-    retention: 7d
-    retentionSize: 9GB
+    retention: 14d
+    retentionSize: 50GB
     ## Enable Experimental Features
     # ref: https://prometheus.io/docs/prometheus/latest/feature_flags/
     enableFeatures:
@@ -83,7 +83,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 50Gi
     ##
 # Prometheus Node Exporter Configuration
 nodeExporter:
