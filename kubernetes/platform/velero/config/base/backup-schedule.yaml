@@ -4,7 +4,7 @@ metadata:
   name: full
   namespace: velero
 spec:
-  schedule: 0 4 * * 0
+  schedule: "0 10 * * 0"
   template:
     hooks: {}
     includedNamespaces:
@@ -15,5 +15,5 @@ spec:
     metadata:
       labels:
         type: 'full'
-        schedule: 'daily'
-    ttl: 720h0m0s
+        schedule: 'weekly'
+    ttl: 168h0m0s
