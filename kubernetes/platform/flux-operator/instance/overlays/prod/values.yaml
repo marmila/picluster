@@ -3,7 +3,7 @@ instance:
   sync:
     kind: GitRepository
     url: https://github.com/marmila/picluster
-    ref: refs/heads/k3s-upgrade-test
+    ref: refs/heads/master
     path: kubernetes/clusters/prod
     interval: 1h
   kustomize:
