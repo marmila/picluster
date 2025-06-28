@@ -3,10 +3,8 @@ kind: Schedule
 metadata:
   name: full
   namespace: velero
-  annotations:
-    velero.io/paused: "true"
 spec:
-  schedule: 30 8 * * 0
+  schedule: 0 0 31 2 *
   template:
     hooks: {}
     includedNamespaces:
