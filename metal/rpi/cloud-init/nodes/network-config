@@ -1,4 +1,4 @@
-# Cloud-init net configuration 
+# Cloud-init net configuration
 
 version: 2
 ethernets:
@@ -14,4 +14,4 @@ ethernets:
       addresses:
         - 10.0.0.1
       search:
-        - homelab.ricsanfre.com
+        - homelab.marmilan.com

@@ -11,60 +11,55 @@ all:
       hosts:
         s3:
           hostname: s3
-          ansible_host: s3.ricsanfre.com
+          ansible_host: s3.marmilan.com
     picluster:
       hosts:
         node1:
           hostname: node1
           ansible_host: 10.0.0.11
           ip: 10.0.0.11
-          mac: dc:a6:32:9c:29:b9
+          mac: d8:3a:dd:ee:02:dd
         node2:
           hostname: node2
           ansible_host: 10.0.0.12
           ip: 10.0.0.12
-          mac: e4:5f:01:2d:fd:19
+          mac: d8:3a:dd:19:00:a3
         node3:
           hostname: node3
           ansible_host: 10.0.0.13
           ip: 10.0.0.13
-          mac: e4:5f:01:2f:49:05
+          mac: d8:3a:dd:18:d2:47
         node4:
           hostname: node4
           ansible_host: 10.0.0.14
           ip: 10.0.0.14
-          mac: e4:5f:01:2f:54:82
+          mac: d8:3a:dd:19:00:cb
         node5:
           hostname: node5
           ansible_host: 10.0.0.15
           ip: 10.0.0.15
-          mac: e4:5f:01:d9:ec:5c
+          mac: d8:3a:dd:fb:96:07
         node6:
           hostname: node6
           ansible_host: 10.0.0.16
           ip: 10.0.0.16
-          mac: d8:3a:dd:0d:be:c8
-        node-hp-1:
-          hostname: node-hp-1
+          mac: d8:3a:dd:18:cb:cc
+        node-esp-1:
+          hostname: node-esp-1
           ansible_host: 10.0.0.20
           ip: 10.0.0.20
-          mac: 18:60:24:21:1c:d4
-        node-hp-2:
-          hostname: node-hp-2
+          mac: 90:1b:0e:b8:90:e8
+        node-esp-2:
+          hostname: node-esp-2
           ansible_host: 10.0.0.21
           ip: 10.0.0.21
-          mac: 10:e7:c6:16:54:10
-        node-hp-3:
-          hostname: node-hp-3
-          ansible_host: 10.0.0.22
-          ip: 10.0.0.22
-          mac: 10:e7:c6:0a:de:8a
+          mac: 90:1b:0e:b8:8e:a2
     raspberrypi:
       hosts:
         node[1:6]:
     x86:
       hosts:
-        node-hp-[1:3]:
+        node-esp-[1:2]:
     k3s_cluster:
       children:
         k3s_master:
@@ -73,7 +68,7 @@ all:
         k3s_worker:
           hosts:
             node[5:6]:
-            node-hp-[1:3]:
+            node-esp-[1:2]:
     dns:
       hosts:
         node1:

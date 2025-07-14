@@ -59,7 +59,7 @@ If you maintain the private network assigned to the cluster (10.0.0.0/24) and no
 
 {{site.data.alerts.end}}
 
-### Configuring ansible remote access 
+### Configuring ansible remote access
 
 The UNIX user to be used in remote connections (i.e.: `ricsanfre`) and its SSH key file location need to be specified.
 
@@ -113,7 +113,7 @@ Ansible Playbook used for doing the basic OS configuration (`setup_picluster.yml
   - /dev/sda1: Boot partition
   - /dev/sda2: Root Filesystem
   - /dev/sda3: For being used for creating LUNS (LVM partition)
-  
+
   <br>
   LVM configuration is done by `setup_picluster.yml` Ansible's playbook and the variables used in the configuration can be found in `vars/centralized_san/centralized_san_target.yml`: `storage_volumegroups` and `storage_volumes` variables. Sizes of the different LUNs can be tweaked to fit the size of the SSD Disk used. I used a 480GB disk so, I was able to create LUNs of 100GB for each of the nodes.
 
@@ -124,7 +124,7 @@ Ansible Playbook used for doing the basic OS configuration (`setup_picluster.yml
   - /dev/sda1: Boot partition
   - /dev/sda2: Root filesystem
   - /dev/sda3: /storage (linux partition)
-  
+
   <br>
   /dev/sda3 partition is created during first boot, formatted (ext4) and mounted as '/storage'. cloud-init configuration.
 
@@ -155,7 +155,7 @@ During Vault credentials generation process, see below, Github PAT will be requi
 {{site.data.alerts.end}}
 
 
-### Vault credentials generation 
+### Vault credentials generation
 
 Generate ansible vault variable file (`var/vault.yml`) containing all credentials/passwords. Random generated passwords will be generated for all cluster services.
 
@@ -188,7 +188,7 @@ Install OpenWRT operating system on Raspberry PI or GL-Inet router, `gateway` no
 The installation and configuration process is described in ["Cluster Gateway (OpenWRT)"](/docs/openwrt/)
 
 
-#### Option 2:  Ubuntu OS 
+#### Option 2:  Ubuntu OS
 
 `gateway` router/firewall can be implemented deploying Linux services on Ubuntu 22.04 OS
 The installation and configuration process is described in ["Cluster Gateway (Ubuntu)"](/docs/gateway/)
@@ -202,7 +202,7 @@ Once `gateway` node is up and running. External services node, `node1` can be co
 In crentralized SAN architecture `node1` can be configured as SAN server.
 
 Install Ubuntu Operating System on `node1` (Rapberry PI-4B 4GB).
-   
+
 The installation procedure followed is the described in ["Ubuntu OS Installation"](/docs/ubuntu/rpi/) using cloud-init configuration files (`user-data` and `network-config`) for `node1`.
 
 `user-data` depends on the storage architectural option selected:
@@ -226,7 +226,7 @@ The installation procedure followed is the described in ["Ubuntu OS Installation
 Before applying the cloud-init files of the table above, remember to change the following
 
 - `user-data` file:
-  - UNIX privileged user, `ricsanfre`, can be changed. 
+  - UNIX privileged user, `ricsanfre`, can be changed.
   - `ssh_authorized_keys` field for defaul user (`ricsanfre`). Your own ssh public keys, created during `pimaster` control node preparation, must be included.
   - `timezone` and `locale` can be changed as well to fit your environment.
 
@@ -253,7 +253,7 @@ Follow the installation procedure indicated in ["Ubuntu OS Installation"](/docs/
 
 | Dedicated Disks | Centralized SAN  |
 |-----------------| ---------------- |
-| [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data-SSD-partition) | [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data)| 
+| [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data-SSD-partition) | [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data)|
 {: .table .border-dark }
 
 
@@ -310,7 +310,7 @@ Homelab subdomain is specified in variable `dns_domain` configured in [ansible/g
 make dns-setup
 ```
 
-### Minio and Hashicorp Vault 
+### Minio and Hashicorp Vault
 
 Install and configure S3 Storage server (Minio), and Secret Manager (Hashicorp Vault) running the command:
 

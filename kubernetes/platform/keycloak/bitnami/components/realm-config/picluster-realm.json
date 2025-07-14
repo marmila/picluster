@@ -189,8 +189,8 @@
   },
   "users": [
     {
-      "username": "$${PI_ADMIN_USERNAME}",
-      "email": "admin@${CLUSTER_DOMAIN}",
+      "username": "piadmin",
+      "email": "admin@marmilan.com",
       "enabled": true,
       "emailVerified": true,
       "credentials": [

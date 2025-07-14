@@ -25,10 +25,10 @@ CloudNative-PG offers a declarative way of deploying PostgreSQL databases, suppo
   - Support automatic initialization of the database. See details in [CloudNative-PG Bootstrap](https://cloudnative-pg.io/documentation/1.23/bootstrap/)
   - It also includes automatic import from an external database or backup
 - HA support using database replicas
-  - Data replication from rw instance to read-only instances. See details in [CloudNative-PG Replication](https://cloudnative-pg.io/documentation/1.23/replication/) 
+  - Data replication from rw instance to read-only instances. See details in [CloudNative-PG Replication](https://cloudnative-pg.io/documentation/1.23/replication/)
 - Backup and restore
   - Support backup and restore to/from S3 Object Storage like Minio/AWS. See details in [CloudNative-PG Backup on Object Stores](https://cloudnative-pg.io/documentation/1.23/backup_barmanobjectstore/)
-  - The operator can orchestrate a continuous backup infrastructure that is based on the [Barman Cloud](https://pgbarman.org/) tool. 
+  - The operator can orchestrate a continuous backup infrastructure that is based on the [Barman Cloud](https://pgbarman.org/) tool.
 - Monitoring:
   - For each PostgreSQL instance, the operator provides an exporter of metrics for [Prometheus](https://prometheus.io/) via HTTP, on port 9187, named `metrics`. See detaisl in [CloudNative-PG Montiroring](https://cloudnative-pg.io/documentation/1.23/monitoring/)
 
@@ -61,21 +61,21 @@ Installation using `Helm` (Release 3):
   # Install operator CRDs
   crds:
     create: true
- 
+
   monitoring:
-    # Disabling podMonitoring by default. 
+    # Disabling podMonitoring by default.
     # It could be enabled per PosgreSQL Cluster resource.
     # Enabling it requires Prometheus Operator CRDs.
     podMonitorEnabled: false
     # Create Grafana dashboard configmap that can be automatically loaded by Grafana.
     grafanaDashboard:
-      create: true  
+      create: true
   ```
 
 - Step 5: Install CloudNative-PG operator
 
   ```shell
-  helm install cloudnative-pg cnpg/cloudnative-pg -f cloudnative-pg-values.yml --namespace databases 
+  helm install cloudnative-pg cnpg/cloudnative-pg -f cloudnative-pg-values.yml --namespace databases
   ```
 - Step 6: Confirm that the deployment succeeded, run:
 
@@ -113,14 +113,14 @@ spec:
       database: mydatabase
       owner: myuser
 ```
-  
+
 - It will create and bootstrap a 3 nodes database, 16.3-4 version.
 - Bootstrap will create a database named, `mydatabase` and a user, `myuser` which is the owner of that database
 - It will create automatically a secret containig all credentials to access the database
 
 #### Auto-generated secrets
 
-Bootstraping without specifying any secret, like in the previous example, cloudnative-pg generates a couple of secrets. 
+Bootstraping without specifying any secret, like in the previous example, cloudnative-pg generates a couple of secrets.
 
 - `[cluster name]-app` (unless you have provided an existing secret through .spec.bootstrap.initdb.secret.name)
 - `[cluster name]-superuser` (if .spec.enableSuperuserAccess is set to true and you have not specified a different secret using .spec.superuserSecret)
@@ -173,9 +173,9 @@ During database bootstrap secrets for the database user can be specified:
       cnpg.io/reload: "true"
   stringData:
     username: "myuser"
-    password: "supersecret"  
+    password: "supersecret"
   ```
-  
+
   {{site.data.alerts.note}}
 
   `cnpg.io/reload: "true"` label added to ConfigMaps and Secrets to be automatically reloaded by cluster instances.
@@ -204,7 +204,7 @@ During database bootstrap secrets for the database user can be specified:
         database: mydatabase
         owner: myuser
         secret:
-          name: mydatabase-db-secret  
+          name: mydatabase-db-secret
   ```
 
 
@@ -216,7 +216,7 @@ During database bootstrap secrets for the database user can be specified:
 
 - `[cluster name]-rw` : Always points to the Primary node (read-write replica)
 - `[cluster name]-ro`:  Points to only Replica nodes, chosen by round-robin (Accees only to read-only replicas)
-- `[cluster name]-r` : Points to any node in the cluster, chosen by round-robin 
+- `[cluster name]-r` : Points to any node in the cluster, chosen by round-robin
 
 ```shell
 kubectl get svc -n databases
@@ -258,7 +258,7 @@ S3, storage server, like Minio need to be configured.
     namespace: database
   stringData:
     AWS_ACCESS_KEY_ID: "myuser"
-    AWS_SECRET_ACCESS_KEY: "supersecret" 
+    AWS_SECRET_ACCESS_KEY: "supersecret"
 
   ```
 
@@ -391,7 +391,7 @@ Installation using `Helm` (Release 3):
   ```
   Where:
 
-  - `spec.members` specify the number of replicas 
+  - `spec.members` specify the number of replicas
   - `spec.version` specify Mongodb version
 
 ### Connection to Mongodb
@@ -487,7 +487,7 @@ Certificate can be generated using cert-manager
     issuerRef:
       name: ca-issuer
       kind: ClusterIssuer
-      group: cert-manager.io  
+      group: cert-manager.io
   ```
 
 - Create MongoDB cluster with tls enabled
@@ -523,7 +523,7 @@ Certificate can be generated using cert-manager
             db: admin
         scramCredentialsSecretName: my-scram
     additionalMongodConfig:
-      storage.wiredTiger.engineConfig.journalCompressor: zlib  
+      storage.wiredTiger.engineConfig.journalCompressor: zlib
   ```
   - Test connection using TLS
 
@@ -533,7 +533,7 @@ Certificate can be generated using cert-manager
     ```
   -  Use mongosh to connect over TLS. U
     ```shell
-    mongosh "<connection-string>" --tls --tlsCAFile /var/lib/tls/ca/*.pem --tlsCertificateKeyFile /var/lib/tls/server/*.pem 
+    mongosh "<connection-string>" --tls --tlsCAFile /var/lib/tls/ca/*.pem --tlsCertificateKeyFile /var/lib/tls/server/*.pem
     ```
     where `<connection-string>` can be obtained using the procedure described before.
     TLS certificates are mounted automatically in mongodb pods in `/var/lib/tls/` path

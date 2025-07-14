@@ -50,13 +50,13 @@ create_network() {
 
 create_cluster() {
   echo "Creating dev cluster"
-  
+
   echo '{"k3d_dir":"'${K3D_DIR}'", "host_ip":"'${HOST_IP}'", "cluster_subnet":"'${CLUSTER_SUBNET}'", "service_subnet":"'${SERVICE_SUBNET}'"}' > data.json
-  
+
   tmpl -data=@data.json "$TMPL_K3D_CONFIG_YAML"
 
   K3D_FIX_MOUNTS=1 K3D_FIX_DNS=0 k3d cluster create -c "$K3D_CONFIG_YAML"
-  
+
   echo "Cluster info"
   kubectl cluster-info
 }

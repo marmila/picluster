@@ -12,7 +12,7 @@ manage_etc_hosts: localhost
 
 users:
   # not using default ubuntu user
-  - name: ricsanfre
+  - name: marmila
     primary_group: users
     groups: [adm, admin]
     shell: /bin/bash

@@ -51,13 +51,13 @@ In Longhorn system, backup feature requires NFSv4, v4.1 or v4.2, and ReadWriteMa
 Make sure the client kernel support is enabled on each Longhorn node.
 
 - Check `NFSv4.1` support is enabled in kernel
-    
+
   ```shell
   cat /boot/config-`uname -r`| grep CONFIG_NFS_V4_1
   ```
-    
+
 - Check `NFSv4.2` support is enabled in kernel
-    
+
   ```shell
   cat /boot/config-`uname -r`| grep CONFIG_NFS_V4_2
   ```
@@ -79,13 +79,13 @@ To use encrypted volumes, `dm_crypt` kernel module has to be loaded and that 
 
 - Install `cryptsetup` package
   ```shell
-  sudo apt install cryptsetup 
+  sudo apt install cryptsetup
   ```
 
 - Load `dm_crypt` kernel module
 
   ```shell
-  sudo modprobe -v dm_crypt 
+  sudo modprobe -v dm_crypt
   ```
 
   Make that change persisent across reboots
@@ -178,8 +178,8 @@ Installation using `Helm` (Release 3):
       # Secret defined in nginx namespace
       nginx.ingress.kubernetes.io/auth-secret: nginx/basic-auth-secret
       # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      # Possible Cluster-Issuer values: 
-      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
+      # Possible Cluster-Issuer values:
+      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
       #   * 'ca-issuer' (CA-signed certificate, not valid)
       cert-manager.io/cluster-issuer: letsencrypt-issuer
       cert-manager.io/common-name: longhorn.${CLUSTER_DOMAIN}
@@ -240,6 +240,88 @@ Installation using `Helm` (Release 3):
 See available commands in longhorn reporistory:[https://github.com/longhorn/cli/blob/master/docs/longhornctl.md](https://github.com/longhorn/cli/blob/master/docs/longhornctl.md)
 
 
+- Step 1. Create a manifest file `longhorn_ingress.yml`
+
+  Two Ingress resources will be created, one for HTTP and other for HTTPS. Traefik middlewares, HTTPS redirect, basic authentication and X-Forwareded-Proto headers will be used.
+
+  ```yml
+  # Solving API issue.
+  ---
+  apiVersion: traefik.containo.us/v1alpha1
+  kind: Middleware
+  metadata:
+    name: svc-longhorn-headers
+    namespace: longhorn-system
+  spec:
+    headers:
+      customRequestHeaders:
+        X-Forwarded-Proto: "https"
+  ---
+  # HTTPS Ingress
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: longhorn-ingress
+    namespace: longhorn-system
+    annotations:
+      # HTTPS as entry point
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      # Enable TLS
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      # Use Basic Auth Midleware configured
+      traefik.ingress.kubernetes.io/router.middlewares:
+        traefik-basic-auth@kubernetescrd,
+        longhorn-system-svc-longhorn-headers@kubernetescrd
+      # Enable cert-manager to create automatically the SSL certificate and store in Secret
+      cert-manager.io/cluster-issuer: ca-issuer
+      cert-manager.io/common-name: longhorn.picluster.ricsanfre.com
+  spec:
+    tls:
+    - hosts:
+      - storage.picluster.ricsanfre.com
+      secretName: storage-tls
+    rules:
+    - host: longhorn.picluster.ricsanfre.com
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: longhorn-frontend
+              port:
+                number: 80
+  ---
+  # http ingress for http->https redirection
+  kind: Ingress
+  apiVersion: networking.k8s.io/v1
+  metadata:
+    name: longhorn-redirect
+    namespace: longhorn-system
+    annotations:
+      # Use redirect Midleware configured
+      traefik.ingress.kubernetes.io/router.middlewares: traefik-redirect@kubernetescrd
+      # HTTP as entrypoint
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+  spec:
+    rules:
+      - host: longhorn.picluster.ricsanfre.com
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80
+  ```
+
+- Step 2. Apply the manifest file
+
+  ```shell
+  kubectl apply -f longhorn_ingress.yml
+  ```
 
 ## Testing Longhorn
 
@@ -256,7 +338,7 @@ Ansible playbook has been developed for automatically create this testing POD `r
   ```
 
 - Step 2. Create manifest file `longhorn_test.yml`
-  
+
   ```yml
   ---
   apiVersion: v1

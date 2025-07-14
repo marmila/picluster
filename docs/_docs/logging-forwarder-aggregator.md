@@ -74,7 +74,7 @@ In our case, the list of plugins that need to be added to the default fluentd im
 
 - `fluent-plugin-grafana-loki`: enabling Loki as destination for routing the logs
 
-Additionally default fluentd config can be added to the customized docker image, so fluentd can be configured as log aggregator, collecting logs from forwarders (fluentbit/fluentd) and routing all logs to elasticsearch. 
+Additionally default fluentd config can be added to the customized docker image, so fluentd can be configured as log aggregator, collecting logs from forwarders (fluentbit/fluentd) and routing all logs to elasticsearch.
 This fluentd configuration in the docker image can be overwritten when deploying the container in kubernetes, using a [ConfigMap](https://kubernetes.io/es/docs/concepts/configuration/configmap/) mounted as a volume, or when running with `docker run`, using a [bind mount](https://docs.docker.com/storage/bind-mounts/). In both cases the target volume to be mounted is where fluentd expects the configuration files (`/fluentd/etc` in the official images).
 
 {{site.data.alerts.important}}
@@ -125,24 +125,35 @@ RUN buildDeps="sudo make gcc g++ libc-dev" \
  && rm -rf /tmp/* /var/tmp/* /usr/lib/ruby/gems/*/cache/*.ge
 
 ## 2) (Optional) Copy customized fluentd config files (fluentd as aggregator)
-
 COPY ./conf/fluent.conf /fluentd/etc/
 COPY ./conf/forwarder.conf /fluentd/etc/
 COPY ./conf/prometheus.conf /fluentd/etc/
 
+<<<<<<< HEAD
+# COPY entry
+=======
 ## 3) Modify entrypoint.sh to configure sniffer class
+>>>>>>> release-1.10.0
 COPY entrypoint.sh /fluentd/entrypoint.sh
 
 # Environment variables
 ENV FLUENTD_OPT=""
 
+<<<<<<< HEAD
+=======
 ## 4) Change to fluent user to run fluentd
+>>>>>>> release-1.10.0
 # Run as fluent user. Do not need to have privileges to access /var/log directory
 USER fluent
 ENTRYPOINT ["tini",  "--", "/fluentd/entrypoint.sh"]
 CMD ["fluentd"]
 ```
 
+<<<<<<< HEAD
+See further details in [issue #107](https://github.com/ricsanfre/pi-cluster/issues/107)
+
+=======
+>>>>>>> release-1.10.0
 
 ### Deploying fluentd in K3S
 
@@ -266,7 +277,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
             }
           },
           "mappings" : {
-            "dynamic_templates" : [ 
+            "dynamic_templates" : [
               {
                 "message_field" : {
                   "path_match" : "message",
@@ -276,7 +287,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
                     "norms" : false
                   }
                 }
-              }, 
+              },
               {
                 "string_fields" : {
                   "match" : "*",
@@ -294,7 +305,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
             }
           }
         }
-      } 
+      }
   ```
 
   The config map contains dynamic index templates that will be used by fluentd-elasticsearch-plugin configuration.
@@ -308,11 +319,11 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
   helm repo update
   ```
 - Step 6. Create `values.yml` for tuning helm chart deployment.
-  
+
   fluentd configuration can be provided to the helm. See [`values.yml`](https://github.com/fluent/helm-charts/blob/main/charts/fluentd/values.yaml)
-  
+
   Fluentd will be configured with the following helm chart `values.yml`:
-  
+
   ```yml
   ---
 
@@ -339,6 +350,8 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
   rbac:
     create: false
 
+<<<<<<< HEAD
+=======
   # Setting security context. Fluentd is running as non root user
   securityContext:
     capabilities:
@@ -348,6 +361,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
     runAsNonRoot: true
     runAsUser: 1000
 
+>>>>>>> release-1.10.0
   ## Additional environment variables to set for fluentd pods
   env:
     # Elastic operator creates elastic service name with format cluster_name-es-http
@@ -505,7 +519,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
           <store>
             @type relabel
             @label @OUTPUT_LOKI
-          </store>  
+          </store>
         </match>
       </label>
     04_outputs.conf: |-
@@ -544,7 +558,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
 
           # HTTP request timeout
           request_timeout 15s
-           
+
           # Log ES HTTP API errors
           log_es_400_reason true
 
@@ -553,7 +567,7 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
 
           # setting sniffer class
           sniffer_class_name Fluent::Plugin::ElasticsearchSimpleSniffer
-    
+
           # Do not use logstash format
           logstash_format false
 
@@ -574,14 +588,14 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
           ilm_policy_id fluentd-policy
           ilm_policy {"policy":{"phases":{"hot":{"min_age":"0ms","actions":{"rollover":{"max_size":"10gb","max_age":"7d"}}},"warm":{"min_age":"2d","actions":{"shrink":{"number_of_shards":1},"forcemerge":{"max_num_segments":1}}},"delete":{"min_age":"7d","actions":{"delete":{"delete_searchable_snapshot":true}}}}}}
           ilm_policy_overwrite true
-          
+
           # index template
           use_legacy_template false
           template_overwrite true
           template_name fluentd-${index_app_name}
           template_file "/etc/fluent/template/fluentd-es-template.json"
           customize_template {"<<shard>>": "1","<<replica>>": "0", "<<TAG>>":"${index_app_name}"}
-          
+
           remove_keys idex_app_name
 
           <buffer tag, index_app_name>
@@ -706,6 +720,8 @@ serviceAccount:
   create: false
 rbac:
   create: false
+<<<<<<< HEAD
+=======
 
 # Setting security context. Fluentd is running as non root user
 securityContext:
@@ -715,14 +731,18 @@ securityContext:
    readOnlyRootFilesystem: false
    runAsNonRoot: true
    runAsUser: 1000
+>>>>>>> release-1.10.0
 ```
 
 Fluentd is deployed as Deployment (`kind: "Deployment"`) with 1 replica (`replicaCount: 1`, using custom fluentd image (`image.repository: "ricsanfre/fluentd-aggregator` and `image.tag`).
 
 Service account (`serviceAccount.create: false`) and corresponding RoleBinding (`rbac.create: false`) are not created since fluentd aggregator does not need to access to Kubernetes API.
 
+<<<<<<< HEAD
+=======
 Security context for the pod (`securityContext`), since it is running using a non-root user.
 
+>>>>>>> release-1.10.0
 HPA autoscaling is also configured (`autoscaling.enabling: true`).
 
 #### Fluentd container environment variables.
@@ -765,7 +785,7 @@ env:
 
 fluentd docker image and configuration files use the following environment variables:
 
-- Path to main fluentd config file (`FLUENTD_CONF`) pointing at `/etc/fluent/fluent.conf` file. 
+- Path to main fluentd config file (`FLUENTD_CONF`) pointing at `/etc/fluent/fluent.conf` file.
 
   {{site.data.alerts.note}}
 
@@ -862,7 +882,7 @@ Fluetd service is configured as ClusterIP, exposing `forwarder` port (By default
 The helm chart can be also configured to install fluentd plugins on start-up (`plugins`) and to load aditional fluentd config directories `configMapConfigs`.
 
 {{site.data.alerts.note}}
-  
+
 Set configMapConfigs to null to avoid loading default configMaps created by the Helm chart containing systemd input plugin configuration and prometheus default config.
 
 {{site.data.alerts.end}}
@@ -975,7 +995,7 @@ It is not needed to change the default content of the `fluent.conf` created by H
   ```
 
   With this configuration, fluentd:
-  
+
   - relabels (`@FLUENT_LOG`) logs coming from fluentd itself to reroute them (discard them).
 
   - extract kubernetes metadata (`kubernetes` field added by fluentbit kubernetes filter) and add new fields: `app`, `pod`, `namespace`, `container` and `node_name`. Remove `kubernetes` object from the log.
@@ -1011,7 +1031,7 @@ It is not needed to change the default content of the `fluent.conf` created by H
       <store>
         @type relabel
         @label @OUTPUT_LOKI
-      </store>  
+      </store>
     </match>
   </label>
   ```
@@ -1063,7 +1083,7 @@ It is not needed to change the default content of the `fluent.conf` created by H
 
       # HTTP request timeout
       request_timeout 15s
-       
+
       # Log ES HTTP API errors
       log_es_400_reason true
 
@@ -1093,14 +1113,14 @@ It is not needed to change the default content of the `fluent.conf` created by H
       ilm_policy_id fluentd-policy
       ilm_policy {"policy":{"phases":{"hot":{"min_age":"0ms","actions":{"rollover":{"max_size":"10gb","max_age":"7d"}}},"warm":{"min_age":"2d","actions":{"shrink":{"number_of_shards":1},"forcemerge":{"max_num_segments":1}}},"delete":{"min_age":"7d","actions":{"delete":{"delete_searchable_snapshot":true}}}}}}
       ilm_policy_overwrite true
-      
+
       # index template
       use_legacy_template false
       template_overwrite true
       template_name fluentd-${index_app_name}
       template_file "/etc/fluent/template/fluentd-es-template.json"
       customize_template {"<<shard>>": "1","<<replica>>": "0", "<<TAG>>":"${index_app_name}"}
-      
+
       remove_keys idex_app_name
 
       <buffer tag, index_app_name>
@@ -1150,7 +1170,7 @@ It is not needed to change the default content of the `fluent.conf` created by H
     </match>
   </label>
   ```
-  
+
   With this configuration fluentd:
 
   - routes all logs to elastic search configuring [elasticsearch output plugin](https://docs.fluentd.org/output/elasticsearch). Complete list of parameters in [fluent-plugin-elasticsearch repository](https://github.com/uken/fluent-plugin-elasticsearch).
@@ -1165,7 +1185,7 @@ fluentd-elasticsearch plugin supports the creation of index templates and ILM po
 
 [Index Templates](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-templates.html) is used for controlling the way ES automatically maps/discover log's field data types and the way ES indexes these fields. [ES Index Lifecycle Management (ILM)](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html) is used for automating the management of indices, and setting data retention policies.
 
-Additionally, separate ES indexes can be created for storing logs from different containers/app. Each index might has its own index template containing specific mapping configuration (schema definition) and its own ILM policy (different retention policies per log type). 
+Additionally, separate ES indexes can be created for storing logs from different containers/app. Each index might has its own index template containing specific mapping configuration (schema definition) and its own ILM policy (different retention policies per log type).
 Storing logs from different applications in different indexes is an alternative solution to [issue #58](https://github.com/ricsanfre/pi-cluster/issues/58), avoiding mismatch-data-type ingestion errors that might occur when Merge_Log, option in fluentbit's kubernetes filter configuration, is enabled.
 
 [ILM using fixed index names](https://github.com/uken/fluent-plugin-elasticsearch/blob/master/README.Troubleshooting.md#fixed-ilm-indices) has been configured. Default plugin behaviour of creating indexes in logstash format (one new index per day) is not used. [Dynamic index template configuration](https://github.com/uken/fluent-plugin-elasticsearch/blob/master/README.Troubleshooting.md#configuring-for-dynamic-index-or-template) is configured, so a separate index will be generated for each namespace (index name: fluentd-namespace) with a common ILM policy.
@@ -1241,7 +1261,7 @@ Storing logs from different applications in different indexes is an alternative 
         }
       },
       "mappings" : {
-        "dynamic_templates" : [ 
+        "dynamic_templates" : [
           {
             ...
           }
@@ -1273,11 +1293,11 @@ For speed-up the installation there is available a [helm chart](https://github.c
   helm repo update
   ```
 - Step 3. Create `values.yml` for tuning helm chart deployment.
-  
+
   fluentbit configuration can be provided to the helm. See [`values.yml`](https://github.com/fluent/helm-charts/blob/main/charts/fluent-bit/values.yaml)
-  
+
   Fluentbit will be configured with the following helm chart `values.yml`:
-  
+
   ```yml
   # fluentbit helm chart values
 
@@ -1420,7 +1440,7 @@ For speed-up the installation there is available a [helm chart](https://github.c
                 values:
                   fs_chunks_up: '{.chunks.fs_chunks_up}'
                   fs_chunks_down: '{.chunks.fs_chunks_down}'
-  
+
   # Fluentbit config Lua Scripts.
   luaScripts:
     adjust_ts.lua: |
@@ -1459,7 +1479,7 @@ For speed-up the installation there is available a [helm chart](https://github.c
       volumeMounts:
         - mountPath: /json-exporter-config.yml
           name: config
-          subPath: json-exporter-config.yml        
+          subPath: json-exporter-config.yml
   ```
 
 - Step 4. Install chart
@@ -1566,12 +1586,12 @@ The file content has the following sections:
 
     ```
 
-    It configures fluentbit to monitor kubernetes containers logs (`/var/log/container/*.logs`), using `tail` input plugin and enabling the parsing of multi-line logs ([`muline.parser`](https://docs.fluentbit.io/manual/pipeline/inputs/tail#multiline-support)) 
+    It configures fluentbit to monitor kubernetes containers logs (`/var/log/container/*.logs`), using `tail` input plugin and enabling the parsing of multi-line logs ([`muline.parser`](https://docs.fluentbit.io/manual/pipeline/inputs/tail#multiline-support))
 
     All logs are tagged adding the prefix `kube`.
 
     [Multiline parser engine](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit/multiline-parsing) provides built-in multiline parsers (supporting docker and cri logs formats) and a way to define custom parsers.
-    
+
     The two options in `multiline.parser` separated by a comma means multi-format: try docker and cri multiline formats.
 
     For `containerd` logs multiline parser `cri` is needed. Embedded implementation of this parser applies the following regexp to the input lines:
@@ -1612,15 +1632,15 @@ The file content has the following sections:
 
     {{site.data.alerts.note}}
 
-    By default helm chart tries to configure fluentbit to collect and parse systemd `kubelet.system` service, which is usually the systemd process in K8S distributions. 
-    
+    By default helm chart tries to configure fluentbit to collect and parse systemd `kubelet.system` service, which is usually the systemd process in K8S distributions.
+
     ```
     [INPUT]
       Name systemd
       Tag host.*
       Systemd_Filter _SYSTEMD_UNIT=kubelet.service
       Read_From_Tail On
-    ``` 
+    ```
 
     In K3S only two systemd processes are installed (`k3s` in master node and `k3s-agent` in worker nodes). In both cases, logs are also copied to OS level syslog file (`/var/log/syslog`). So monitoring OS level files is enough to get K3S processes logs.
 
@@ -1685,7 +1705,7 @@ The file content has the following sections:
 
   This filter is only applied to kubernetes logs(containing kube.* tag).
   Fluent-bit kubernetes filter do to main tasks:
- 
+
   - It enriches logs with Kubernetes metadata
 
     Parsing log tag information (obtaining pod_name, container_name, container_id namespace) and querying the Kube API (obtaining pod_id, pod labels and annotations).
@@ -1707,7 +1727,7 @@ The file content has the following sections:
 
     Parsed log field will be added to the processed log as a `log_processed` map (`Merge_Log_Key`).
 
-    {{site.data.alerts.important}} **About Log_Merge and ES ingestion errors** 
+    {{site.data.alerts.important}} **About Log_Merge and ES ingestion errors**
 
     Activating Merge_Log functionality might result in conflicting field types when tryin to ingest into elasticsearch causing its rejection. See [issue #58](https://github.com/ricsanfre/pi-cluster/issues/58).
 
@@ -1735,7 +1755,7 @@ The file content has the following sections:
       Remove _p
       Rename log message
   ```
-  
+
   [`modify` filter](https://docs.fluentbit.io/manual/pipeline/filters/modify) removing and renaming some logs fields.
 
   **Lua filter**
@@ -1824,7 +1844,7 @@ initContainers:
 
 When enabling filesystem buffering (production usual configuration), Fluentbit storage metrics should be monitored as well. These metrics are not exposed by Fluentbit in prometheus format (metrics endpoint: `/api/v1/metrics/prometheus`). They are exposed in JSON format at `/api/v1/storage` endpoint.
 
-The storage output looks like this: 
+The storage output looks like this:
 ```shell
 curl -s http://10.42.2.28:2020/api/v1/storage | jq
 {
@@ -2011,14 +2031,18 @@ For deploying fluent-bit in forwarder-only architecture, without aggregation lay
           tls.verify False
           Retry_Limit False
   ```
-  
+
+<<<<<<< HEAD
+  `tls` option is disabled (set to False/Off). TLS communications are enabled by linkerd service mesh.
+=======
   `tls` option is disabled (set to False/Off). TLS communications are enabled by cluster service mesh.
+>>>>>>> release-1.10.0
 
   `Suppress_Type_Name` option must be enabled (set to On/True). When enabled, mapping types is removed and Type option is ignored. Types are deprecated in APIs in v7.0. This option need to be disabled to avoid errors when injecting logs into elasticsearch:
 
   ```json
   {"error":{"root_cause":[{"type":"illegal_argument_exception","reason":"Action/metadata line [1] contains an unknown parameter [_type]"}],"type":"illegal_argument_exception","reason":"Action/metadata line [1] contains an unknown parameter [_type]"},"status":400}
-  ``` 
+  ```
   In release v7.x the log is just a warning but in v8 the error causes fluentbit to fail injecting logs into Elasticsearch.
 
 ## Logs from external nodes

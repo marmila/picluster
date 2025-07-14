@@ -1,8 +1,8 @@
 #cloud-config
 
 # Set TimeZone and Locale
-timezone: UTC
-locale: es_ES.UTF-8
+timezone: Europe/Rome
+locale: en_EN.UTF-8
 
 # Hostname
 hostname: gateway
@@ -12,16 +12,17 @@ manage_etc_hosts: localhost
 
 users:
   # not using default ubuntu user
-  - name: ricsanfre
+  - name: marmila
     primary_group: users
     groups: [adm, admin]
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: true
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAusTXKfFoy6p3G4QAHvqoBK+9Vn2+cx2G5AY89WmjMikmeTG9KUseOCIAx22BCrFTNryMZ0oLx4u3M+Ibm1nX76R3Gs4b+gBsgf0TFENzztST++n9/bHYWeMVXddeV9RFbvPnQZv/TfLfPUejIMjFt26JCfhZdw3Ukpx9FKYhFDxr2jG9hXzCY9Ja2IkVwHuBcO4gvWV5xtI1nS/LvMw44Okmlpqos/ETjkd12PLCxZU6GQDslUgGZGuWsvOKbf51sR+cvBppEAG3ujIDySZkVhXqH1SSaGQbxF0pO6N5d4PWus0xsafy5z1AJdTeXZdBXPVvUSNVOUw8lbL+RTWI2Q== ricardo@dol-guldur
-      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDsVSvxBitgaOiqeX4foCfhIe4yZj+OOaWP+wFuoUOBCZMWQ3cW188nSyXhXKfwYK50oo44O6UVEb2GZiU9bLOoy1fjfiGMOnmp3AUVG+e6Vh5aXOeLCEKKxV3I8LjMXr4ack6vtOqOVFBGFSN0ThaRTZwKpoxQ+pEzh+Q4cMJTXBHXYH0eP7WEuQlPIM/hmhGa4kIw/A92Rm0ZlF2H6L2QzxdLV/2LmnLAkt9C+6tH62hepcMCIQFPvHVUqj93hpmNm9MQI4hM7uK5qyH8wGi3nmPuX311km3hkd5O6XT5KNZq9Nk1HTC2GHqYzwha/cAka5pRUfZmWkJrEuV3sNAl ansible@pimaster
-
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3rtzMK32wlrSMQn5llyHDHx6mXy3imVWiCnnyi6bKqMEpK0oDXuBC723UzJViQLgkf8DNXIWsw7uKYHQAIIjkrd35C24qkfS4T1UYrINAKIzvw99dURbkdvq0L49h2OZO+oVTEvsmQx842hYsCqRd6PpiHKimDX+1p99Ny55BwqSH02Ip5tfvKb2Nlm+DSPBrqAeLmgdfQtHXjAK9zxuQ65KRKmJQ5wfMhhox9CynUyLk/H5zWBk1kHjFof1lFolhIPLflbuN67JfEw35oarMhq2rxMWhcaieM+Idi/a9JX9tZjZhqZ/ow0YzSjesZkrd/7vpqmlD+KJyqrkI/WVpaFlcG8bjh/y77Tq9xVcOeexwkPJvDlcC6shc0LOYWfuEEjeB/V1WPYzU70SY2Fku+dW2DQnU7BTvk33Y6xnZvL1f3LFLKDrG3BQQalyI90SNA90+Cu+EtOsnWWQAx9+tNYrOUHt42oSKjWuEWnDsUI9mmP55/u4nX/dVjPmoaDM= runner@7b1bb8dffc97
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCjFVYkTiAz++PY1Vw+As5dcS7n4qs20Krbgn0aer0ckEIQgAwxNTU/js8iM/KIlaXxj23jEVl0UxaxB6ZJaHYUrc/LabWLf25h5nPT+LSIGmckSfVvaH7SMQYmcJGMXFk+jz9hYjEGS67VTbBI0axwFImOzht1ShAXlttonhqpru/Qkf5uYP4UIKxHZ1n3Jm26LR6jY4SVVuk0MqMrewM5QuB2VD+a0Pv2hZCuhOwCNQfoMgCRF1jjlL0/tbMziBg0Wqfw8JpScVjwQg5WS/5OGnF8VocVh6ltlaAsR3xo1CQklfUo54b0edXmxf3mvSL+ryDrOKYReoUm/pgG3sm9 marmila@gateway
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCCgohOlmZbD5gcRnjiHuvtftN+6pS/Yd9Uj8q7Hvd3x72kydJwH6NhMkAe2rtPREk5AME08EtbNNEkOf7XoD67pX0maPADwe47RD43+ixuFAXUXiP01Xhb3d1jnb+AGMtnEJLyPuHjYRWXNdMKF2MvphhesUZOiBGs0+zcpNs8tTvuuLHdRbg6ZXxOX1mwiwjk83rFFFigxUbQLWKbf+aZaPoU2RY0ZZBQCZqv2AmZ4rXN+Xep5N6xomkztydvmjGCUB7H3tP2hBEeIrc+LPTOOiXPI8MV4hLljzqP1PFSiiVrBveLjoRNWggCGfAuVlsDqQhCxgyxJpZxffDdJsbX marmila@gateway
 ## Reboot to enable Wifi configuration (more details in network-config file)
 power_state:
   mode: reboot
+

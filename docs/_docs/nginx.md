@@ -185,7 +185,7 @@ Following Ingress NGINX helm chart values need to be provided:
 
 ```yml
 controller:
-  
+
   config:
     # Print access log to file instead of stdout
     # Separating acces logs from the rest
@@ -306,7 +306,7 @@ controller:
     # Separating acces logs from the rest
     access-log-path: "/data/access.log"
     log-format-escape-json: "true"
-    log-format-upstream: '{"source": "nginx", "time": $msec, "resp_body_size": $body_bytes_sent, "request_host": "$http_host", "request_address": "$remote_addr", "request_length": $request_length, "request_method": "$request_method", "uri": "$request_uri", "status": $status,  "user_agent": "$http_user_agent", "resp_time": $request_time, "upstream_addr": "$upstream_addr", "trace_id": "$opentelemetry_trace_id", "span_id": "$opentelemetry_span_id"}' 
+    log-format-upstream: '{"source": "nginx", "time": $msec, "resp_body_size": $body_bytes_sent, "request_host": "$http_host", "request_address": "$remote_addr", "request_length": $request_length, "request_method": "$request_method", "uri": "$request_uri", "status": $status,  "user_agent": "$http_user_agent", "resp_time": $request_time, "upstream_addr": "$upstream_addr", "trace_id": "$opentelemetry_trace_id", "span_id": "$opentelemetry_span_id"}'
 ```
 
 OTEL collector need to be specified (`controller.config.otlp-collector-host`) and the access log format (`controller.config.log-format-upstream` can be configured to add W3C context: `$opentelemetry_trace_id` and `$opentelemetry_span_id` appears as field in the logs: `trace_id` and `span_id`
@@ -318,7 +318,7 @@ Standard kuberentes resource, `Ingress` can be used to configure the access to c
 Following instructions details how to configure access to cluster service using standard `Ingress` resources where Nginx configuration is specified using annotations.
 
 
-### Enabling HTTPS and TLS 
+### Enabling HTTPS and TLS
 
 All externally exposed frontends deployed on the Kubernetes cluster should be accessed using secure and encrypted communications, using HTTPS protocol and TLS certificates. If possible those TLS certificates should be valid public certificates.
 
@@ -424,7 +424,7 @@ The result encoded string is the one that should be included in `users` field.
 `htpasswd` utility is part of `apache2-utils` package. In order to execute the command it can be installed with the command: `sudo apt install apache2-utils`
 
 As an alternative, docker image can be used and the command to generate the `user:hashed-password` pairs is:
-      
+
 ```shell
 docker run --rm -it --entrypoint /usr/local/apache2/bin/htpasswd httpd:alpine -nb user password | base64
 ```

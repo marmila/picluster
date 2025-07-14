@@ -6,7 +6,7 @@ last_modified_at: "06-10-2024"
 ---
 
 {{site.data.alerts.note}}
-Basic kubernetes networking concepts and useful references can be found in [Reference Docs: Kubernetes networking basics](/docs/k8s-networking/) 
+Basic kubernetes networking concepts and useful references can be found in [Reference Docs: Kubernetes networking basics](/docs/k8s-networking/)
 {{site.data.alerts.end}}
 
 ## K3S networking default components

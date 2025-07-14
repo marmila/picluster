@@ -123,7 +123,7 @@ Cloud-init (autoinstall configuration files), need to be copied to PXE server, s
       username: ubuntu
     version: 1
   ```
-  
+
   The above cloud-init user-data file creates a minimum installation, setting server hostname, and ubuntu default password (ubuntu)
 
 - Step 3. Create meta-data file in /var/www/html/ks/<server-macaddress>
@@ -242,7 +242,7 @@ autoinstall:
 
 Network configuration can be specified in the autoinstall configuration: `network` section.
 
-`network` section contains a Netplan-formatted network configuration. 
+`network` section contains a Netplan-formatted network configuration.
 This is applied during installation as well as in the installed system. The default is to interpret the configuration for the installation media, which runs DHCP version 4 on any interface with a name matching eth* or en* but then disables any interface that does not receive an address.
 
 To specify a static IP address following configuration can be provided
@@ -270,7 +270,7 @@ autoinstall:
           addresses:
             - 10.0.0.1
           search:
-            - homelab.ricsanfre.com  
+            - homelab.ricsanfre.com
   storage:
     layout:
       name: lvm
@@ -300,7 +300,7 @@ autoinstall:
 
 ### Storage Configuration
 
-Disk partitioning can be specified in the autoinstall configuration: `storage` section. 
+Disk partitioning can be specified in the autoinstall configuration: `storage` section.
 
 The following autoinstall configuration performs the following disk partitioning (UEFI system partitioning):
 

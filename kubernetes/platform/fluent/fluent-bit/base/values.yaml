@@ -1,4 +1,32 @@
 # fluent-bit helm values (base)
+#fluentbit-container environment variables:
+env:
+  # Fluentd deployment service
+  - name: FLUENT_AGGREGATOR_HOST
+    valueFrom:
+      configMapKeyRef:
+        name: fluent-bit-env
+        key: fluentdHost
+  # Default fluentd forward port
+  - name: FLUENT_AGGREGATOR_PORT
+    value: "24224"
+  - name: FLUENT_AGGREGATOR_SHARED_KEY
+    valueFrom:
+      secretKeyRef:
+        name: fluent-secrets
+        key: fluentd-shared-key
+  - name: FLUENT_SELFHOSTNAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  # Specify TZ
+  - name: TZ
+    value: "Europe/Rome"
+# Fluentbit config
+config:
+  # Helm chart combines service, inputs, outputs, custom_parsers and filters section
+  # fluent-bit.config SERVICE
+  service: |
 
 # Deploy fluent-bit as daemonSet. One POD per node
 kind: DaemonSet

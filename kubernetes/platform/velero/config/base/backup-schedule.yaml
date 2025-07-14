@@ -3,7 +3,7 @@ kind: Schedule
 metadata:
   name: full
 spec:
-  schedule: 0 4 * * *
+  schedule: 0 0 31 2 *
   template:
     hooks: {}
     includedNamespaces:
@@ -14,5 +14,5 @@ spec:
     metadata:
       labels:
         type: 'full'
-        schedule: 'daily'
-    ttl: 720h0m0s
+        schedule: 'weekly'
+    ttl: 168h0m0s

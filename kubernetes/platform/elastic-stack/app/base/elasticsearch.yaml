@@ -24,11 +24,19 @@ spec:
             storageClassName: longhorn
       podTemplate:
         spec:
-          # Limiting Resources consumption
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values:
+                          - amd64
           containers:
-          - name: elasticsearch
-            resources:
-              requests:
-                memory: "1Gi"
-              limits:
-                memory: "1Gi"              
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: "1Gi"
+                limits:
+                  memory: "1Gi"

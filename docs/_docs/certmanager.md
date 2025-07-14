@@ -39,7 +39,7 @@ This issuer type is typically used in a private Public Key Infrastructure (PKI) 
 
 #### ACME issuers (Let's Encrypt)
 
-The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. See section [Let's Encrypt certificates](#lets-encrypt-certificates). 
+The ACME Issuer type represents a single account registered with the Automated Certificate Management Environment (ACME) Certificate Authority server. See section [Let's Encrypt certificates](#lets-encrypt-certificates).
 
 
 ## Cert Manager Usage
@@ -52,7 +52,7 @@ Cert-manager add a set of Kubernetes custom resource (CRD):
 
 - `Certificate`, resources that represent a human readable definition of a certificate request that need to be generated and keep up to date by an issuer.
 
-In order to generate new TLS certificates a `Certificate` resource has to be created.
+In order to generate new TLS certificates a `Certificate` resource can be created.
 
 ```yml
 apiVersion: cert-manager.io/v1
@@ -299,7 +299,130 @@ Follow [IONOS developer API: Get Started instructions](https://developer.hosting
 
 API key is composed of two parts:  Public Prefix (public key) and Secret (private key)
 
-{{site.data.alerts.end}}
+#### Installing Certbot IONOS
+
+In `pimaster` node, Certbot and [certbot-dns-ionos plugin](https://github.com/helgeerbe/certbot-dns-ionos) can be installed so, Lets encrypt certificates can be issued.
+
+Cerbot will be installed in a python virtualenv. Similar procedure to the one used to build ansible developer environment.
+
+Execute all the following commands from $HOME directory.
+
+- Step 1. Create Virtual Env for Ansible
+
+  ```shell
+  python3 -m venv letsencrypt
+  ```
+
+- Step 2. Activate Virtual Environment
+
+  ```shell
+  source letsencrypt/bin/activate
+  ```
+
+- Step 3. Upgrade setuptools and pip packages
+
+  ```shell
+  pip3 install --upgrade pip setuptools
+  ```
+
+- Step 4. Install certbot and certbot-ionos-plugin
+
+  ```shell
+  pip3 install certbot certbot-dns-ionos
+  ```
+
+- Step 5. Create certbot working directories
+
+  ```shell
+  mkdir -p letsencrypt/config
+  mkdir -p letsencrypt/logs
+  mkdir -p letsencrypt/.secrets
+  chmod 700 letsencrypt/.secrets
+  ```
+
+- Step 6. Create ionos credentials file `letsencrypt/.secrets/ionos-credentials.ini`
+
+  ```
+  dns_ionos_prefix = myapikeyprefix
+  dns_ionos_secret = verysecureapikeysecret
+  dns_ionos_endpoint = https://api.hosting.ionos.com
+  ```
+
+  In this file, IONOS API key prefix and secret need to be provided
+
+- Step 7. Change permission of `ionos-credentials.ini` file
+
+  ```shell
+  chmod 600 letsencrypt/.secrets/ionos-credentials.ini
+  ```
+
+- Step 8. Certificate can be created using the following command
+
+  ```shell
+  letsencrypt/bin/certbot certonly \
+  --config-dir letsencrypt/config \
+  --work-dir letsencrypt \
+  --logs-dir letsencrypt/logs \
+  --authenticator dns-ionos \
+  --dns-ionos-credentials letsencrypt/.secrets/ionos-credentials.ini \
+  --dns-ionos-propagation-seconds 900 \
+  --server https://acme-v02.api.letsencrypt.org/directory \
+  --agree-tos \
+  --non-interactive \
+  --rsa-key-size 4096 \
+  -m <your-email> \
+  -d <host_dns>
+  ```
+
+  Signed certificate will be stored in letsencrypt/config.
+
+  {{site.data.alerts.note}}
+
+  Certificates managed by certbot can be listed using the commad:
+
+  ```shell
+  letsencrypt/bin/certbot certificates \
+  --config-dir letsencrypt/config \
+  --work-dir letsencrypt \
+  --logs-dir letsencrypt/logs \
+  ```
+
+  Certificate and key path are showed. Also expiration date is showed.
+
+  To automatic renew the certificates the following command can be executed periodically in a cron
+
+  ```shell
+  letsencrypt/bin/certbot/certbot renew
+  ```
+
+  {{site.data.alerts.end}}
+
+
+#### Configuring Certmanager with Letsencrypt
+
+In case of using DNS split horizong architecture where a internal DNS server is used, cert-manager need to be re-configured so internal DNS server is not used during DNS01 challenge process.
+
+- Step 1: Create `cert-manager-values.yaml` file
+
+  ```yaml
+  crds:
+    enabled: true
+  # Use specific DNS servers for DNS01 challenge
+  # https://cert-manager.io/docs/configuration/acme/dns01/#setting-nameservers-for-dns01-self-check
+  extraArgs:
+    - --dns01-recursive-nameservers-only
+    - --dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53
+  ```
+
+- Step 2: Reinstall cert-manager
+
+  ```shell
+  helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager -f cert-manager-values.yaml
+
+  ```
+
+#####  IONOS as DNS provider
+
 
 - Step 1: Install cert-manager-webhook-ionos chart repo:
 
@@ -384,8 +507,12 @@ API key is composed of two parts:  Public Prefix (public key) and Secret (privat
 ### Metrics
 Cert-manager exposes metrics in the[Prometheus format from the controller, webhook and cainjector components. These are available at the standard `/metrics` endpoint on port `9402` of each component Pod.
 
-#### Prometheus Integration
-`ServiceMonitoring`, Prometheus Operator's CRD,  resource can be automatically created so Kube-Prometheus-Stack is able to automatically start collecting metrics from cert-manager
+HTTP validation method is as follows:
+1. Cert-manager issues a certificate request to Let's Encrypt.
+2. Let's Encrypt requests an ownership verification challenge in response.
+The challenge will be to put an HTTP resource at a specific URL under the domain name that the certificate is being requested for. The theory is that if we can put that resource at that URL and Let's Encrypt can retrieve it remotely, then we must really be the owners of the domain. Otherwise, either we could not have placed the resource in the correct place, or we could not have manipulated DNS to allow Let's Encrypt to get to it.
+3. Cert-manager puts the resource in the right place and automatically creates a temporary Ingress record that will route traffic to the correct place. If Let's Encrypt can read the challenge and it is correct, it will issue the certificates back to cert-manager.
+4. Cert-manager will then store the certificates as secrets, and our website (or whatever) will use those certificates for securing our traffic with TLS.
 
 ```yaml
 prometheus:
@@ -396,7 +523,7 @@ prometheus:
 
 #### Grafana Dashboards
 
-cert-manager's Grafana dashboard can be downloaded from [grafana.com](https://grafana.com): [dashboard id: 20842](https://grafana.com/grafana/dashboards/20842-cert-manager-kubernetes/) 
+cert-manager's Grafana dashboard can be downloaded from [grafana.com](https://grafana.com): [dashboard id: 20842](https://grafana.com/grafana/dashboards/20842-cert-manager-kubernetes/)
 
 Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dasbhoards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
 

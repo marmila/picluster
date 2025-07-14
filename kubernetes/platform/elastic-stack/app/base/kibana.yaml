@@ -12,11 +12,19 @@ spec:
     name: efk
   podTemplate:
     spec:
-      # Limiting Resources consumption
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
       containers:
-      - name: kibana
-        resources:
-          requests:
-            memory: "1Gi"
-          limits:
-            memory: "1Gi" 
+        - name: kibana
+          resources:
+            requests:
+              memory: "1Gi"
+            limits:
+              memory: "1Gi"

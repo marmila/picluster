@@ -4,10 +4,8 @@
 
 <table>
   <tr>
-    <td><img src="docs/assets/img/pi-cluster.png" width="400" alt="pi-cluster-1.0"/></td>
-    <td><img src="docs/assets/img/pi-cluster-2.0.png" width="360" /></td>
+    <td><img src="docs/assets/img/pi-cluster.png" width="600" alt="pi-cluster-1.0"/></td>
   </tr>
-    <td><img src="docs/assets/img/pi-cluster-3.0.png" width="600" /></td>
 </table>
 
 **K3S Kubernetes Cluster at home automated with Ansible and FluxCD**
@@ -18,7 +16,7 @@ This is an educational project to build a hybrid x86/ARM Kubernetes cluster at h
 
 The entire process for creating this cluster at home, from cluster design and architecture to step-by-step manual configuration guides, has been documented and it is published in the project website: https://picluster.ricsanfre.com.
 
-This repository contains all source code used to automate all manual tasks described in the documentation: Cloud-init's configuration files, Ansible's source code (playbooks/roles), and packaged Kubernetes applications (helm and kustomize) to be deployed using FluxCD. 
+This repository contains all source code used to automate all manual tasks described in the documentation: Cloud-init's configuration files, Ansible's source code (playbooks/roles), and packaged Kubernetes applications (helm and kustomize) to be deployed using FluxCD.
 
 Since its deployment is completely automated, the cluster can be re-deployed in minutes as many times as needed for testing new cluster configurations, new software versions or just take you out of any mesh you could cause playing with the cluster.
 
@@ -118,7 +116,7 @@ The following picture shows the set of opensource solutions used so far in the c
         <td><img width="32" src="docs/assets/img/logos/nginx.svg"></td>
         <td><a href="https://kubernetes.github.io/ingress-nginx/">Ingress NGINX</a></td>
         <td>Kubernetes Ingress Controller</td>
-    </tr> 
+    </tr>
     <tr>
         <td><img width="32" src="docs/assets/img/logos/longhorn.svg"></td>
         <td><a href="https://longhorn.io/">Longhorn</a></td>
@@ -266,7 +264,7 @@ Even whe the premise is to deploy all services in the kubernetes cluster, there 
 
    Currently only acme issuer (letsencytp) using IONOS as dns-01 challenge provider is configured. Check list of [supported dns01 providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers).
 
-### Self-hosted external services 
+### Self-hosted external services
 
 There is another list of services that I have decided to run outside the kuberentes cluster selfhosting them.
 
@@ -293,11 +291,11 @@ See further details about the architecture and hardware in the [documentation](h
 
 ## Official Site
 
-You can browse more information about Pi Cluster Project on https://picluster.ricsanfre.com/. 
+You can browse more information about Pi Cluster Project on https://picluster.ricsanfre.com/.
 
 The content of this website and the source code to build it (Jekyll static based website) are also stored in this repo: `/docs` folder.
 
-## Usage 
+## Usage
 
 Check out the documentation [Quick Start guide](http://picluster.ricsanfre.com/docs/ansible/) to know how to use and tweak cloud-init files (`/cloud-init` folder), Ansible playbooks (`/ansible` folder) and packaged Kubernetes applications ( `/kubernetes` folder) contained in this repository, so you can use in for your own homelab.
 

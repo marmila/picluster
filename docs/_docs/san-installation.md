@@ -20,7 +20,7 @@ In my home lab, one of the nodes, `san`, can be configured as iSCSI Target and t
 
 ```
 
-LIO, [LinuxIO](http://linux-iscsi.org/wiki/Main_Page), has been the Linux SCSI target since kernel version 2.6.38.It support sharing different types of storage fabrics and backstorage devices, including block devices (including LVM logical volumes and physical devices). [`targetcli`](http://linux-iscsi.org/wiki/Targetcli) is the single-node LinuxIO management CLI developed by Datera, that is part of most linux distributions. 
+LIO, [LinuxIO](http://linux-iscsi.org/wiki/Main_Page), has been the Linux SCSI target since kernel version 2.6.38.It support sharing different types of storage fabrics and backstorage devices, including block devices (including LVM logical volumes and physical devices). [`targetcli`](http://linux-iscsi.org/wiki/Targetcli) is the single-node LinuxIO management CLI developed by Datera, that is part of most linux distributions.
 
 A SAN (Storage Area Network) is a collection of logical drives, called LUNS, that iSCSI target server exposed to iSCSI initiator over TCP/IP network.
 A logical unit number, or **LUN**, is a number used to identify a logical unit, which is a device addressed by the SCSI protocol or by Storage Area Network protocols that encapsulate SCSI, such as Fibre Channel or iSCSI.
@@ -50,11 +50,11 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
 - Step 1. Allocate storage block device for LUN storage
 
   Connect a new Disk (SSD/Flash Drive) through USB 3.0 port.
-  As alternative a partition on existing SSD/Flash Drive, same disk with boot and root partitions, can be configured. 
+  As alternative a partition on existing SSD/Flash Drive, same disk with boot and root partitions, can be configured.
 
 - Step 2. (optional) Repartition used disk
 
-  If we are reusing the storage device containig the boot and root partitions (OS installation), re-partition of the storage is needed for freeing space for iSCSI LUNs. 
+  If we are reusing the storage device containig the boot and root partitions (OS installation), re-partition of the storage is needed for freeing space for iSCSI LUNs.
 
   If a new disk is attached to the device this step is not needed:
 
@@ -139,7 +139,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
 
   Create physical volume with command `sudo pvcreate <storage_device>`
 
-  ``` shell   
+  ``` shell
   sudo pvcreate /dev/sdb
   ```
 
@@ -154,7 +154,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
 - Step 5. Create LVM Logical Volume associated to LUNs
 
   A Logical Volume need to be created per LUN, specifying the size of each of one with command `sudo lvcreate -L <size> -n <lv_name> <vg_name>`
-  
+
   ```shell
   sudo lvcreate -L 4G -n lv_iscsi_1 vg_iscsi
   sudo lvcreate -L 4G -n lv_iscsi_2 vg_iscsi
@@ -179,7 +179,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
   sudo apt install targetcli-fb
   ```
 - Step 2. Execute `targetcli`
-  
+
   ```shell
   sudo targetcli
   ```
@@ -216,7 +216,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
 
 - Step 5. Create a backstore (bock devices associated to LVM Logical Volumes created before).
 
-  ```shell   
+  ```shell
   cd /backstores/block
   create <block_id> <block_dev_path>
   ```
@@ -228,7 +228,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
     ```
 
 - Step 6. Create LUNs
-  
+
   ```shell
   cd /iscsi/<target_iqn>/tpg1/luns
   create storage_object=<block_storage> lun=<lun_id>
@@ -248,14 +248,14 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
   Assign unique iqn (iSCSI Initiator Qualifier Name) to each cluster node (`nodeX`). See section [Configuring iSCSI Inititator](#configuring-iscsi-initiator)
   {{site.data.alerts.end}}
 
-  Create ACL for the iSCSI Initiator. 
+  Create ACL for the iSCSI Initiator.
   ```shell
   cd /iscsi/<target_iqn>/tpg1/acls
   create <initiator_iqn>
   ```
 
   Specify userid and password for initiator and target (mutual authentication)
-  
+
   ```shell
   cd /iscsi/<target_iqn>/tpg1/acls/<initiator_iqn>
   set auth userid=<initiator_iqn>
@@ -313,7 +313,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
 - Step 10. Load configuration on startup
 
   ```shell
-  sudo systemctl enable rtslib-fb-targetctl 
+  sudo systemctl enable rtslib-fb-targetctl
   ```
 
 - Step 11. Configure firewall rules
@@ -329,7 +329,7 @@ Follow these steps for preparing the storage device for hosting the LUNs: add ne
   sudo apt install open-iscsi
   ```
 
-- Step 2. Configure iSCI Intitiator iqn 
+- Step 2. Configure iSCI Intitiator iqn
 
   Edit iqn assigned to the server in the file `/etc/iscsi/initiatorname.conf`.
 
@@ -504,7 +504,7 @@ This configuration assumes that all iSCSI targets to which the host is connectin
     ```shell
     sudo fdisk -l
     ....
-    
+
     Device      Start     End Sectors  Size Type
     /dev/sda1  227328 4612062 4384735  2,1G Linux filesystem
     /dev/sda14   2048   10239    8192    4M BIOS boot
@@ -547,13 +547,13 @@ This configuration assumes that all iSCSI targets to which the host is connectin
     ```
 
   - Create Logical Volume
-    
+
     ```shell
     sudo lvcreate vg_iscsi -l 100%FREE -n lv_iscsi
     ```
 
   - Format Logical Volume
-    
+
     ```shell
     sudo mkfs.ext4 /dev/vg_iscsi/lv_iscsi
     ```

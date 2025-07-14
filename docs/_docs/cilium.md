@@ -10,20 +10,20 @@ last_modified_at: "09-09-2024"
 In a Kubernetes cluster, Cilium can be used as,
 
 - High performance CNI
-  
+
   See details in [Cilium Use-case: Layer 4 Load Balancer](https://cilium.io/use-cases/load-balancer/)
 
 
 - Kube-proxy replacement
-  
+
   Kube-proxy is a component running in the nodes of the cluster which provides load-balancing traffic targeted to kubernetes services (via Cluster IPs and Node Ports), routing the traffic to the proper backend pods.
-  
+
   Cilium can be used to replace kube-proxy component, replacing kube-proxy's iptables based routing by [eBFP](https://ebpf.io/) technology.
 
   See details in [Cilium Use-case: Kube-proxy Replacement](https://cilium.io/use-cases/kube-proxy/)
 
 - Layer 4 Load Balancer
- 
+
   Software based load-balancer for the kubernetes cluster which is able to announce the routes to kubernetes services using BGP or L2 protocols
 
   Cilium's LB IPAM is a feature that allows Cilium to assign IP addresses to Kubernetes Services of type LoadBalancer.
@@ -41,10 +41,10 @@ For further information about basic networking in Kuberenetes check out ["Kubern
 In the Pi Cluster, Cilium can be used as a replacement for the following networking components of in the cluster
 
 - Flannel CNI, installed by default by K3S, which uses an VXLAN overlay as networking protocol. Cilium CNI networking using eBPF technology.
-  
+
 - Kube-proxy, so eBPF based can be used to increase performance.
 
-- Metal-LB, load balancer. MetalLB was used for LoadBalancer IP Address Management (LB-IPAM) and L2 announcements for Address Resolution Protocol (ARP) requests over the local network. 
+- Metal-LB, load balancer. MetalLB was used for LoadBalancer IP Address Management (LB-IPAM) and L2 announcements for Address Resolution Protocol (ARP) requests over the local network.
   Cilium 1.13 introduced LB-IPAM support and 1.14 added L2 announcement capabilities, making possible to replace MetalLB in my homelab. My homelab does not have a BGP router and so new L2 aware functionality can be used.
 
 
@@ -125,7 +125,7 @@ Installation using `Helm` (Release 3):
   externalIPs:
     enabled: true
 
-  # Increase the k8s api client rate limit to avoid being limited due to increased API usage 
+  # Increase the k8s api client rate limit to avoid being limited due to increased API usage
   k8sClientRateLimit:
     qps: 50
     burst: 200
@@ -176,7 +176,7 @@ Installation using `Helm` (Release 3):
   Further details about kube-proxy replacement mode in [Cilium doc](https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/)
 
 - Cilium LB-IPAM configuration
-  
+
   ```yaml
   l2announcements:
     enabled: true
@@ -199,8 +199,8 @@ Installation using `Helm` (Release 3):
 
 
 - Increase the k8s api client rate limit to avoid being limited due to increased API usage
-  
-  ```yaml 
+
+  ```yaml
   k8sClientRateLimit:
     qps: 50
     burst: 200
@@ -370,7 +370,7 @@ See further details in [Cilium Monitoring and Metrics](https://docs.cilium.io/en
       loadBalancerIPs: true
 
     ```
-   
+
    Apply the manifest file
 
    ```shell
@@ -487,3 +487,7 @@ rm /etc/cni/net.d
 - [Comparing Networking Solutions for Kubernetes: Cilium vs. Calico vs. Flannel](https://www.civo.com/blog/calico-vs-flannel-vs-cilium)
 - [Cilium Installation Using K3s](https://docs.cilium.io/en/stable/installation/k3s/)
 - [K3S install custom CNI](https://docs.k3s.io/networking/basic-network-options#custom-cni)
+<<<<<<< HEAD
+
+=======
+>>>>>>> release-1.10.0

@@ -31,9 +31,9 @@ Linkerd service mesh archictecture is composed of three planes: control Plane, d
 
 - **Control plane**: providing the services for automatically injecting data plane components into pods(`poxy-injector`), generate certificates used in mTLS communications in the data plane and authorized data plane componentes (`identity`), and traffic flow control services (`destination`)
 
-- **Data Plane**, transparent proxy running as sidecar container within the pods. Proxies automatically intercept Pod's inbound/outbound TCP traffic and add transparantly encryption (mTLS), Later-7 load balancing, routing, retries, telemetry, etc. 
+- **Data Plane**, transparent proxy running as sidecar container within the pods. Proxies automatically intercept Pod's inbound/outbound TCP traffic and add transparantly encryption (mTLS), Later-7 load balancing, routing, retries, telemetry, etc.
 
-- **Observability Plane**: Linkerd service mesh is integrated into cluster Obserbability platform. 
+- **Observability Plane**: Linkerd service mesh is integrated into cluster Obserbability platform.
   - Linkerd control plane and data-plane components expose metrics that can be scraped by Prometheus and their logs can be captured and integrated into Loki (Logging aggregator)
   - User-plane component (linkerd-proxy) can be also configured to emit traces to cluster tracing backend, Grafana Tempo. Linkerd-jaeger extension need to be installed.
   - Linkerd-viz component add a service mesh web dashboard and pre-configured Grafana dashboards.
@@ -41,7 +41,7 @@ Linkerd service mesh archictecture is composed of three planes: control Plane, d
 
 ## Automatic mTLS configuration and Certmanager
 
-By default, Linkerd automatically enables mutually-authenticated Transport Layer Security (mTLS) for all TCP traffic between meshed pods. This means that Linkerd adds authenticated, encrypted communication to all application by default. 
+By default, Linkerd automatically enables mutually-authenticated Transport Layer Security (mTLS) for all TCP traffic between meshed pods. This means that Linkerd adds authenticated, encrypted communication to all application by default.
 
 The Linkerd control plane contains a certificate authority (CA) called `identity`. This CA issues TLS certificates to each Linkerd data plane proxy. These TLS certificates expire after 24 hours and are automatically rotated. The proxies use these certificates to encrypt and authenticate TCP traffic to other proxies.
 
@@ -275,9 +275,9 @@ Installation using `Helm` (Release 3):
   ```shell
   kubectl get configmap linkerd-config -o yaml -n linkerd
   ```
-  
+
   The `identiyTrustAnchorPEM` key included in the Configmap should show the ca.crt extracted in Step 3
-  
+
   ```yml
     identityTrustAnchorsPEM: |-
     -----BEGIN CERTIFICATE-----
@@ -369,7 +369,7 @@ This extension installs the following components into a new namespace linkerd-vi
 
 Since we have already our [monitoring deployment](/docs/prometheus/), we will configure Viz extension to use the existing Prometheus and Grafana instance. See linkerd documentation ["Bringing your own Prometheus"](https://linkerd.io/2.12/tasks/external-prometheus/).
 
-Linkerd-viz dashboard (web component) will be exposed configuring a Ingress resource. 
+Linkerd-viz dashboard (web component) will be exposed configuring a Ingress resource.
 
 Since Linkerd-viz release 2.12, Grafana component installation is not included. External Grafana need to be configured to enable drill-down from linkerd-viz's dashboards metrics to Grafana's dashboards.
 
@@ -377,7 +377,7 @@ By default linkerd-viz dashboard has a DNS rebinding protection. The dashboard r
 
 - Traefik does not support a mechanism for ovewritting Host header, Host validation regexp, used by dashboard server, need to be tweaked using Helm chart parameter `enforcedHostRegexp`.
 
-- Ingress NGINX does not need to have `nginx.ingress.kubernetes.io/upstream-vhost` annotation to properly set the upstream Host header. 
+- Ingress NGINX does not need to have `nginx.ingress.kubernetes.io/upstream-vhost` annotation to properly set the upstream Host header.
 
 See document ["Exposing dashboard - DNS Rebinding Protection"](https://linkerd.io/2.13/tasks/exposing-dashboard/#dns-rebinding-protection) for more details.
 
@@ -439,7 +439,7 @@ Installation procedure:
 
 - Step 4: Exposing Linkerd Viz dashboard
 
-  Ingress controller rule can be defined to grant access to Viz dashboard. 
+  Ingress controller rule can be defined to grant access to Viz dashboard.
 
   Linkerd documentation contains information about how to configure [NGINX as Ingress Controller](https://linkerd.io/2.13/tasks/exposing-dashboard/#nginx).
 
@@ -485,14 +485,14 @@ Installation procedure:
                 service:
                   name: web
                   port:
-                    number: 8084  
+                    number: 8084
 
   ```
 
 - Step 5: Configure Prometheus to scrape metrics from linkerd
-  
+
   Create `linkerd-prometheus.yml`
-  
+
   ```yml
   ---
   apiVersion: monitoring.coreos.com/v1
@@ -612,8 +612,8 @@ Installation procedure:
           action: replace
           targetLabel: job
           replacement: linkerd-proxy
-  ``` 
-  
+  ```
+
   Apply manifest file
 
   ```shell
@@ -631,9 +631,9 @@ Installation procedure:
   - Removing scraping `interval` and `timeout` configuration set to 10 seconds, so Prometheus defaults are used (30 seconds), reducing the impact on memory and cpu consumption.
 
   {{site.data.alerts.end}}
-   
+
 - Step 6: Load linkerd dashboards into Grafana
-  
+
   Linkerd available Grafana dashboards are located in linkerd2 repository: [linkerd grafana dashboards](https://github.com/linkerd/linkerd2/tree/main/grafana/dashboards)
 
   Follow ["Provision dashboards automatically"](/docs/prometheus/#provisioning-dashboards-automatically) procedure to load Grafana dashboards automatically.
@@ -650,7 +650,7 @@ Linkerd jaegger extension, by default, installs Jaeger, as traces backend, [Open
 Linkerd included support to W3C tracing propagation since release v2.13. See [linkerd issue #5416](https://github.com/linkerd/linkerd2/issues/5416).
 When multiple headers are present: proxy will use w3c by default, if that's not present, it will fallback to b3.
 
-{{site.data.alerts.end}} 
+{{site.data.alerts.end}}
 
 As part of the [Pi Cluster - Observability platform](/docs/observability/), Tempo is used as tracing backend, instead of Jaeger. See [Tempo installation documentation](/docs/tracing/).
 
@@ -693,11 +693,11 @@ There are two common ways to define a resource as meshed with Linkerd:
 - **Explicit**: add `linkerd.io/inject: enabled` annotation per resource. Annotated pod deployment is injected with linkerd-proxy.
 
   Annotation can be added automatically using `linkerd` command to inject the annotation
-  
+
   ```shell
   kubectl get -n NAMESPACE deploy/daemonset/statefulset -o yaml | linkerd inject - | kubectl apply -f -
   ```
-  
+
   This command takes all deployments resoureces from NAMESPACE and inject the annotation, so linkerd can inject linkerd-proxy automatically
 
   Alternative the deployment/daemonset/statefulset can be manually annotated through the `kubectl patch` command:
@@ -705,8 +705,8 @@ There are two common ways to define a resource as meshed with Linkerd:
   ```shell
   kubectl patch deployment/daemonset/stateful <name> "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"linkerd.io/inject\":\"enabled\"}}}}}"
 
-  ``` 
-  
+  ```
+
   In both cases deployemnt/daemonset/stateful are redeploy after applying the command.
 
 - **Implicit**: add `linkerd.io/inject: enabled` annotation for a namespace. Any new pod created within the namespace is automatically injected with linkerd-proxy.
@@ -715,7 +715,7 @@ There are two common ways to define a resource as meshed with Linkerd:
   ```shell
   kubectl annotate ns <namespace_name> linkerd.io/inject=enabled
   ```
-  
+
   Through manifest file during namespace creation or patching the resource.
   ```yml
   kind: Namespace
@@ -729,11 +729,11 @@ There are two common ways to define a resource as meshed with Linkerd:
 ### Problems with Kuberentes Jobs and implicit annotation
 
 
-With `linkerd.io/inject: enabled` annotation at namespace level, [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) do not terminate after completion since the Pods created are injected with linkerd-proxy and it continues to run after the job container completes its work. 
+With `linkerd.io/inject: enabled` annotation at namespace level, [Kubernetes Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) do not terminate after completion since the Pods created are injected with linkerd-proxy and it continues to run after the job container completes its work.
 
 That behaviour might cause errors during helm chart installation that deploy Jobs or during executions of scheduled CronJobs.
 
-As stated in this [ITNEXT blog post](https://itnext.io/three-ways-to-use-linkerd-with-kubernetes-jobs-c12ccc6d4c7c) there are different ways to handle this issue, both of them requires to modify Job template definition: 
+As stated in this [ITNEXT blog post](https://itnext.io/three-ways-to-use-linkerd-with-kubernetes-jobs-c12ccc6d4c7c) there are different ways to handle this issue, both of them requires to modify Job template definition:
 
 1) Do not mesh the Jobs resources
 
@@ -748,10 +748,10 @@ jobTemplate:
           linkerd.io/inject: disabled
 ```
 
-2) Shuting down linkerd-proxy as part of the Job execution. 
+2) Shuting down linkerd-proxy as part of the Job execution.
 
-This can be done using [`linkerd-await`](https://github.com/linkerd/linkerd-await) as wrapper of the main job command. 
-`linkerd-await` waits till linkerd-proxy is ready then executes the main job command and, when it finishes, it calls the linkerd-proxy `/shutdown` endpoint. 
+This can be done using [`linkerd-await`](https://github.com/linkerd/linkerd-await) as wrapper of the main job command.
+`linkerd-await` waits till linkerd-proxy is ready then executes the main job command and, when it finishes, it calls the linkerd-proxy `/shutdown` endpoint.
   ```shell
   linked-await --shutdown option <job_commad>
   ```
@@ -837,15 +837,16 @@ Longhorn Issue #3809 was fixed in release Longhorn 1.6, so early described proce
         ```shell
         kubectl patch daemonset longhorn-manager "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"linkerd.io/inject\":\"enabled\"}}}}}" -n longhorn-system
         ```
-  
+
 - Meshing `longhorn-ui` deployment
 
   Annotate daemonset to deploy linkerd sidecar
 
   ```shell
   kubectl patch deployment longhorn-ui "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"linkerd.io/inject\":\"enabled\"}}}}}" -n longhorn-system
-  ``` 
-     
+
+  ```
+
 
 ### Prometheus Stack
 
@@ -856,7 +857,7 @@ When deploying `kube-prometheus-stack` helm using an annotated namespace (`linke
 
 Job pod `pod/kube-prometheus-stack-admission-create-<randomAlphanumericString>` is created and its status is always `NotReady` since the linkerd-proxy continues to run after the job container ends so the Job Pod never ends.
 
-See [linkerd Prometheus Operator issue](https://github.com/prometheus-community/helm-charts/issues/479). 
+See [linkerd Prometheus Operator issue](https://github.com/prometheus-community/helm-charts/issues/479).
 
 To solve this issue linkerd injection must be disabled in the associated jobs created by Prometheus Operator. This can be achieved adding the following parameters to `values.yml` file of kube-prometheus-stack helm chart.
 
@@ -952,7 +953,7 @@ More details in linkerd documentation ["Ingress Traffic"](https://linkerd.io/2.1
 In order to integrate Traefik with Linkerd the following must be done:
 
 1. Traefik must be meshed with `ingress mode` enabled, i.e. with the `linkerd.io/inject: ingress` annotation rather than the default enabled.
-  
+
    Executing the following command Traefik deployment is injected with  linkerd-proxy in ingress mode:
 
    ```shell
@@ -976,7 +977,7 @@ In order to integrate Traefik with Linkerd the following must be done:
    For making Traefik works with its own loadbalancing/routing mechanism, the following command need to be executed.
 
    ```shell
-   kubectl get deployment traefik -o yaml -n kube-system | linkerd inject --ingress --skip-outbound-ports 443 - | kubectl apply -f - 
+   kubectl get deployment traefik -o yaml -n kube-system | linkerd inject --ingress --skip-outbound-ports 443 - | kubectl apply -f -
    ```
 
    See [Linkerd discussion #7387](https://github.com/linkerd/linkerd2/discussions/7387) for further details about this issue.
@@ -999,7 +1000,7 @@ In order to integrate Traefik with Linkerd the following must be done:
 
    Linkerd-proxy configured in ingress mode will take `ld5-dst-override` HTTP header for routing the traffic to the service.
 
-   When an HTTP (not HTTPS) request is received by a Linkerd proxy, the destination service of that request is identified. 
+   When an HTTP (not HTTPS) request is received by a Linkerd proxy, the destination service of that request is identified.
 
    The destination service for a request is computed by selecting the value of the first HTTP header to exist of, `l5d-dst-override`, `:authority`, and `Host`. The port component, if included and including the colon, is stripped. That value is mapped to the fully qualified DNS name.
 
@@ -1067,7 +1068,7 @@ Since Traefik terminates TLS connections, TLS encrypted traffic (e.g. HTTPS call
 
 ### Meshing Ingress NGINX
 
-Meshing Ingress NGINX is simpler. It can be meshed normally, it does not require the ingress mode annotation. 
+Meshing Ingress NGINX is simpler. It can be meshed normally, it does not require the ingress mode annotation.
 
 In order to integrate NGIN with Linkerd the following must be done:
 

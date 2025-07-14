@@ -26,7 +26,7 @@ In order to ease the automation with Ansible, OS installed on **gateway** is the
 ## Network Configuration
 
 The WIFI interface (wlan0) will be used to be connected to my home network using static IP address (192.168.1.11/24), while ethernet interface (eth0) will be connected to the lan switch, lab network, using static IP address (10.0.0.1/24)
-Static IP addres in home network, will enable the configuration of static routes in my labtop and VM running on it (`pimaster`) to access the cluster nodes without fisically connect the laptop to the lan switch with an ethernet cable. 
+Static IP addres in home network, will enable the configuration of static routes in my labtop and VM running on it (`pimaster`) to access the cluster nodes without fisically connect the laptop to the lan switch with an ethernet cable.
 
 
 ## Unbuntu OS instalation
@@ -41,9 +41,9 @@ The installation procedure followed is the described in ["Ubuntu OS Installation
 
 `user-data` depends on the storage architectural option selected::
 
-| User Data | 
+| User Data |
 |--------------------|
-|  [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/user-data) | 
+|  [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/gateway/user-data) |
 {: .table .border-dark }
 
 `network-config` is the same in both architectures:
@@ -67,7 +67,7 @@ ethernets:
     dhcp4: false
     dhcp6: false
     optional: true
-    addresses: 
+    addresses:
      - 10.0.0.1/24
 wifis:
   wlan0:
@@ -77,7 +77,7 @@ wifis:
     access-points:
       <SSID_NAME>:
         password: <SSID_PASSWD>
-    addresses: 
+    addresses:
      - 192.168.1.11/24
     routes:
       - to: default
@@ -286,7 +286,7 @@ As a modular example:
   ```
 
 - Output traffic filtering rules
-  
+
   `/etc/nftables.d/filter-output.nft`
   ```
   chain output {
@@ -315,7 +315,7 @@ As a modular example:
 
     }
   ```
-  
+
   These forwarding rules enables:
 
   - Outgoing traffic (from the cluster): all tcp/udp traffic is allowed.
@@ -339,8 +339,8 @@ As a modular example:
     ```
     # 250 port-forwarding from wan
     iifname $wan_interface oifname $lan_interface ip daddr 10.0.0.11 tcp dport 8080 ct state new accept
-    ``` 
-    
+    ```
+
     This rule enables incoming traffic to node1 in port 8080 which can be used to configure port-forward feature to access to any service.
 
     ```shell
@@ -371,7 +371,7 @@ As a modular example:
     }
 
   ```
-  
+
 
 {{site.data.alerts.important}} **About iptables rules persistency**
 
@@ -407,10 +407,10 @@ This route need to be added to my Laptop and the VM running `pimaster` node
   ```
 
 - Adding static route in Linux VM running on my laptop (VirtualBox)
-  
+
   Modify `/etc/netplan/50-cloud-init.yaml` for adding the static route
-    
-  ```yml 
+
+  ```yml
   network:
   version: 2
   ethernets:
@@ -421,7 +421,7 @@ This route need to be added to my Laptop and the VM running `pimaster` node
       dhcp4: yes # Home network IP address
       routes:
       - to: 10.0.0.0/24 #Cluster Lab Network
-        via: 192.168.1.11 #`gateway` static ip address in home network        
+        via: 192.168.1.11 #`gateway` static ip address in home network
   ```
   {{site.data.alerts.note}}
 
@@ -429,7 +429,7 @@ This route need to be added to my Laptop and the VM running `pimaster` node
   - **Eth0** (enp0s3) connected to VBox **Host-Only adapter** (laptop only connection)
   - **Eth1** (enp0s8) connected to VBox **Bridge adapter** (home network connection)
 
-  {{site.data.alerts.end}}  
+  {{site.data.alerts.end}}
 
 ## DHCP/DNS Configuration
 
@@ -498,17 +498,17 @@ Manual installation process is the following:
 1. Check DHCP leases in DHCP server
 
    See file `/var/lib/misc/dnsmasq.leases`
-	
+
 2. Check DHCP lease in DHCP Clients
 
    See file `/var/lib/dhcp/dhclient.leases`
-	
+
 3. Release DHCP current lease (DHCP client)
-   
+
    ```shell
    sudo dhclient -r <interface>
    ```
-	
+
 4. Obtain a new DHCP lease (DHCP client)
 
    ```shell
@@ -530,7 +530,7 @@ Manual installation process is the following:
    1662325795 e4:5f:01:2f:49:05 10.0.0.13 node3 ff:2b:f0:10:76:00:02:00:00:ab:11:f4:83:c3:e4:cd:06:92:25
    1662325796 dc:a6:32:9c:29:b9 10.0.0.11 node1 ff:38:f0:78:87:00:02:00:00:ab:11:f1:8d:67:ed:9f:35:f9:9b
    ```
- 
+
    Format in the file is:
 
    ```shell
@@ -593,7 +593,7 @@ For automating ntp configuration tasks, ansible role [**ricsanfre.ntp**](https:/
   - In **gateway**
 
     Configure NTP servers and allow serving NTP to lan clients.
-	
+
     ```
     pool 0.ubuntu.pool.ntp.org iburst
     pool 1.ubuntu.pool.ntp.org iburst
@@ -606,7 +606,7 @@ For automating ntp configuration tasks, ansible role [**ricsanfre.ntp**](https:/
   - In **node1-5**:
 
     Configure gateway as NTP server
-   
+
     ```
     server 10.0.0.1
     ```
@@ -622,19 +622,19 @@ Check time synchronization with Chronyc
 	 ```
 
 2. Checking Chrony is running and view the peers and servers to which it is connected
-    
+
 	 ```shell
    chronyc activity
 	 ```
 
 3. To view a detailed list of time servers, their IP addresses, time skew, and offset
-    
+
 	 ```shell
    chronyc sources
 	 ```
 
 4. Confirm that the chrony is synchronized
-   
+
    ```shell
    chronyc tracking
 	 ```

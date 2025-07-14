@@ -1,4 +1,4 @@
-# Cloud-init net configuration 
+# Cloud-init net configuration
 
 version: 2
 ethernets:
@@ -25,4 +25,4 @@ wifis:
         - 1.1.1.1
         - 8.8.8.8
       search:
-        - homelab.ricsanfre.com
+        - homelab.marmilan.com

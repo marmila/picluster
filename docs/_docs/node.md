@@ -43,7 +43,7 @@ Follow the procedure indicated in ["Ubuntu OS Installation - Raspberry PI"](/doc
 
 | Dedicated Disks | Centralized SAN  |
 |-----------------| ---------------- |
-| [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data-SSD-partition) | [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data)| 
+| [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data-SSD-partition) | [user-data]({{ site.git_edit_address }}/metal/rpi/cloud-init/nodes/user-data)|
 {: .table .border-dark }
 
 {{site.data.alerts.note}}
@@ -396,7 +396,7 @@ See ["NTP Configuration instructions"](/docs/gateway/#ntp-server-configuration).
 
 NTP configuration in cluster nodes has been automated using ansible role **ricsanfre.ntp**
 
-### iSCSI configuration. 
+### iSCSI configuration.
 
 #### Raspberry Pi Dedicated Disks and x86 nodes
 

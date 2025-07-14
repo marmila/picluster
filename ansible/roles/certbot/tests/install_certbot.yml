@@ -6,4 +6,4 @@
   roles:
     - role: certbot
       vars:
-        - certbot_venv: /home/ricsanfre/letsencrypt
+        - certbot_venv: /home/marmila/letsencrypt

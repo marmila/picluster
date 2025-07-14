@@ -133,14 +133,14 @@ ionos_api_endpoint: https://api.hosting.ionos.com
 
 
 # issuer email
-acme_issuer_email: admin@ricsanfre.com
+acme_issuer_email: admin@marmilan.com
 
 ##########################
 # Minio S3 configuration #
 ##########################
 
 # Minio S3 Server
-minio_hostname: "s3.ricsanfre.com"
+minio_hostname: "s3.marmilan.com"
 minio_endpoint: "{{ minio_hostname }}:9091"
 minio_url: "https://{{ minio_hostname }}:9091"
 
