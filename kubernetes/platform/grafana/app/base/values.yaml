@@ -49,15 +49,15 @@ datasources:
             #   name: TraceID
             #   url: $${__value.raw}
             # NGINX traces integration
-            - datasourceUid: tempo
-              matcherRegex: '"trace_id": "(\w+)"'
-              name: TraceID
-              url: $${__value.raw}
-      - name: Tempo
-        uid: tempo
-        type: tempo
-        access: proxy
-        url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
+          - datasourceUid: tempo
+            matcherRegex: '"trace_id": "(\w+)"'
+            name: TraceID
+            url: $${__value.raw}
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
 ##
 ## Provisioning sidecars
 ##

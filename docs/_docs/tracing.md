@@ -463,7 +463,7 @@ grafana:
     type: tempo
     uid: tempo
     access: proxy
-    url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3100
+    url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
 ```
 
 ### Loki and Tempo integration
@@ -498,7 +498,7 @@ grafana
     uid: tempo
     type: tempo
     access: proxy
-    url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3100
+    url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
 ```
 
 A derived field `TraceID` is added to logs whose message contains field `request_X-B3-Traceid` (Traefik access logs) or containing `trace_id` (NGINX access logs)
