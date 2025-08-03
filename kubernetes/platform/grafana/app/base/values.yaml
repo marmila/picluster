@@ -53,11 +53,11 @@ datasources:
             matcherRegex: '"trace_id": "(\w+)"'
             name: TraceID
             url: $${__value.raw}
-    - name: Tempo
-      uid: tempo
-      type: tempo
-      access: proxy
-      url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-query-frontend-discovery.tempo.svc.cluster.local:3200
 ##
 ## Provisioning sidecars
 ##
