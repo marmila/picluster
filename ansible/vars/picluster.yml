@@ -372,8 +372,4 @@ minio_tempo_bucket: k3s-tempo
 
 gateway_hostname: "gateway.{{ dns_domain }}"
 
-#######################
-# MinIO replication sites
-#######################
 
-replication_sites: []
