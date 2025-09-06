@@ -90,7 +90,6 @@
   vars:
     server_hostname: "{{ minio_hostname }}"
     selfsigned_certificates_path: "../certificates"
-    replication_sites: false
   pre_tasks:
     # Include vault variables
     - name: Include vault variables
