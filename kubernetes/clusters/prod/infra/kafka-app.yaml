@@ -29,10 +29,15 @@ spec:
   dependsOn:
     - name: strimzi-kafka-operator-app
     - name: longhorn-app
+    - name: external-secrets-config
   path: ./kubernetes/platform/kafka/cluster/overlays/prod
   prune: true
   wait: true
   timeout: 15m
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
   healthCheckExprs:
     - apiVersion: kafka.strimzi.io/v1beta2
       kind: Kafka
@@ -56,6 +61,10 @@ spec:
   dependsOn:
     - name: kafka-cluster-app
   wait: true
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
 
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

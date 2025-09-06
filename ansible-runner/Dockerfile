@@ -1,4 +1,4 @@
-FROM ghcr.io/helmfile/helmfile:v1.1.3 AS helmfile
+FROM ghcr.io/helmfile/helmfile:v1.1.5 AS helmfile
 
 
 FROM python:slim
@@ -11,7 +11,7 @@ RUN apt-get update -qq && \
 
 # Intall basic Python packages
 RUN pip3 install --upgrade pip setuptools
-RUN pip3 install ansible-core ansible-runner
+# RUN pip3 install ansible-core ansible-runner
 
 ADD build /build
 WORKDIR /build

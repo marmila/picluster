@@ -62,6 +62,14 @@ dashboardProviders:
         editable: true
         options:
           path: /var/lib/grafana/dashboards/keycloak-folder
+      - name: flux
+        orgId: 1
+        folder: Flux
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/flux-folder
 # Dashboards
 dashboards:
   kubernetes:
@@ -73,7 +81,7 @@ dashboards:
     kubernetes-coredns:
       # renovate: depName="Kubernetes / System / CoreDNS"
       gnetId: 15762
-      revision: 20
+      revision: 21
       datasource: Prometheus
     kubernetes-global:
       # renovate: depName="Kubernetes / Views / Global"
@@ -156,26 +164,43 @@ dashboards:
       revision: 11
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
+    vault:
+      url: https://raw.githubusercontent.com/grafana/jsonnet-libs/refs/heads/master/vault-mixin/dashboards/vault.json
+      datasource: Prometheus
+    bind-exporter:
+      # https://grafana.com/grafana/dashboards/12309-bind9-exporter-dns/
+      # renovate: depName="Bind9 Exporter Dashboard"
+      gnetId: 12309
+      revision: 5
+      datasource:
+        - { name: DS_PROMETHEUS, value: Prometheus }
+    openWRT:
+      # https://grafana.com/grafana/dashboards/18153-asus-openwrt-router/
+      # renovate: depName="OpenWRT Exporter Dashboard"
+      gnetId: 18153
+      revision: 4
+      datasource:
+        - { name: DS_PROMETHEUS, value: Prometheus }
   istio:
     istio-control-plane:
       # https://grafana.com/grafana/dashboards/7645-istio-control-plane-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 7645
-      revision: 260
+      revision: 265
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
     istio-mesh:
       # https://grafana.com/grafana/dashboards/7639-istio-mesh-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 7639
-      revision: 260
+      revision: 265
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
     istio-performance:
       # https://grafana.com/grafana/dashboards/11829-istio-performance-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 11829
-      revision: 260
+      revision: 265
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
   nginx:
@@ -219,3 +244,10 @@ dashboards:
       url: https://raw.githubusercontent.com/keycloak/keycloak-grafana-dashboard/refs/heads/main/dashboards/keycloak-troubleshooting-dashboard.json
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
+  flux:
+    flux-cluster:
+      url: https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/cluster.json
+      datasource: Prometheus
+    flux-control-plane:
+      url: https://raw.githubusercontent.com/fluxcd/flux2-monitoring-example/main/monitoring/configs/dashboards/control-plane.json
+      datasource: Prometheus

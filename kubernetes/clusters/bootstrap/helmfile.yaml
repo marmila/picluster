@@ -17,11 +17,11 @@ releases:
   - name: prometheus-operator-crds
     namespace: kube-system
     chart: prometheus-community/prometheus-operator-crds
-    version: 21.0.0
+    version: 23.0.0
   - name: cilium
     namespace: kube-system
     chart: cilium/cilium
-    version: 1.17.6
+    version: 1.18.1
     values:
       - ../../platform/cilium/app/base/values.yaml
       - ../../platform/cilium/app/components/istio-config/values.yaml
@@ -31,7 +31,7 @@ releases:
   - name: coredns
     namespace: kube-system
     chart: coredns/coredns
-    version: 1.43.0
+    version: 1.43.2
     values:
       - ../../platform/coredns/app/base/values.yaml
     needs:

@@ -2,7 +2,7 @@
 title: External Services Node
 permalink: /docs/external/
 description: How to configure a Raspberry Pi to host external services needed in HomeLab, like DNS authoritative server, PXE server, SAN, HA Proxy.
-last_modified_at: "29-06-2025"
+last_modified_at: "15-08-2025"
 ---
 
 One of the Raspeberry Pi (4GB), `node1`, is used to run external services like authoritative DNS, PXE Server, Vault or external Kuberentes API Load Balancer (HA Proxy). 
@@ -153,13 +153,13 @@ Further details about iSCSI configurations and step-by-step manual instructions 
 
 ## DNS Installation
 
-As described in ["PiCluster - DNS Architecture"](/docs/dns), DNS authoritative server, based on bind9, is installed in `node1`
+As described in ["PiCluster - DNS Architecture"](/docs/dns/), DNS authoritative server, based on bind9, is installed in `node1`
 
 For automating configuration tasks, ansible role [**ricsanfre.bind9**](https://galaxy.ansible.com/ricsanfre/bind9) has been developed.
 
 ## PXE Server
 
-As described in ["PiCluster - PXE Server"](/docs/pxe-server), PXE server, to automate OS installation of x86 nodes, is installed in `node1`
+As described in ["PiCluster - PXE Server"](/docs/pxe-server/), PXE server, to automate OS installation of x86 nodes, is installed in `node1`
 
 
 ## Vault Installation
@@ -187,10 +187,14 @@ The Prometheus Node Exporter is a single static binary that can be installed via
 
 -   Step 2: Download tar file and untar it
 
-   ```shell
-   cd tmp
-   wget https://github.com/prometheus/node_exporter/releases/download/v<VERSION>/node_exporter-<VERSION>.linux-<ARCH>.tar.gz
-   ```
+    ```shell
+    cd tmp
+    wget https://github.com/prometheus/node_exporter/releases/download/v<VERSION>/node_exporter-<VERSION>.linux-<ARCH>.tar.gz
+    tar -xvf node_exporter-<VERSION>.linux-<ARCH>.tar.gz
+    ```
+
+    Where `<VERSION>` is the version of node exporter to be installed and `<ARCH>` is the architecture of the system (i.e.: `amd64` for x86_64 systems).
+    ```
 
 -   Step 3: Copy node_exporter binary to `/usr/local/bin`
 
@@ -210,7 +214,12 @@ The Prometheus Node Exporter is a single static binary that can be installed via
     User=node_exporter
     Group=node_exporter
     Type=simple
-    ExecStart=/opt/node_exporter/node_exporter --collector.systemd
+    ExecStart=/usr/local/bin/node_exporter \
+        '--collector.systemd' \
+        '--collector.textfile' \
+        '--collector.textfile.directory=/var/lib/node_exporter' \
+        '--web.listen-address=0.0.0.0:9100' \
+        '--web.telemetry-path=/metrics'
 
     [Install]
     WantedBy=multi-user.target
@@ -235,7 +244,7 @@ The Prometheus Node Exporter is a single static binary that can be installed via
     sudo journalctl -f --unit node_exporter
     ```
 
-Node Exporter installation and configuration can be automated with Ansible. For example using Ansible role: [**geerlingguy.ansible-role-node_exporter**](https://github.com/geerlingguy/ansible-role-node_exporter).
+Node Exporter installation and configuration can be automated with Ansible. Ansible role [**prometheus.node_exporter**](https://github.com/prometheus-community/ansible/tree/main/roles/node_exporter), which is part of Ansible Collection for Prometheus maintained by Prometehus Community, can be used to automate its deployment and configuration.
 
 #### Integration with Kube-Prom-Stack
 
@@ -312,7 +321,7 @@ Fluentbit installation and configuration can be automated with Ansible. For exam
 
 #### Fluent bit configuration
 
-Configuration is quite similar to the one defined for the fluentbit (See ["Collecting logs with FluentBit"](/docs/fluent-bit/)), removing kubernetes logs collection and filtering and maintaining only OS-level logs collection.
+Configuration is quite similar to the one defined for the fluentbit (See ["Collecting logs with FluentBit"](/docs/fluentbit/)), removing kubernetes logs collection and filtering and maintaining only OS-level logs collection.
 
 `/etc/fluent-bit/fluent-bit.conf`
 ```
