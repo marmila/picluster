@@ -25,4 +25,5 @@ spec:
               secretKeySecretRef:
                 key: IONOS_SECRET
                 name: ionos-secret
+                zone: marmilan.com
 
