@@ -83,7 +83,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 50Gi
+              storage: 20Gi
     ##
 # Prometheus Node Exporter Configuration
 nodeExporter:
