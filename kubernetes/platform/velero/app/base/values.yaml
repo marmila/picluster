@@ -29,7 +29,7 @@ snapshotsEnabled: false
 
 # Fix: override the image used by the CRDs upgrade job
 # because the default "bitnamilegacy/kubectl:1.34" does not exist anymore
-upgradeCRDs:
+kubectl:
   image:
     repository: docker.io/bitnami/kubectl
     tag: 1.34.1-0
