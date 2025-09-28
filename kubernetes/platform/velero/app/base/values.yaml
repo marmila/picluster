@@ -27,9 +27,10 @@ credentials:
 # Disable VolumeSnapshotLocation CRD. It is not needed for CSI integration
 snapshotsEnabled: false
 
-# Fix: override the image used by the CRDs upgrade job
-# because the default "bitnamilegacy/kubectl:1.34" does not exist anymore
+# Override kubectl image to avoid bitnami dependency
+# This should be updated when velero has a final solution to depending on bitnami images
+# https://github.com/vmware-tanzu/helm-charts/issues/698
 kubectl:
   image:
-    repository: docker.io/bitnami/kubectl
-    tag: 1.34.1-0
+    repository: docker.io/bitnamilegacy/kubectl
+    tag: 1.33.4
