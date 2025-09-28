@@ -3,6 +3,7 @@
   extends: [
     'config:recommended',
     ':skipStatusChecks',
+    'github>marmila/picluster//.github/renovate/clusters.json5',
     'github>marmila/picluster//.github/renovate/customManagers.json5',
     'github>marmila/picluster//.github/renovate/grafanaDashboards.json5',
     'github>marmila/picluster//.github/renovate/groups.json5',
