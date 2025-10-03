@@ -1,19 +1,4 @@
-# Add an initContainer to wait for the JAAS secret before starting
-- op: add
-  path: /spec/template/spec/initContainers/-
-  value:
-    name: wait-for-jaas-secret
-    image: bitnami/kubectl:latest
-    command:
-      - /bin/sh
-      - -c
-      - |
-        # Wait until the JAAS secret is available in the kafka namespace
-        until kubectl -n kafka get secret schema-registry-jaas-config; do
-          echo "Waiting for JAAS secret..."
-          sleep 2
-        done
-  # No volumeMounts needed for this initContainer
+
   # Replace SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS enviroment variable
 - op: replace
   path: /spec/template/spec/containers/0/env/2/value
