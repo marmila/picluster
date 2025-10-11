@@ -1,13 +1,34 @@
 # opentelemetry-collector helm values (elasticsearch-exporter)
+extraEnvs:
+  - name: ELASTIC_USER
+    valueFrom:
+      secretKeyRef:
+        name: otel-elasticsearch-exporter-secret
+        key: es-username
+  - name: ELASTIC_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: otel-elasticsearch-exporter-secret
+        key: es-password
+
 config:
+  extensions:
+    basicauth:
+      client_auth:
+        # elastic user and password from environment variable
+        # escaped with $$ to avoid to be interpreted by FluxCD var substitution
+        username: "$${env:ELASTIC_USER}"
+        password: "$${env:ELASTIC_PASSWORD}"
   exporters:
     elasticsearch:
-      endpoint: "http://elasticsearch-master:9200"
-      index: "otel-collector-%{+yyyy.MM.dd}"
-      username: "elastic"
-      password: "changeme"
-
+      endpoint: "http://efk-es-http.elastic:9200"
+      auth:
+        authenticator: basicauth
+      logs_index: "otel"
   service:
+    extensions:
+      - health_check
+      - basicauth
     pipelines:
       logs:
         processors: [memory_limiter, resource, batch]

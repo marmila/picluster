@@ -1,0 +1,18 @@
+# opentelemetry-demo helm values (base)
+
+default:
+  envOverrides:
+    - name: OTEL_COLLECTOR_NAME
+      value: otel-collector.otel
+
+# Disable observability components
+opentelemetry-collector:
+  enabled: false
+jaeger:
+  enabled: false
+prometheus:
+  enabled: false
+grafana:
+  enabled: false
+opensearch:
+  enabled: false
