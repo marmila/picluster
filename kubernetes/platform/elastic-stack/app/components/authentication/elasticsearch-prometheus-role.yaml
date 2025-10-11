@@ -1,0 +1,14 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  name: es-prometheus-roles-secret
+stringData:
+  roles.yml: |-
+    prometheus_role:
+      cluster: [
+        'monitor',
+        'monitor_snapshot'
+      ] 
+      indices:
+      - names: [ '*' ]
+        privileges: [ 'monitor', 'view_index_metadata' ]
