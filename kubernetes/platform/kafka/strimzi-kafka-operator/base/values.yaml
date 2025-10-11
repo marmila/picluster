@@ -1,4 +1,0 @@
-# strimzi-kafka-operator helm values (base)
-
-# Disable NetworkPolicy creation
-generateNetworkPolicy: false
