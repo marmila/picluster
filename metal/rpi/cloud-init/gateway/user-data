@@ -2,7 +2,7 @@
 
 # Set TimeZone and Locale
 timezone: Europe/Rome
-locale: en_EN.UTF-8
+locale: en_US.UTF-8
 
 # Hostname
 hostname: gateway

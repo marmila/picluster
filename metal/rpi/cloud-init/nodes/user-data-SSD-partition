@@ -2,7 +2,7 @@
 
 # Set TimeZone and Locale
 timezone: UTC
-locale: es_ES.UTF-8
+locale: en_US.UTF-8
 
 # Hostname
 hostname: nodeX
