@@ -3,7 +3,7 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      eno1:
+      enp0s3:
         dhcp4: false
         dhcp6: false
         addresses:
