@@ -2,8 +2,8 @@
 
 KUBECONFIG = $(shell pwd)/ansible-runner/runner/.kube/config
 
-KAFKA_REMOTE_BOOTSTRAP=kafka-bootstrap.homelab.ricsanfre.com
-KAFKA_SCHEMA_REGISTRY=schema-registry.homelab.ricsanfre.com
+KAFKA_REMOTE_BOOTSTRAP=kafka-bootstrap.homelab.marmilan.com
+KAFKA_SCHEMA_REGISTRY=schema-registry.homelab.marmilan.com
 
 .PHONY: kafka-setup kafka-k8s-clients kafka-k8s-producer kafka-k8s-consumer kafka-external-client kafka-external-producer kafka-external-consumer kafka-avro-clients kafka-avro-producer
 
