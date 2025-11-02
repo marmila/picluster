@@ -76,12 +76,12 @@ dashboards:
     kubernetes-api-server:
       # renovate: depName="Kubernetes / System / API Server"
       gnetId: 15761
-      revision: 19
+      revision: 20
       datasource: Prometheus
     kubernetes-coredns:
       # renovate: depName="Kubernetes / System / CoreDNS"
       gnetId: 15762
-      revision: 21
+      revision: 22
       datasource: Prometheus
     kubernetes-global:
       # renovate: depName="Kubernetes / Views / Global"
@@ -91,17 +91,17 @@ dashboards:
     kubernetes-namespaces:
       # renovate: depName="Kubernetes / Views / Namespaces"
       gnetId: 15758
-      revision: 42
+      revision: 44
       datasource: Prometheus
     kubernetes-nodes:
       # renovate: depName="Kubernetes / Views / Nodes"
       gnetId: 15759
-      revision: 37
+      revision: 40
       datasource: Prometheus
     kubernetes-pods:
       # renovate: depName="Kubernetes / Views / Pods"
       gnetId: 15760
-      revision: 36
+      revision: 37
       datasource: Prometheus
     kubernetes-volumes:
       # renovate: depName="K8s / Storage / Volumes / Cluster"
@@ -186,21 +186,21 @@ dashboards:
       # https://grafana.com/grafana/dashboards/7645-istio-control-plane-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 7645
-      revision: 275
+      revision: 277
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
     istio-mesh:
       # https://grafana.com/grafana/dashboards/7639-istio-mesh-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 7639
-      revision: 275
+      revision: 277
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
     istio-performance:
       # https://grafana.com/grafana/dashboards/11829-istio-performance-dashboard/
       # renovate: depName="Istio Dashboard"
       gnetId: 11829
-      revision: 275
+      revision: 277
       datasource:
         - { name: DS_PROMETHEUS, value: Prometheus }
   nginx:
