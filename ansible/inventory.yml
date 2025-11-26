@@ -7,11 +7,11 @@ all:
           hostname: pimaster
           ansible_host: localhost
           ansible_connection: local
-    external:
-      hosts:
-        s3:
-          hostname: s3
-          ansible_host: s3.marmilan.com
+    # external:
+    #   hosts:
+    #     s3:
+    #       hostname: s3
+    #       ansible_host: s3.marmilan.com
     picluster:
       hosts:
         node1:
@@ -69,6 +69,9 @@ all:
           hosts:
             node[5:6]:
             node-esp-[1:2]:
+    s3:
+      hosts:
+        node1:
     dns:
       hosts:
         node1:
