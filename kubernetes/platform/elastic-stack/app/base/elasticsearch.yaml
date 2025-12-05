@@ -20,7 +20,7 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 10Gi
+                storage: 20Gi
             storageClassName: longhorn
       podTemplate:
         spec:
@@ -31,4 +31,4 @@ spec:
               requests:
                 memory: "1Gi"
               limits:
-                memory: "1Gi"              
+                memory: "1Gi"
