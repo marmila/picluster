@@ -2,18 +2,18 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: flux-operator
+  name: tofu-controller
 spec:
   interval: 30m
   chart:
     spec:
-      chart: flux-operator
-      version: 0.36.0
+      chart: tofu-controller
+      version: v0.16.0-rc.7
       sourceRef:
         kind: HelmRepository
-        name: controlplane
+        name: tofu-controller
         namespace: flux-system
-  releaseName: flux-operator
+  releaseName: tofu-controller
   targetNamespace: flux-system
   install:
     remediation:
@@ -23,7 +23,10 @@ spec:
     remediation:
       strategy: rollback
       retries: 3
+  dependsOn:
+    - name: flux-instance
+      namespace: flux-system
   valuesFrom:
   - kind: ConfigMap
-    name: flux-operator-helm-values
+    name: tofu-controller-helm-values
     valuesKey: base-values.yaml
