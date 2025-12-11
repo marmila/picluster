@@ -12,11 +12,16 @@ spec:
     name: efk
   podTemplate:
     spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
       # Limiting Resources consumption
       containers:
       - name: kibana
         resources:
           requests:
+            cpu: "200m"
             memory: "1Gi"
           limits:
-            memory: "1Gi" 
+            cpu: "500m"
+            memory: "1Gi"
+
