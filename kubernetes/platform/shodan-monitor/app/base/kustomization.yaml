@@ -12,7 +12,6 @@ components: []
 
 configMapGenerator:
   - name: shodan-monitor-values
-    behavior: merge
     files:
       - values.yaml
 
