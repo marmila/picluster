@@ -6,7 +6,6 @@ resources:
   - namespace.yaml
   - postgres.yaml
   - cronjob.yaml
-  - configmap.yaml
   - external-secret.yaml
 
 components: []
