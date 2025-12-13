@@ -29,5 +29,5 @@ resources:
   - tempo-app.yaml
   - vault-app.yaml
   - velero-app.yaml
-  # - shodan-db-app.yaml
-  # - shodan-app.yaml
+  - shodan-db-app.yaml
+  - shodan-app.yaml
