@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shodan-collector
+  namespace: shodan-monitor
+spec:
+  schedule: "0 */6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: collector
+              image: ghcr.io/marmila/shodan-sec-monitor:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SHODAN_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-secret
+                      key: SHODAN_API_KEY
+                - name: TARGETS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: shodan-config
+                      key: TARGETS
+                - name: DB_HOST
+                  value: shodan-postgres.shodan-monitor.svc.cluster.local
+                - name: DB_NAME
+                  value: shodan
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_USER
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_PASS
+
