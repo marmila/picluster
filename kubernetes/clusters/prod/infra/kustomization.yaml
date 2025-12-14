@@ -31,4 +31,4 @@ resources:
   - velero-app.yaml
   - shodan-db-app.yaml
   - shodan-app.yaml
-  - shodan-collector-app.yaml
+
