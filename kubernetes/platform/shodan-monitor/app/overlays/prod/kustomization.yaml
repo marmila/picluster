@@ -7,6 +7,5 @@ resources:
 
 configMapGenerator:
   - name: shodan-monitor-overlay-values
-    behavior: merge
     files:
       - overlay-values.yaml
