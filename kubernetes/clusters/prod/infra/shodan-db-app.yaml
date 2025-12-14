@@ -11,4 +11,4 @@ spec:
     name: flux-system
   path: ./kubernetes/platform/shodan-monitor/app/base
   prune: true
-  wait: true
+  wait: false
