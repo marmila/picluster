@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shodan-app
+  namespace: shodan-monitor
+  labels:
+    app: shodan-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shodan-app
+  template:
+    metadata:
+      labels:
+        app: shodan-app
+    spec:
+      containers:
+        - name: shodan-app
+          image: ghcr.io/marmila/shodan-sec-monitor:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgres://shodan:shodan@shodan-postgres:5432/shodan
+          ports:
+            - containerPort: 8080

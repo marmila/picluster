@@ -6,6 +6,7 @@ resources:
   - namespace.yaml
   - postgres.yaml
   - external-secret.yaml
+  - deployment.yaml
 
 components: []
 
