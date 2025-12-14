@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: shodan-collector
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: shodan-monitor
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: shodan-db
+  path: ./kubernetes/platform/shodan-monitor/collector/overlays/prod
+  prune: true
+  wait: false
