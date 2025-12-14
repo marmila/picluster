@@ -3,4 +3,4 @@ kind: Kustomization
 namespace: shodan-monitor
 
 resources:
-  - cronjob.yaml
+  - deployment.yaml

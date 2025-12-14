@@ -12,7 +12,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: collector
-              image: ghcr.io/marmila/shodan-sec-monitor:latest
+              image: ghcr.io/marmila/shodan-sec-monitor:v1.1.0
               imagePullPolicy: IfNotPresent
               env:
                 - name: SHODAN_API_KEY
