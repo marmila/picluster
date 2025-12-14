@@ -13,4 +13,4 @@ spec:
     - name: shodan-db
   path: ./kubernetes/platform/shodan-monitor/app/overlays/prod
   prune: true
-  wait: true
+  wait: false
