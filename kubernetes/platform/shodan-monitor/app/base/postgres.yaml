@@ -23,6 +23,8 @@ spec:
               value: shodan
             - name: POSTGRES_PASSWORD
               value: shodan
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -64,3 +66,4 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+
