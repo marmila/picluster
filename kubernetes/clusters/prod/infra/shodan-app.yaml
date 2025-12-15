@@ -11,6 +11,6 @@ spec:
     name: flux-system
   dependsOn:
     - name: shodan-db
-  path: ./kubernetes/platform/shodan-monitor/app/overlays/prod
+  path: ./kubernetes/platform/shodan-monitor/app/base
   prune: true
   wait: false
