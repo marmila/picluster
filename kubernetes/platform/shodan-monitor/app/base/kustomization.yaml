@@ -3,15 +3,12 @@ kind: Kustomization
 namespace: shodan-monitor
 
 resources:
-  - namespace.yaml
-  - postgres.yaml
-  - external-secret.yaml
-  - deployment.yaml
-
-components: []
+  - ../../base
 
 configMapGenerator:
-  - name: shodan-monitor-values
+  - name: shodan-monitor-overlay-values
+    behavior: merge
     files:
-      - values.yaml
+      - overlay-values.yaml
+
 
