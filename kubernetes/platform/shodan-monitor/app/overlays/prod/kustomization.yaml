@@ -1,6 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: shodan-monitor
 
 resources:
   - ../../base
@@ -10,3 +9,4 @@ configMapGenerator:
     behavior: merge
     files:
       - overlay-values.yaml
+

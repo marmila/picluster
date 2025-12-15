@@ -4,11 +4,6 @@ namespace: shodan-monitor
 
 resources:
   - namespace.yaml
-  - deployment.yaml
+  - postgres.yaml
   - external-secret.yaml
-
-configMapGenerator:
-  - name: shodan-config
-    files:
-      - values.yaml
 
