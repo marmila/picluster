@@ -9,6 +9,7 @@ resources:
 
 configMapGenerator:
   - name: shodan-config
-    files:
-      - values.yaml
+    literals:
+      - TARGETS=8.8.8.8,1.1.1.1
+      - SCHEDULE=0 */6 * * *
 
