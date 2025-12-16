@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.0
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.1
+          imagePullPolicy: Always
           env:
             - name: SHODAN_API_KEY
               valueFrom:
@@ -46,5 +46,3 @@ spec:
               value: "21600"
             - name: REQUEST_DELAY
               value: "1.0"
-
-
