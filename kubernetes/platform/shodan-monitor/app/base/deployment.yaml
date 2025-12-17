@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.3
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.4
           imagePullPolicy: Always
           env:
             - name: SHODAN_API_KEY
@@ -43,6 +43,6 @@ spec:
                   name: shodan-db-credentials
                   key: DB_PASS
             - name: INTERVAL_SECONDS
-              value: "21600"
+              value: "90"
             - name: REQUEST_DELAY
               value: "1.0"
