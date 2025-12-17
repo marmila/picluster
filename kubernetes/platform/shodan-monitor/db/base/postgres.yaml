@@ -17,14 +17,20 @@ spec:
         - name: postgres
           image: postgres:15
           env:
-            - name: POSTGRES_DB
-              value: shodan
-            - name: POSTGRES_USER
-              value: shodan
-            - name: POSTGRES_PASSWORD
-              value: shodan
-            - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
+           - name: POSTGRES_DB
+             value: shodan
+           - name: POSTGRES_USER
+             valueFrom:
+               secretKeyRef:
+                 name: shodan-db-credentials
+                 key: DB_USER
+           - name: POSTGRES_PASSWORD
+             valueFrom:
+               secretKeyRef:
+                 name: shodan-db-credentials
+                 key: DB_PASS
+           - name: PGDATA
+             value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
           volumeMounts:
