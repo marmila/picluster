@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.4
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.5
           imagePullPolicy: Always
           env:
             - name: SHODAN_API_KEY
