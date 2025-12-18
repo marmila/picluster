@@ -6,7 +6,7 @@ resources:
 
 images:
   - name: ghcr.io/marmila/shodan-sec-monitor
-    newTag: v1.2.6
+    newTag: v1.2.7
 
 configMapGenerator:
   - name: shodan-config
