@@ -4,9 +4,16 @@ kind: Kustomization
 resources:
   - ../../base
 
+images:
+  - name: ghcr.io/marmila/shodan-sec-monitor
+    newTag: v1.2.6
+
 configMapGenerator:
-  - name: shodan-monitor-overlay-values
+  - name: shodan-config
     behavior: merge
-    files:
-      - overlay-values.yaml
+    literals:
+      - TARGETS=8.8.8.8,1.1.1.1,9.9.9.9
+      - INTERVAL_SECONDS=600
+      - REQUEST_DELAY=1.0
+
 

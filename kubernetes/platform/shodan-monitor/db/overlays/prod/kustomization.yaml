@@ -4,3 +4,18 @@ kind: Kustomization
 resources:
   - ../../base
 
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+      name: shodan-postgres-pvc
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: shodan-postgres-pvc
+      spec:
+        resources:
+          requests:
+            storage: 10Gi
+
+

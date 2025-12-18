@@ -13,9 +13,10 @@ spec:
       labels:
         app: shodan-worker
     spec:
+      restartPolicy: Always
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.5
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.6
           imagePullPolicy: IfNotPresent
           env:
             - name: SHODAN_API_KEY
@@ -46,3 +47,13 @@ spec:
               value: "600"
             - name: REQUEST_DELAY
               value: "1.0"
+            - name: PYTHONPATH
+              value: "/app"
+          resources:
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+

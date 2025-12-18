@@ -17,20 +17,20 @@ spec:
         - name: postgres
           image: postgres:15
           env:
-           - name: POSTGRES_DB
-             value: shodan
-           - name: POSTGRES_USER
-             valueFrom:
-               secretKeyRef:
-                 name: shodan-db-credentials
-                 key: DB_USER
-           - name: POSTGRES_PASSWORD
-             valueFrom:
-               secretKeyRef:
-                 name: shodan-db-credentials
-                 key: DB_PASS
-           - name: PGDATA
-             value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_DB
+              value: shodan
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-db-credentials
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-db-credentials
+                  key: DB_PASS
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -38,11 +38,21 @@ spec:
               mountPath: /var/lib/postgresql/data
           resources:
             requests:
-              cpu: "100m"
-              memory: "256Mi"
-            limits:
-              cpu: "500m"
+              cpu: "200m"
               memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
@@ -59,7 +69,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 2Gi
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
@@ -72,4 +82,5 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+
 
