@@ -16,7 +16,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.8
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.2.9
           imagePullPolicy: IfNotPresent
           env:
             - name: SHODAN_API_KEY
