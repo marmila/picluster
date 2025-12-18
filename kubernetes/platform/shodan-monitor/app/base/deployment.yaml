@@ -24,11 +24,11 @@ spec:
                 secretKeyRef:
                   name: shodan-secret
                   key: SHODAN_API_KEY
-            - name: TARGETS
+            - name: TARGETS_PUBLIC
               valueFrom:
                 configMapKeyRef:
                   name: shodan-config
-                  key: TARGETS
+                  key: TARGETS_PUBLIC
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
