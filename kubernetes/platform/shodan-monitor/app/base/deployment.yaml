@@ -24,11 +24,6 @@ spec:
                 secretKeyRef:
                   name: shodan-secret
                   key: SHODAN_API_KEY
-            - name: TARGETS_PUBLIC
-              valueFrom:
-                configMapKeyRef:
-                  name: shodan-config
-                  key: TARGETS_PUBLIC
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
@@ -43,12 +38,11 @@ spec:
                 secretKeyRef:
                   name: shodan-db-credentials
                   key: DB_PASS
-            - name: INTERVAL_SECONDS
-              value: "600"
-            - name: REQUEST_DELAY
-              value: "1.0"
             - name: PYTHONPATH
               value: "/app"
+          envFrom:
+            - configMapRef:
+                name: shodan-config
           resources:
             limits:
               cpu: "250m"
@@ -56,4 +50,5 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
+
 
