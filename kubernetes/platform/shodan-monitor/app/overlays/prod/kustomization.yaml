@@ -18,7 +18,8 @@ configMapGenerator:
       - TARGETS_ROOT=192.0.47.59,199.7.83.42
       - TARGETS_OWNED=93.40.1.188
       - INTERVAL_SECONDS=600
-      - REQUEST_DELAY=1.2
+      - REQUEST_DELAY=1.0
+
 
 
 

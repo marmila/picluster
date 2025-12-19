@@ -10,7 +10,6 @@ resources:
 configMapGenerator:
   - name: shodan-config
     literals:
-      - TARGETS_PUBLIC=8.8.8.8
       - INTERVAL_SECONDS=21600
       - REQUEST_DELAY=1.0
 
