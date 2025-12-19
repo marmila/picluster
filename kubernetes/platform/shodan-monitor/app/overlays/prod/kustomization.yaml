@@ -6,14 +6,19 @@ resources:
 
 images:
   - name: ghcr.io/marmila/shodan-sec-monitor
-    newTag: v1.3.0
+    newTag: v1.3.1
 
 configMapGenerator:
   - name: shodan-config
     behavior: merge
     literals:
-      - TARGETS=8.8.8.8,1.1.1.1,9.9.9.9
+      - TARGETS_PUBLIC=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,8.26.56.26,8.20.247.20
+      - TARGETS_CDN=93.184.216.34,151.101.1.69,151.101.65.69,151.101.129.69,151.101.193.69
+      - TARGETS_EDGE=104.16.132.229,104.16.133.229,172.64.33.70
+      - TARGETS_ROOT=192.0.47.59,199.7.83.42
+      - TARGETS_OWNED=93.40.1.188
       - INTERVAL_SECONDS=600
-      - REQUEST_DELAY=1.0
+      - REQUEST_DELAY=1.2
+
 
 
