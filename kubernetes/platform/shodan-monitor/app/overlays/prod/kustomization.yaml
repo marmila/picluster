@@ -13,7 +13,7 @@ generatorOptions:
 
 configMapGenerator:
   - name: shodan-config
-    behavior: replace
+    behavior: create
     literals:
       - TARGETS_PUBLIC=8.8.8.8,8.8.4.4,1.1.1.1,1.0.0.1,9.9.9.9,149.112.112.112,208.67.222.222,208.67.220.220,8.26.56.26,8.20.247.20
       - TARGETS_CDN=93.184.216.34,151.101.1.69,151.101.65.69,151.101.129.69,151.101.193.69
