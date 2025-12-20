@@ -15,5 +15,5 @@ configMapGenerator:
     literals:
       - INTERVAL_SECONDS=21600
       - REQUEST_DELAY=1.0
-
+    behavior: merge
 
