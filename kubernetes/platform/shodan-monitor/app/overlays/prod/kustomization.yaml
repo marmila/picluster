@@ -8,6 +8,9 @@ images:
   - name: ghcr.io/marmila/shodan-sec-monitor
     newTag: v1.3.1
 
+generatorOptions:
+  disableNameSuffixHash: true
+
 configMapGenerator:
   - name: shodan-config
     literals:
