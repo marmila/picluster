@@ -7,9 +7,3 @@ resources:
   - deployment.yaml
   - external-secret.yaml
 
-configMapGenerator:
-  - name: shodan-config
-    literals:
-      - INTERVAL_SECONDS=21600
-      - REQUEST_DELAY=1.0
-
