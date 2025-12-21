@@ -11,7 +11,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: db-init
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.4.0
+          image: ghcr.io/marmila/shodan-sec-monitor:1.4.0
           imagePullPolicy: IfNotPresent
           env:
             - name: DB_HOST
