@@ -6,7 +6,7 @@ resources:
 
 images:
   - name: ghcr.io/marmila/shodan-sec-monitor
-    newTag: v1.3.1
+    newTag: v1.4.0
 
 generatorOptions:
   disableNameSuffixHash: true
@@ -20,8 +20,19 @@ configMapGenerator:
       - TARGETS_EDGE=172.64.33.70
       - TARGETS_ROOT=192.0.47.59,199.7.83.42
       - TARGETS_OWNED=93.40.1.188
+
+      # Timing
       - INTERVAL_SECONDS=21600
       - REQUEST_DELAY=1.5
+
+      # New settings for refactored version
+      - SCAN_TIMEOUT_MINUTES=30
+      - ENABLE_CLEANUP=true
+      - LOG_LEVEL=INFO
+
+      # Optional: Enable advanced features
+      - ENABLE_ADVANCED_RISK_SCORING=true
+      - CUSTOM_RISK_RULES={"critical_ports":[8443,9443]}
 
 
 

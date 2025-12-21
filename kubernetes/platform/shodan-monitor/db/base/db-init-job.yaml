@@ -1,0 +1,39 @@
+# db-init-job.yaml (optional, for fresh deployment)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shodan-db-init
+  namespace: shodan-monitor
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-init
+          image: ghcr.io/marmila/shodan-sec-monitor:v2.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_HOST
+              value: shodan-postgres.shodan-monitor.svc.cluster.local
+            - name: DB_NAME
+              value: shodan
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-db-credentials
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-db-credentials
+                  key: DB_PASS
+          command: ["python", "-c"]
+          args:
+            - |
+              from shodan_monitor.db import init_db
+              import logging
+              logging.basicConfig(level=logging.INFO)
+              print("Initializing database schema...")
+              init_db()
+              print("Database schema initialized successfully")

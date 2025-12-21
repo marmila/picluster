@@ -16,9 +16,10 @@ spec:
       restartPolicy: Always
       containers:
         - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:v1.3.1
+          image: ghcr.io/marmila/shodan-sec-monitor:v1.4.0
           imagePullPolicy: IfNotPresent
           env:
+            # PostgreSQL
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -40,9 +41,36 @@ spec:
                   key: DB_PASS
             - name: PYTHONPATH
               value: "/app"
+
+            # NEW: Optional settings for better reliability
+            - name: SHODAN_MAX_RETRIES
+              value: "3"
+            - name: SCAN_TIMEOUT_MINUTES
+              value: "30"
+
           envFrom:
             - configMapRef:
                 name: shodan-config
+
+          # NEW: Health checks (optional but recommended)
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys; sys.exit(0)"
+            initialDelaySeconds: 30
+            periodSeconds: 60
+
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys; sys.exit(0)"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
           resources:
             limits:
               cpu: "250m"
@@ -50,5 +78,14 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
+
+          # NEW: Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
 
 

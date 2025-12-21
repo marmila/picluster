@@ -31,11 +31,14 @@ spec:
                   key: DB_PASS
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+
           ports:
             - containerPort: 5432
+
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+
           resources:
             requests:
               cpu: "200m"
@@ -43,16 +46,20 @@ spec:
             limits:
               cpu: "1"
               memory: "1Gi"
+
+          # Health probes - fixed for postgres:15
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 5
             periodSeconds: 10
+
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 15
             periodSeconds: 20
+
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
@@ -82,5 +89,6 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+
 
 

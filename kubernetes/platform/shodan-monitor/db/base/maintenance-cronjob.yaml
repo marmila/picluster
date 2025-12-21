@@ -1,0 +1,40 @@
+# maintenance-cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shodan-maintenance
+  namespace: shodan-monitor
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: maintenance
+              image: ghcr.io/marmila/shodan-sec-monitor:v2.0.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DB_HOST
+                  value: shodan-postgres.shodan-monitor.svc.cluster.local
+                - name: DB_NAME
+                  value: shodan
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_USER
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_PASS
+                - name: SCAN_TIMEOUT_MINUTES
+                  value: "30"
+                - name: LOG_LEVEL
+                  value: "INFO"
+              command: ["python", "scripts/clean_stuck_scans.py"]
+              args: ["--cleanup-stuck", "--vacuum"]
