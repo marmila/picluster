@@ -47,16 +47,15 @@ spec:
               cpu: "1"
               memory: "1Gi"
 
-          # Health probes - fixed for postgres:15
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command: ["pg_isready", "-U", "shodan", "-d", "shodan"]
             initialDelaySeconds: 5
             periodSeconds: 10
 
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command: ["pg_isready", "-U", "shodan", "-d", "shodan"]
             initialDelaySeconds: 15
             periodSeconds: 20
 
