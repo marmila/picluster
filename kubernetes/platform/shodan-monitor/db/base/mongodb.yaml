@@ -42,7 +42,6 @@ spec:
   security:
     authentication:
       modes: ["SCRAM"]
-    ignoreUnknownUsers: true
   users:
     - name: admin
       db: admin
@@ -69,7 +68,7 @@ spec:
               readinessProbe:
                 exec:
                   command: [/opt/scripts/readinessprobe]
-                initialDelaySeconds: 10
+                initialDelaySeconds: 30
                 periodSeconds: 10
               livenessProbe:
                 exec:
