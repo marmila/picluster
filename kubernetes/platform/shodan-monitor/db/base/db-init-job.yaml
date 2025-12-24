@@ -30,9 +30,9 @@ spec:
           command: ["python", "-c"]
           args:
             - |
-              from shodan_monitor.db import init_db
+              from shodan_monitor.db import init_databases
               import logging
               logging.basicConfig(level=logging.INFO)
-              print("Initializing database schema v2.0.0...")
-              init_db()
-              print("Database schema initialized successfully")
+              print("Initializing databases schemas v2.0.0...")
+              init_databases()
+              print("Databases initialized successfully")
