@@ -62,6 +62,17 @@ spec:
             fsGroup: 999
             runAsUser: 999
             runAsGroup: 999
+            fsGroupChangePolicy: "Always"
+          containers:
+            - name: mongod
+              readinessProbe:
+                initialDelaySeconds: 40
+                timeoutSeconds: 10
+                periodSeconds: 10
+              livenessProbe:
+                initialDelaySeconds: 60
+                timeoutSeconds: 10
+                periodSeconds: 20
       volumeClaimTemplates:
         - metadata:
             name: data-volume
