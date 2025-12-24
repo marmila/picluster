@@ -4,15 +4,40 @@ metadata:
   name: shodan-db-init
   namespace: shodan-monitor
 spec:
-  ttlSecondsAfterFinished: 3600
   template:
     spec:
-      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-dbs
+          image: busybox:1.28
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until nc -zv shodan-postgres.shodan-monitor.svc.cluster.local 5432; do echo "waiting for postgres..."; sleep 2; done
+              until nc -zv shodan-mongo-svc.shodan-monitor.svc.cluster.local 27017; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: db-init
           image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
-          imagePullPolicy: IfNotPresent
+          command: ["python", "-c"]
+          args:
+            - |
+              from shodan_monitor.db import init_databases
+              import logging
+              logging.basicConfig(level=logging.INFO)
+              init_databases()
           env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-mongo-credentials
+                  key: MONGO_USER
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-mongo-credentials
+                  key: MONGO_PASS
+            - name: MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
@@ -27,12 +52,4 @@ spec:
                 secretKeyRef:
                   name: shodan-db-credentials
                   key: DB_PASS
-          command: ["python", "-c"]
-          args:
-            - |
-              from shodan_monitor.db import init_databases
-              import logging
-              logging.basicConfig(level=logging.INFO)
-              print("Initializing databases schemas v2.0.0...")
-              init_databases()
-              print("Databases initialized successfully")
+      restartPolicy: OnFailure
