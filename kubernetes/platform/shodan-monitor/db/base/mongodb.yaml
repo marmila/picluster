@@ -53,6 +53,13 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: shodan-mongo-users
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
   statefulSet:
     spec:
       template:
