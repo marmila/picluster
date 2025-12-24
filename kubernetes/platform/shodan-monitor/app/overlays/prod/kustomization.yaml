@@ -5,8 +5,7 @@ resources:
   - ../../base
 
 images:
-  - name: ghcr.io/marmila/shodan-sec-monitor
-    newName: ghcr.io/marmila/shodan-intel-sentinel
+  - name: ghcr.io/marmila/shodan-intel-sentinel
     newTag: 2.0.0
 
 configMapGenerator:
