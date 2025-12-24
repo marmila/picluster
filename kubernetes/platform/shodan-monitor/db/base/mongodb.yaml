@@ -62,15 +62,6 @@ spec:
             fsGroup: 2000
             runAsUser: 2000
             runAsNonRoot: true
-          containers:
-            - name: mongod
-              readinessProbe:
-                initialDelaySeconds: 60
-                timeoutSeconds: 5
-            - name: mongodb-agent
-              readinessProbe:
-                initialDelaySeconds: 60
-                timeoutSeconds: 5
       volumeClaimTemplates:
         - metadata:
             name: data-volume
