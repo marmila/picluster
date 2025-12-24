@@ -53,13 +53,6 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: shodan-mongo-users
-  resources:
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
   statefulSet:
     spec:
       template:
@@ -69,6 +62,23 @@ spec:
             fsGroup: 2000
             runAsUser: 2000
             runAsNonRoot: true
+          containers:
+            - name: mongod
+              resources:
+                limits:
+                  cpu: "500m"
+                  memory: "1Gi"
+                requests:
+                  cpu: "250m"
+                  memory: "512Mi"
+            - name: mongodb-agent
+              resources:
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
       volumeClaimTemplates:
         - metadata:
             name: data-volume
