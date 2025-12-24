@@ -37,7 +37,7 @@ metadata:
   namespace: shodan-monitor
 spec:
   members: 1
-  type: ReplicaSet
+  type: Standalone
   version: "6.0.5"
   security:
     authentication:
