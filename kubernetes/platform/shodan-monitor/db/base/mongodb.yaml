@@ -42,6 +42,7 @@ spec:
   security:
     authentication:
       modes: ["SCRAM"]
+    ignoreUnknownUsers: true
   users:
     - name: admin
       db: admin
@@ -53,9 +54,6 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: shodan-mongo-users-scram
-  additionalMongodConfig:
-    storage.engine: wiredTiger
-    net.bindIp: "*"
   statefulSet:
     spec:
       template:
@@ -71,7 +69,8 @@ spec:
               readinessProbe:
                 exec:
                   command: [/opt/scripts/readinessprobe]
-                initialDelaySeconds: 40
+                initialDelaySeconds: 10
+                periodSeconds: 10
               livenessProbe:
                 exec:
                   command: ["/bin/sh", "-c", "pgrep mongod"]
