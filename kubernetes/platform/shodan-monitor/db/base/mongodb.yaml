@@ -66,10 +66,18 @@ spec:
           containers:
             - name: mongod
               readinessProbe:
+                exec:
+                  command:
+                    - /opt/scripts/readinessprobe
                 initialDelaySeconds: 40
                 timeoutSeconds: 10
                 periodSeconds: 10
               livenessProbe:
+                exec:
+                  command:
+                    - /bin/sh
+                    - -c
+                    - "pgrep mongod"
                 initialDelaySeconds: 60
                 timeoutSeconds: 10
                 periodSeconds: 20
