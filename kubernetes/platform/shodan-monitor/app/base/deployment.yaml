@@ -20,12 +20,11 @@ spec:
             - /bin/sh
             - -c
             - |
-              until nslookup shodan-postgres; do echo "waiting for postgres dns..."; sleep 2; done
-              until nslookup shodan-mongo-svc; do echo "waiting for mongo dns..."; sleep 2; done
+              until nslookup shodan-postgres; do echo "waiting for postgres..."; sleep 2; done
+              until nslookup shodan-mongo-svc; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: shodan-intel-sentinel
           image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
-          imagePullPolicy: IfNotPresent
           resources:
             limits:
               cpu: "250m"
@@ -37,7 +36,7 @@ spec:
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: shodan-app-secrets
+                  name: shodan-secret
                   key: SHODAN_API_KEY
             - name: MONGO_USER
               valueFrom:
@@ -74,11 +73,6 @@ spec:
             - name: profiles-volume
               mountPath: /app/profiles.yaml
               subPath: profiles.yaml
-          livenessProbe:
-            exec:
-              command: ["python", "-c", "import sys; sys.exit(0)"]
-            initialDelaySeconds: 30
-            periodSeconds: 60
       volumes:
         - name: profiles-volume
           configMap:
