@@ -13,17 +13,32 @@ spec:
       labels:
         app: shodan-intel-sentinel
     spec:
+      initContainers:
+        - name: wait-for-dbs
+          image: busybox:1.28
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until nc -zv shodan-postgres.shodan-monitor.svc.cluster.local 5432; do echo "waiting for postgres..."; sleep 2; done
+              until nc -zv shodan-mongo-svc.shodan-monitor.svc.cluster.local 27017; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: shodan-intel-sentinel
           image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
           imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: "250m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
           env:
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: shodan-secret
+                  name: shodan-app-secrets
                   key: SHODAN_API_KEY
-            # MongoDB - Costruzione URI da user e pass
             - name: MONGO_USER
               valueFrom:
                 secretKeyRef:
@@ -36,7 +51,6 @@ spec:
                   key: MONGO_PASS
             - name: MONGO_URI
               value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
-            # PostgreSQL
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
@@ -65,13 +79,6 @@ spec:
               command: ["python", "-c", "import sys; sys.exit(0)"]
             initialDelaySeconds: 30
             periodSeconds: 60
-          resources:
-            limits:
-              cpu: "250m"
-              memory: "512Mi"
-            requests:
-              cpu: "100m"
-              memory: "256Mi"
       volumes:
         - name: profiles-volume
           configMap:
