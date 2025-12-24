@@ -10,7 +10,7 @@ images:
 
 configMapGenerator:
   - name: shodan-config
-    behavior: replace
+    behavior: merge
     literals:
       - INTERVAL_SECONDS=21600
       - LOG_LEVEL=INFO
