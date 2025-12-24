@@ -37,7 +37,7 @@ metadata:
   namespace: shodan-monitor
 spec:
   members: 1
-  type: Standalone
+  type: ReplicaSet
   version: "6.0.5"
   security:
     authentication:
@@ -52,7 +52,7 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
-      scramCredentialsSecretName: shodan-mongo-users
+      scramCredentialsSecretName: shodan-mongo-users-scram
   statefulSet:
     spec:
       template:
