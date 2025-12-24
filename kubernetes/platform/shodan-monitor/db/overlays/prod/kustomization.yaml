@@ -9,13 +9,14 @@ patches:
       kind: PersistentVolumeClaim
       name: shodan-postgres-pvc
     patch: |-
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: shodan-postgres-pvc
-      spec:
-        resources:
-          requests:
-            storage: 10Gi
-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 10Gi
+  - target:
+      kind: MongoDBCommunity
+      name: shodan-mongo
+    patch: |-
+      - op: replace
+        path: /spec/statefulSet/spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 20Gi
 

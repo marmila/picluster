@@ -1,30 +1,42 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: shodan-worker
+  name: shodan-intel-sentinel
   namespace: shodan-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: shodan-worker
+      app: shodan-intel-sentinel
   template:
     metadata:
       labels:
-        app: shodan-worker
+        app: shodan-intel-sentinel
     spec:
-      restartPolicy: Always
       containers:
-        - name: shodan-worker
-          image: ghcr.io/marmila/shodan-sec-monitor:1.4.0
+        - name: shodan-intel-sentinel
+          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
           imagePullPolicy: IfNotPresent
           env:
-            # PostgreSQL
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: shodan-secret
                   key: SHODAN_API_KEY
+            # MongoDB - Costruzione URI da user e pass
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-mongo-credentials
+                  key: MONGO_USER
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-mongo-credentials
+                  key: MONGO_PASS
+            - name: MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
+            # PostgreSQL
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
@@ -41,51 +53,28 @@ spec:
                   key: DB_PASS
             - name: PYTHONPATH
               value: "/app"
-
-            # NEW: Optional settings for better reliability
-            - name: SHODAN_MAX_RETRIES
-              value: "3"
-            - name: SCAN_TIMEOUT_MINUTES
-              value: "30"
-
           envFrom:
             - configMapRef:
                 name: shodan-config
-
-          # NEW: Health checks (optional but recommended)
+          volumeMounts:
+            - name: profiles-volume
+              mountPath: /app/profiles.yaml
+              subPath: profiles.yaml
           livenessProbe:
             exec:
-              command:
-                - python
-                - -c
-                - "import sys; sys.exit(0)"
+              command: ["python", "-c", "import sys; sys.exit(0)"]
             initialDelaySeconds: 30
             periodSeconds: 60
-
-          readinessProbe:
-            exec:
-              command:
-                - python
-                - -c
-                - "import sys; sys.exit(0)"
-            initialDelaySeconds: 5
-            periodSeconds: 10
-
           resources:
             limits:
               cpu: "250m"
-              memory: "256Mi"
+              memory: "512Mi"
             requests:
               cpu: "100m"
-              memory: "128Mi"
-
-          # NEW: Security context
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 1000
-            capabilities:
-              drop:
-                - ALL
+              memory: "256Mi"
+      volumes:
+        - name: profiles-volume
+          configMap:
+            name: shodan-profiles
 
 

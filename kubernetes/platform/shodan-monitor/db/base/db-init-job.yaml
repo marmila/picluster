@@ -1,4 +1,3 @@
-# db-init-job.yaml (optional, for fresh deployment)
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -11,7 +10,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: db-init
-          image: ghcr.io/marmila/shodan-sec-monitor:1.4.0
+          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
           imagePullPolicy: IfNotPresent
           env:
             - name: DB_HOST
@@ -34,6 +33,6 @@ spec:
               from shodan_monitor.db import init_db
               import logging
               logging.basicConfig(level=logging.INFO)
-              print("Initializing database schema...")
+              print("Initializing database schema v2.0.0...")
               init_db()
               print("Database schema initialized successfully")

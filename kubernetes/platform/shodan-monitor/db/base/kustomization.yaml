@@ -8,3 +8,4 @@ resources:
   - external-secret.yaml
   - db-init-job.yaml
   - maintenance-cronjob.yaml
+  - mongodb.yaml

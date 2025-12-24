@@ -1,11 +1,10 @@
-# maintenance-cronjob.yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: shodan-maintenance
   namespace: shodan-monitor
 spec:
-  schedule: "0 2 * * *"  # Daily at 2 AM
+  schedule: "0 2 * * *"
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -15,9 +14,21 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: maintenance
-              image: ghcr.io/marmila/shodan-sec-monitor:1.4.0
+              image: ghcr.io/marmila/shodan-intel-sentinel:2.0.0
               imagePullPolicy: IfNotPresent
               env:
+                - name: MONGO_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_USER
+                - name: MONGO_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_PASS
+                - name: MONGO_URI
+                  value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
                 - name: DB_HOST
                   value: shodan-postgres.shodan-monitor.svc.cluster.local
                 - name: DB_NAME
@@ -32,9 +43,7 @@ spec:
                     secretKeyRef:
                       name: shodan-db-credentials
                       key: DB_PASS
-                - name: SCAN_TIMEOUT_MINUTES
-                  value: "30"
                 - name: LOG_LEVEL
                   value: "INFO"
-              command: ["python", "scripts/clean_stuck_scans.py"]
-              args: ["--cleanup-stuck", "--vacuum"]
+              command: ["python", "scripts/maintenance.py"]
+              args: ["--days", "30"]
