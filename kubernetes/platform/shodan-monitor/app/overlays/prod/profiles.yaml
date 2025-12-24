@@ -1,0 +1,34 @@
+intelligence_profiles:
+  # --- DATABASE & STORAGE ---
+  - name: unauthenticated_databases
+    query: "product:mongodb port:27017 -authentication"
+    severity: critical
+    tags: [database, leak]
+    enrich_with_internetdb: true
+
+  # --- MALWARE & C2 ---
+  - name: cobalt_strike_c2
+    query: "hash:-2007783223"
+    severity: high
+    tags: [malware, c2]
+    enrich_with_internetdb: true
+
+  # --- CMS & WEB APPS ---
+  - name: wordpress_vulnerable_versions
+    query: "http.component:wordpress"
+    severity: medium
+    tags: [cms, wordpress]
+    enrich_with_internetdb: true
+
+  - name: exposed_phpmyadmin
+    query: "http.title:phpMyAdmin"
+    severity: high
+    tags: [web, admin_interface]
+    enrich_with_internetdb: true
+
+  # --- INDUSTRIAL (ICS) ---
+  - name: industrial_modbus_exposure
+    query: "port:502"
+    severity: critical
+    tags: [ics, scada]
+    enrich_with_internetdb: false
