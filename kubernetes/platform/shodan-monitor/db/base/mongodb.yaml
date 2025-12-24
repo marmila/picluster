@@ -59,25 +59,11 @@ spec:
         spec:
           serviceAccountName: mongodb-database
           securityContext:
-            fsGroup: 2000
-            runAsUser: 2000
+            fsGroup: 999
+            runAsUser: 999
             runAsNonRoot: true
           containers:
             - name: mongod
-              readinessProbe:
-                exec:
-                  command:
-                    - /opt/scripts/readinessprobe
-                initialDelaySeconds: 60
-                timeoutSeconds: 10
-                periodSeconds: 10
-                failureThreshold: 10
-              livenessProbe:
-                exec:
-                  command:
-                    - /opt/scripts/readinessprobe
-                initialDelaySeconds: 90
-                timeoutSeconds: 10
               resources:
                 limits:
                   cpu: "1000m"
