@@ -62,13 +62,6 @@ spec:
             fsGroup: 999
             runAsUser: 999
             runAsGroup: 999
-          containers:
-            - name: mongod
-              volumeMounts:
-                - name: data-volume
-                  mountPath: /data/db
-                - name: logs
-                  mountPath: /var/log/mongodb-mms-automation
       volumeClaimTemplates:
         - metadata:
             name: data-volume
@@ -78,11 +71,3 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-        - metadata:
-            name: logs
-          spec:
-            accessModes: [ "ReadWriteOnce" ]
-            storageClassName: longhorn
-            resources:
-              requests:
-                storage: 1Gi
