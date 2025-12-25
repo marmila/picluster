@@ -39,7 +39,7 @@ spec:
                   name: shodan-secret
                   key: SHODAN_API_KEY
 
-            - name: MONGO_URI
+            - name: MONGO_URL
               value: "mongodb://admin:$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin&authMechanism=SCRAM-SHA-256"
             - name: MONGO_PASS
               valueFrom:
