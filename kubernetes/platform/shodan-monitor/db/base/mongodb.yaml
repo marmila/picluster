@@ -67,7 +67,7 @@ spec:
             runAsGroup: 999
             fsGroupChangePolicy: "Always"
           nodeSelector:
-            kubernetes.io/arch: amd64    # <-- Aggiunto: forza scheduling solo su nodi amd64
+            kubernetes.io/arch: amd64
           containers:
             - name: mongod
               resources:
@@ -79,10 +79,10 @@ spec:
                   memory: 500Mi
       volumeClaimTemplates:
         - metadata:
-          name: data-volume
-      spec:
-          accessModes: [ "ReadWriteOnce" ]
-          storageClassName: longhorn
-          resources:
-            requests:
-              storage: 20Gi
+            name: data-volume
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: longhorn
+            resources:
+              requests:
+                storage: 20Gi
