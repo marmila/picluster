@@ -38,7 +38,7 @@ metadata:
 spec:
   members: 1
   type: ReplicaSet
-  version: "6.0.5"
+  version: "6.0.11" # Come da tue specifiche
   security:
     authentication:
       modes: ["SCRAM"]
@@ -53,6 +53,9 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
       scramCredentialsSecretName: shodan-mongo-users-scram
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+    net.bindIp: "*"
   statefulSet:
     spec:
       template:
@@ -65,15 +68,13 @@ spec:
             fsGroupChangePolicy: "Always"
           containers:
             - name: mongod
-              readinessProbe:
-                exec:
-                  command: [/opt/scripts/readinessprobe]
-                initialDelaySeconds: 30
-                periodSeconds: 10
-              livenessProbe:
-                exec:
-                  command: ["/bin/sh", "-c", "pgrep mongod"]
-                initialDelaySeconds: 60
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+                requests:
+                  cpu: 500m
+                  memory: 500Mi
       volumeClaimTemplates:
         - metadata:
             name: data-volume
