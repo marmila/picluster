@@ -24,7 +24,8 @@ spec:
               until nslookup shodan-mongo-svc; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: shodan-intel-sentinel
-          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.1
+          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.2
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               cpu: "250m"

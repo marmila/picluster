@@ -6,7 +6,7 @@ resources:
 
 images:
   - name: ghcr.io/marmila/shodan-intel-sentinel
-    newTag: 2.0.1
+    newTag: 2.0.2
 
 configMapGenerator:
   - name: shodan-config
