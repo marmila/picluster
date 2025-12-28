@@ -56,6 +56,8 @@ spec:
           db: shodan_intelligence
         - name: readWrite
           db: admin
+        - name: backup
+          db: admin
       scramCredentialsSecretName: shodan-mongo-users-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
