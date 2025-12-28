@@ -32,3 +32,4 @@ intelligence_profiles:
     severity: critical
     tags: [ics, scada]
     enrich_with_internetdb: false
+    max_results: 10000
