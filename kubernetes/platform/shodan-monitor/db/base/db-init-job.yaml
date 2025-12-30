@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: shodan-db-init
+  name: apexforge-db-init
   namespace: shodan-monitor
 spec:
   template:
@@ -14,56 +14,22 @@ spec:
             - -c
             - |
               until nslookup shodan-postgres.shodan-monitor.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
+              until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: db-init
           image: ghcr.io/marmila/apex-forge:3.0.1
           command: ["python", "-c"]
           args:
             - |
+              from apex_forge.db import init_databases
               import logging
-              import os
-              import psycopg2
-              from psycopg2.extras import DictCursor
-              from psycopg2.pool import SimpleConnectionPool
-
               logging.basicConfig(level=logging.INFO)
-              logger = logging.getLogger("db-init")
-
-              conn_params = {
-                  "host": "shodan-postgres.shodan-monitor.svc.cluster.local",
-                  "database": "shodan",
-                  "user": os.getenv("DB_USER"),
-                  "password": os.getenv("DB_PASS"),
-                  "port": "5432"
-              }
-
-              pool = SimpleConnectionPool(1, 1, **conn_params)
-              with pool.getconn() as conn:
-                  conn.autocommit = True
-                  with conn.cursor() as cur:
-                      cur.execute("""
-                          CREATE TABLE IF NOT EXISTS intel_stats (
-                              profile_name VARCHAR(100) PRIMARY KEY,
-                              total_count INTEGER DEFAULT 0,
-                              country_dist JSONB DEFAULT '{}',
-                              last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                              high_critical_count INTEGER DEFAULT 0,
-                              avg_risk_score FLOAT DEFAULT 0.0
-                          );
-                      """)
-                      cur.execute("""
-                          CREATE TABLE IF NOT EXISTS intel_history (
-                              id SERIAL PRIMARY KEY,
-                              profile_name VARCHAR(100),
-                              count INTEGER,
-                              high_critical_new INTEGER DEFAULT 0,
-                              observed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                          );
-                      """)
-                      # Add all your views here if you want them created at startup
-                      logger.info("ApexForge database schema initialized")
-              pool.closeall()
+              init_databases()
           env:
+            - name: DB_HOST
+              value: "shodan-postgres.shodan-monitor.svc.cluster.local"
+            - name: DB_NAME
+              value: "shodan"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
