@@ -53,7 +53,7 @@ spec:
         - name: userAdminAnyDatabase
           db: admin
         - name: readWrite
-          db: shodan_intelligence
+          db: apexforge_intelligence
         - name: readWrite
           db: admin
         - name: backup
