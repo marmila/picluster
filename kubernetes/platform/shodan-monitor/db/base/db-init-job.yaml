@@ -13,8 +13,8 @@ spec:
             - /bin/sh
             - -c
             - |
-              until nslookup shodan-postgres.shodan-monitor.svc.cluster.local; do echo "waiting for postgres dns..."; sleep 2; done
-              until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo dns..."; sleep 2; done
+              until nslookup shodan-postgres.shodan-monitor.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
+              until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: db-init
           image: ghcr.io/marmila/apex-forge:3.0.1
@@ -24,8 +24,19 @@ spec:
               from apex_forge.db import init_databases
               import logging
               logging.basicConfig(level=logging.INFO)
+              logger = logging.getLogger("apexforge.db-init")
+              logger.info("Starting ApexForge database schema initialization")
               init_databases()
+              logger.info("ApexForge database schema initialized successfully")
           env:
+            # Shodan key — required to avoid config crash
+            - name: SHODAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-secret
+                  key: SHODAN_API_KEY
+
+            # MongoDB credentials
             - name: MONGO_USER
               valueFrom:
                 secretKeyRef:
@@ -38,6 +49,8 @@ spec:
                   key: MONGO_PASS
             - name: MONGO_URI
               value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc:27017/shodan_intel?authSource=admin"
+
+            # PostgreSQL credentials
             - name: DB_HOST
               value: shodan-postgres.shodan-monitor.svc.cluster.local
             - name: DB_NAME
