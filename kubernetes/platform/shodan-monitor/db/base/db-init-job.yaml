@@ -17,7 +17,7 @@ spec:
               until nslookup shodan-mongo-svc; do echo "waiting for mongo dns..."; sleep 2; done
       containers:
         - name: db-init
-          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.4
+          image: ghcr.io/marmila/apex-forge:3.0.1
           command: ["python", "-c"]
           args:
             - |
