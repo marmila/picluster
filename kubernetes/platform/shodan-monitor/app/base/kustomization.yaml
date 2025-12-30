@@ -9,6 +9,8 @@ resources:
   - namespace.yaml
   - deployment.yaml
   - external-secret.yaml
+  - external-secret-virustotal.yaml
+  - service-monitor.yaml
 
 configMapGenerator:
   - name: shodan-config

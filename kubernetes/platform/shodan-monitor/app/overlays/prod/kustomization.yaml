@@ -5,8 +5,11 @@ resources:
   - ../../base
 
 images:
+  - name: ghcr.io/marmila/apex-forge
+    newTag: 3.0.0
   - name: ghcr.io/marmila/shodan-intel-sentinel
-    newTag: 2.0.4
+    newName: ghcr.io/marmila/apex-forge
+    newTag: 3.0.0
 
 configMapGenerator:
   - name: shodan-config
@@ -16,6 +19,7 @@ configMapGenerator:
       - LOG_LEVEL=INFO
 
   - name: shodan-profiles
+    behavior: create
     files:
       - profiles.yaml
 

@@ -1,17 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: shodan-intel-sentinel
+  name: apexforge-collector
   namespace: shodan-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: shodan-intel-sentinel
+      app: apexforge-collector
   template:
     metadata:
       labels:
-        app: shodan-intel-sentinel
+        app: apexforge-collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       initContainers:
         - name: wait-for-dbs
@@ -20,25 +24,35 @@ spec:
             - /bin/sh
             - -c
             - |
-              until nslookup shodan-postgres; do echo "waiting for postgres..."; sleep 2; done
-              until nslookup shodan-mongo-svc; do echo "waiting for mongo..."; sleep 2; done
+              until nslookup shodan-postgres.shodan-monitor.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
+              until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
-        - name: shodan-intel-sentinel
-          image: ghcr.io/marmila/shodan-intel-sentinel:2.0.4
+        - name: apexforge-collector
+          image: ghcr.io/marmila/apex-forge:3.0.0
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: metrics
+              protocol: TCP
           resources:
-            limits:
-              cpu: "250m"
-              memory: "512Mi"
             requests:
-              cpu: "100m"
-              memory: "256Mi"
+              cpu: "150m"
+              memory: "384Mi"
+            limits:
+              cpu: "500m"
+              memory: "768Mi"
           env:
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: shodan-secret
                   key: SHODAN_API_KEY
+
+            - name: VIRUSTOTAL_API_KEY
+              valueFrom:
+               secretKeyRef:
+                 name: virustotal-api-key
+                 key: VIRUSTOTAL_API_KEY
 
             - name: MONGO_PASS
               valueFrom:
@@ -50,7 +64,7 @@ spec:
               value: "mongodb://admin:$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin&authMechanism=SCRAM-SHA-256"
 
             - name: DB_HOST
-              value: "shodan-postgres"
+              value: "shodan-postgres.shodan-monitor.svc.cluster.local"
             - name: DB_NAME
               value: "shodan"
             - name: DB_USER
@@ -66,13 +80,34 @@ spec:
 
             - name: PYTHONPATH
               value: "/app"
+
           envFrom:
             - configMapRef:
                 name: shodan-config
+
           volumeMounts:
             - name: profiles-volume
               mountPath: /app/profiles.yaml
               subPath: profiles.yaml
+
+          # Health checks — critical for reliable rollout
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
       volumes:
         - name: profiles-volume
           configMap:
