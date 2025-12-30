@@ -51,7 +51,7 @@ spec:
             - name: VIRUSTOTAL_API_KEY
               valueFrom:
                secretKeyRef:
-                 name: virustotal-api-key
+                 name: virustotal-secret
                  key: VIRUSTOTAL_API_KEY
 
             - name: MONGO_PASS
