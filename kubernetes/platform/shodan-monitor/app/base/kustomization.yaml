@@ -11,6 +11,7 @@ resources:
   - external-secret.yaml
   - external-secret-virustotal.yaml
   - service-monitor.yaml
+  - apexforge-collector-service.yaml
 
 configMapGenerator:
   - name: shodan-config
