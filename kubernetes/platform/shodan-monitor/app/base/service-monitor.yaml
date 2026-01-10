@@ -10,7 +10,8 @@ spec:
     matchLabels:
       app: apexforge-collector
   endpoints:
-    - port: metrics
+    - port: "8000"
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s
+      scheme: http
