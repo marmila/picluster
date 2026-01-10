@@ -19,12 +19,14 @@ intelligence_profiles:
     severity: medium
     tags: [cms, wordpress]
     enrich_with_internetdb: true
+    max_results: 10000
 
   - name: exposed_phpmyadmin
     query: "http.title:phpMyAdmin"
     severity: high
     tags: [web, admin_interface]
     enrich_with_internetdb: true
+    max_results: 10000
 
   # --- INDUSTRIAL (ICS) ---
   - name: industrial_modbus_exposure
