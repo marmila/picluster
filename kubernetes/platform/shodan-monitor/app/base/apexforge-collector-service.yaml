@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: apexforge-collector
   namespace: shodan-monitor
+  labels:
+    app: apexforge-collector
+    kustomize.toolkit.fluxcd.io/name: shodan-app
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
 spec:
   selector:
     app: apexforge-collector
