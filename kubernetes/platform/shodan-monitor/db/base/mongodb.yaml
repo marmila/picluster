@@ -55,6 +55,8 @@ spec:
         - name: readWrite
           db: apexforge_intelligence
         - name: readWrite
+          db: shodan_intel
+        - name: readWrite
           db: admin
         - name: backup
           db: admin
