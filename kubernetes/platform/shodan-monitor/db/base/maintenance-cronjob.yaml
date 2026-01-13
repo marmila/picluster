@@ -14,7 +14,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: maintenance
-              image: ghcr.io/marmila/apex-forge:3.0.10
+              image: ghcr.io/marmila/apex-forge:4.0.0
               imagePullPolicy: IfNotPresent
               env:
                 - name: MONGO_USER
