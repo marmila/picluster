@@ -33,10 +33,3 @@ spec:
           name: keycloak-db-minio-secret
           key: AWS_SECRET_ACCESS_KEY
     retentionPolicy: "30d"
-  postgresql:
-    parameters:
-      # Recovery settings to handle stuck replicas
-      recovery_target_timeline: "latest"
-      max_wal_senders: "10"
-      wal_level: "logical"
-      recovery_timeout: "300000"
