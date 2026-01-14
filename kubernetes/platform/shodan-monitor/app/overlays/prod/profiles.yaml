@@ -5,6 +5,50 @@ intelligence_profiles:
     severity: critical
     tags: [database, leak]
     enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: unauthenticated_redis
+    query: "product:redis port:6379 -authentication"
+    severity: critical
+    tags: [database, leak, cache]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_elasticsearch
+    query: "product:elasticsearch port:9200"
+    severity: high
+    tags: [database, search, leak]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: unauthenticated_postgresql
+    query: "product:postgresql port:5432 -authentication"
+    severity: critical
+    tags: [database, leak]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_memcached
+    query: "product:memcached port:11211"
+    severity: high
+    tags: [database, cache, ddos]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- REMOTE ACCESS SERVICES ---
+  - name: exposed_rdp
+    query: "product:rdp port:3389"
+    severity: high
+    tags: [remote_access, windows]
+    enrich_with_internetdb: true
+    max_results: 10000
+
+  - name: exposed_vnc
+    query: "product:vnc port:5900"
+    severity: high
+    tags: [remote_access, desktop]
+    enrich_with_internetdb: true
+    max_results: 5000
 
   # --- MALWARE & C2 ---
   - name: cobalt_strike_c2
@@ -12,6 +56,7 @@ intelligence_profiles:
     severity: high
     tags: [malware, c2]
     enrich_with_internetdb: true
+    max_results: 1000
 
   # --- CMS & WEB APPS ---
   - name: wordpress_vulnerable_versions
@@ -26,7 +71,52 @@ intelligence_profiles:
     severity: high
     tags: [web, admin_interface]
     enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_jenkins
+    query: "product:jenkins port:8080"
+    severity: high
+    tags: [cicd, automation, web]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_grafana
+    query: "product:grafana port:3000"
+    severity: medium
+    tags: [monitoring, dashboards, web]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- CLOUD & CONTAINER SERVICES ---
+  - name: exposed_docker_registry
+    query: "product:docker port:5000"
+    severity: high
+    tags: [cloud, container, registry]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_kubernetes_api
+    query: "product:kubernetes port:6443"
+    severity: critical
+    tags: [orchestration, container, cloud]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  # --- FILE SHARING ---
+  - name: exposed_smb
+    query: "product:smb port:445"
+    severity: high
+    tags: [file_sharing, windows]
+    enrich_with_internetdb: true
     max_results: 10000
+
+  # --- MESSAGING & QUEUES ---
+  - name: exposed_rabbitmq
+    query: "product:rabbitmq port:5672"
+    severity: high
+    tags: [messaging, queue, amqp]
+    enrich_with_internetdb: true
+    max_results: 2000
 
   # --- INDUSTRIAL (ICS) ---
   - name: industrial_modbus_exposure
@@ -35,3 +125,10 @@ intelligence_profiles:
     tags: [ics, scada]
     enrich_with_internetdb: false
     max_results: 10000
+
+  - name: siemens_s7_exposure
+    query: "product:\"Siemens S7\" port:102"
+    severity: critical
+    tags: [ics, scada, siemens]
+    enrich_with_internetdb: false
+    max_results: 5000
