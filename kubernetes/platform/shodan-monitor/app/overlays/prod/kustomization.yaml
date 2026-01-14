@@ -15,7 +15,7 @@ configMapGenerator:
   - name: shodan-config
     behavior: merge
     literals:
-      - INTERVAL_SECONDS=864000
+      - INTERVAL_SECONDS=14400
       - LOG_LEVEL=INFO
 
   - name: shodan-profiles
