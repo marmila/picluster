@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: shodan-mongo-sync
+  namespace: shodan-monitor
+spec:
+  schedule: "*/15 * * * *"  # Every 15 minutes
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mongo-sync
+              image: ghcr.io/marmila/apex-forge:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MONGO_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_USER
+                - name: MONGO_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_PASS
+                - name: MONGO_URI
+                  value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
+                - name: DB_HOST
+                  value: shodan-postgres.shodan-monitor.svc.cluster.local
+                - name: DB_NAME
+                  value: shodan
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_USER
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-db-credentials
+                      key: DB_PASS
+                - name: LOG_LEVEL
+                  value: "INFO"
+              command: ["python", "scripts/maintenance.py"]
+              args: ["--sync-mongo-stats"]
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "200m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"

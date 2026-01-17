@@ -9,3 +9,4 @@ resources:
   - db-init-job.yaml
   - maintenance-cronjob.yaml
   - mongodb.yaml
+  - mongo-sync-cronjob.yaml
