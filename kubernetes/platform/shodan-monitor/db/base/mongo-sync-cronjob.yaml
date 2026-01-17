@@ -27,7 +27,7 @@ spec:
                     secretKeyRef:
                       name: shodan-mongo-credentials
                       key: MONGO_PASS
-                - name: MONGO_URI
+                - name: MONGO_URL
                   value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@shodan-mongo-svc.shodan-monitor.svc.cluster.local:27017/shodan_intel?authSource=admin"
                 - name: DB_HOST
                   value: shodan-postgres.shodan-monitor.svc.cluster.local
