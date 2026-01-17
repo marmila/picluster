@@ -28,7 +28,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:4.0.4
+          image: ghcr.io/marmila/apex-forge:3.0.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -90,14 +90,14 @@ spec:
               mountPath: /app/profiles.yaml
               subPath: profiles.yaml
 
-          # Health checks — critical for reliable rollout
+          # Increased timeouts to handle slow MongoDB queries without causing restarts
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 15
             failureThreshold: 6
           livenessProbe:
             httpGet:
@@ -105,12 +105,10 @@ spec:
               port: 8000
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 3
+            timeoutSeconds: 20
+            failureThreshold: 5
 
       volumes:
         - name: profiles-volume
           configMap:
             name: shodan-profiles
-
-
