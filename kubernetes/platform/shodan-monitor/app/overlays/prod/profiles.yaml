@@ -1,4 +1,5 @@
-# --- DATABASE & STORAGE ---
+intelligence_profiles:
+  # --- DATABASE & STORAGE ---
   - name: unauthenticated_databases
     query: "product:mongodb port:27017 -authentication"
     severity: critical
