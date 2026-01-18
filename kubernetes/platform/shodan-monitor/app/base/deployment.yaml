@@ -29,7 +29,7 @@ spec:
       containers:
         - name: apexforge-collector
           image: ghcr.io/marmila/apex-forge:6.0.0
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
               name: metrics
