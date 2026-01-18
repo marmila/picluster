@@ -1,5 +1,4 @@
-intelligence_profiles:
-  # --- DATABASE & STORAGE ---
+# --- DATABASE & STORAGE ---
   - name: unauthenticated_databases
     query: "product:mongodb port:27017 -authentication"
     severity: critical
@@ -35,6 +34,27 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 3000
 
+  - name: exposed_mysql
+    query: "product:mysql port:3306"
+    severity: critical
+    tags: [database, mysql]
+    enrich_with_internetdb: true
+    max_results: 10000
+
+  - name: exposed_influxdb
+    query: "product:influxdb port:8086"
+    severity: high
+    tags: [database, timeseries]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_cassandra
+    query: "product:cassandra port:9042"
+    severity: high
+    tags: [database, nosql]
+    enrich_with_internetdb: true
+    max_results: 2000
+
   # --- REMOTE ACCESS SERVICES ---
   - name: exposed_rdp
     query: "product:rdp port:3389"
@@ -49,6 +69,28 @@ intelligence_profiles:
     tags: [remote_access, desktop]
     enrich_with_internetdb: true
     max_results: 5000
+
+  - name: exposed_telnet
+    query: "product:telnet port:23"
+    severity: high
+    tags: [remote_access, insecure]
+    enrich_with_internetdb: true
+    max_results: 10000
+
+  - name: exposed_ssh_default_keys
+    query: "product:ssh port:22 default"
+    severity: high
+    tags: [remote_access, ssh, keys]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- FILE TRANSFER ---
+  - name: exposed_ftp_anonymous
+    query: "product:ftp port:21 anonymous"
+    severity: high
+    tags: [file_transfer, anonymous_access]
+    enrich_with_internetdb: true
+    max_results: 10000
 
   # --- MALWARE & C2 ---
   - name: cobalt_strike_c2
@@ -87,6 +129,49 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 3000
 
+  - name: exposed_apache_directory_listing
+    query: "product:apache port:80 \"Index of\""
+    severity: medium
+    tags: [web, apache, directory_listing]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_nginx_default
+    query: "product:nginx port:80 default"
+    severity: medium
+    tags: [web, nginx]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_iis_directory_listing
+    query: "product:iis port:80 \"Index of\""
+    severity: medium
+    tags: [web, iis, windows]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_swagger_ui
+    query: "http.title:swagger port:80"
+    severity: medium
+    tags: [api, documentation, swagger]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- MAIL SERVERS ---
+  - name: exposed_smtp_open_relay
+    query: "product:smtp port:25 \"220\" -auth"
+    severity: high
+    tags: [mail, smtp, spam]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_imap
+    query: "product:imap port:143"
+    severity: medium
+    tags: [mail, imap]
+    enrich_with_internetdb: true
+    max_results: 3000
+
   # --- CLOUD & CONTAINER SERVICES ---
   - name: exposed_docker_registry
     query: "product:docker port:5000"
@@ -99,6 +184,20 @@ intelligence_profiles:
     query: "product:kubernetes port:6443"
     severity: critical
     tags: [orchestration, container, cloud]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  - name: exposed_consul
+    query: "product:consul port:8500"
+    severity: high
+    tags: [service_discovery, consul]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_etcd
+    query: "product:etcd port:2379"
+    severity: critical
+    tags: [orchestration, etcd, kubernetes]
     enrich_with_internetdb: true
     max_results: 1000
 
@@ -115,6 +214,72 @@ intelligence_profiles:
     query: "product:rabbitmq port:5672"
     severity: high
     tags: [messaging, queue, amqp]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_kafka
+    query: "product:kafka port:9092"
+    severity: high
+    tags: [messaging, kafka, stream]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_mqtt
+    query: "product:mqtt port:1883"
+    severity: medium
+    tags: [messaging, iot, mqtt]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- NETWORK SERVICES ---
+  - name: exposed_snmp_public
+    query: "product:snmp port:161 \"public\""
+    severity: high
+    tags: [network, snmp, monitoring]
+    enrich_with_internetdb: true
+    max_results: 10000
+
+  - name: exposed_ldap
+    query: "product:ldap port:389"
+    severity: high
+    tags: [directory, ldap, authentication]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: exposed_telnet_routers
+    query: "product:telnet port:23 \"Router\""
+    severity: high
+    tags: [network, router, telnet]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- VULNERABLE SOFTWARE ---
+  - name: log4j_exposed
+    query: "product:log4j vuln:\"CVE-2021-44228\""
+    severity: critical
+    tags: [java, log4j, critical_vuln]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: vulnerable_software_recent_cves
+    query: "vuln:\"CVE-2024\""
+    severity: critical
+    tags: [vulnerabilities, cve, recent]
+    enrich_with_internetdb: true
+    max_results: 10000
+
+  # --- MISCONFIGURED CLOUD SERVICES ---
+  - name: exposed_s3_buckets
+    query: "http.title:\"bucket\" amazonaws s3"
+    severity: high
+    tags: [cloud, aws, s3, storage]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: exposed_azure_blob
+    query: "http.title:\"blob\" azure"
+    severity: high
+    tags: [cloud, azure, storage]
     enrich_with_internetdb: true
     max_results: 2000
 
