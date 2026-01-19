@@ -10,3 +10,5 @@ resources:
   - maintenance-cronjob.yaml
   - mongodb.yaml
   - mongo-sync-cronjob.yaml
+  - postgres-backup-cronjob.yaml
+  - mongo-backup-cronjob.yaml

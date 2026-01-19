@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-backup
+  namespace: shodan-monitor
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM (1 hour after PostgreSQL backup)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400  # Keep job for 24 hours
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mongo-backup
+              image: mongo:6.0.11
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -e
+                  BACKUP_DIR="/tmp/backup/mongodb"
+                  BACKUP_FILE="${BACKUP_DIR}/mongodb-$(date +%Y%m%d-%H%M%S).gz"
+                  
+                  echo "Starting MongoDB backup..."
+                  
+                  # Create backup directory if it doesn't exist
+                  mkdir -p "${BACKUP_DIR}"
+                  
+                  # Build MongoDB connection URI
+                  MONGO_URI="mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/?authSource=admin"
+                  
+                  # Perform backup with compression and archive format
+                  # Using --gzip and --archive for efficient streaming backup
+                  mongodump \
+                    --uri="${MONGO_URI}" \
+                    --gzip \
+                    --archive="${BACKUP_FILE}" \
+                    --numParallelCollections=4 \
+                    --db=shodan_intel \
+                    --db=apexforge_intelligence
+                  
+                  echo "Backup completed: ${BACKUP_FILE}"
+                  ls -lh "${BACKUP_FILE}"
+                  
+                  # Cleanup old backups (keep last 7 days)
+                  echo "Cleaning up backups older than 7 days..."
+                  find "${BACKUP_DIR}" -name "mongodb-*.gz" -mtime +7 -delete
+                  
+                  # List remaining backups
+                  echo "Remaining backups:"
+                  ls -lh "${BACKUP_DIR}/mongodb-"*.gz 2>/dev/null || echo "No backups found"
+                  
+                  echo "MongoDB backup job completed successfully"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /tmp/backup
+              env:
+                - name: MONGO_HOST
+                  value: shodan-mongo-svc.shodan-monitor.svc.cluster.local
+                - name: MONGO_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_USER
+                - name: MONGO_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: shodan-mongo-credentials
+                      key: MONGO_PASS
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "500m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1000m"
+          volumes:
+            - name: backup-storage
+              hostPath:
+                path: /var/backups/apex-forge
+                type: DirectoryOrCreate
