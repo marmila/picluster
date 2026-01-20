@@ -38,34 +38,77 @@ spec:
                   echo "Connecting to MongoDB at: ${MONGO_HOST}:27017"
                   echo "Backup target: ${BACKUP_FILE}"
 
-                  # Check database sizes before backup
-                  echo "Checking database sizes..."
-                  mongo "${MONGO_URI}" --quiet --eval "
-                    db.adminCommand('listDatabases').databases.forEach(function(database) {
-                      if (database.name === 'shodan_intel' || database.name === 'apexforge_intelligence') {
-                        print('Database: ' + database.name + ', Size: ' + (database.sizeOnDisk / 1024 / 1024).toFixed(2) + ' MB');
-                      }
-                    });
-                  " 2>/dev/null || echo "Could not check database sizes (mongo client may not be available)"
+                  # Test connection and list databases
+                  echo "=========================================="
+                  echo "Testing MongoDB connection..."
+                  echo "=========================================="
+
+                  # Try to connect and list all databases
+                  if mongosh "${MONGO_URI}" --quiet --eval "db.adminCommand('listDatabases')" > /tmp/mongo_test.txt 2>&1; then
+                    echo "✓ Connection successful"
+                    echo "Available databases:"
+                    mongosh "${MONGO_URI}" --quiet --eval "
+                      db.adminCommand('listDatabases').databases.forEach(function(d) {
+                        print('  - ' + d.name + ' (' + (d.sizeOnDisk / 1024 / 1024).toFixed(2) + ' MB)');
+                      });
+                    " 2>/dev/null || cat /tmp/mongo_test.txt
+
+                    echo ""
+                    echo "Checking target databases..."
+                    for DB_NAME in shodan_intel apexforge_intelligence; do
+                      echo "  Database: ${DB_NAME}"
+                      COLLECTIONS=$(mongosh "${MONGO_URI}" --quiet --eval "
+                        use ${DB_NAME};
+                        db.getCollectionNames().forEach(function(c) {
+                          var count = db[c].countDocuments();
+                          var size = db[c].stats().size;
+                          print('    Collection: ' + c + ', Documents: ' + count + ', Size: ' + (size / 1024).toFixed(2) + ' KB');
+                        });
+                      " 2>/dev/null)
+
+                      if [ -z "$COLLECTIONS" ] || [ "$COLLECTIONS" = "" ]; then
+                        echo "    ⚠ WARNING: No collections found or database does not exist!"
+                      else
+                        echo "$COLLECTIONS"
+                      fi
+                    done
+                  else
+                    echo "✗ Connection failed!"
+                    echo "Error details:"
+                    cat /tmp/mongo_test.txt
+                    echo "=========================================="
+                    exit 1
+                  fi
+                  echo "=========================================="
 
                   echo "Starting mongodump..."
                   START_TIME=$(date +%s)
 
                   # Perform backup with compression and archive format
                   # Using --gzip and --archive for efficient streaming backup
-                  # Redirect stderr to stdout to capture all output
                   echo "Executing: mongodump --uri=*** --gzip --archive=${BACKUP_FILE} --numParallelCollections=4 --db=shodan_intel --db=apexforge_intelligence"
+
+                  # Run mongodump and capture both stdout and stderr
+                  # Use a temporary file to capture output since we're using a pipe
                   mongodump \
                     --uri="${MONGO_URI}" \
                     --gzip \
                     --archive="${BACKUP_FILE}" \
                     --numParallelCollections=4 \
                     --db=shodan_intel \
-                    --db=apexforge_intelligence 2>&1 | while IFS= read -r line; do
-                      echo "[mongodump] $(date '+%Y-%m-%d %H:%M:%S') $line"
-                    done
+                    --db=apexforge_intelligence > /tmp/mongodump_output.log 2>&1
 
-                  DUMP_EXIT_CODE=${PIPESTATUS[0]}
+                  DUMP_EXIT_CODE=$?
+
+                  # Display mongodump output
+                  if [ -s /tmp/mongodump_output.log ]; then
+                    echo "Mongodump output:"
+                    while IFS= read -r line; do
+                      echo "[mongodump] $(date '+%Y-%m-%d %H:%M:%S') $line"
+                    done < /tmp/mongodump_output.log
+                  else
+                    echo "No output from mongodump (this may indicate empty databases)"
+                  fi
                   END_TIME=$(date +%s)
                   DURATION=$((END_TIME - START_TIME))
 
@@ -75,11 +118,28 @@ spec:
                     echo "Duration: ${DURATION} seconds"
                     echo "Backup file: ${BACKUP_FILE}"
                     ls -lh "${BACKUP_FILE}"
-                    echo "File size: $(du -h "${BACKUP_FILE}" | cut -f1)"
+                    BACKUP_SIZE=$(stat -f%z "${BACKUP_FILE}" 2>/dev/null || stat -c%s "${BACKUP_FILE}" 2>/dev/null || echo "0")
+                    echo "File size: $(du -h "${BACKUP_FILE}" | cut -f1) ($(numfmt --to=iec-i --suffix=B ${BACKUP_SIZE} 2>/dev/null || echo ${BACKUP_SIZE} bytes))"
+
+                    # Warn if backup is suspiciously small
+                    if [ ${BACKUP_SIZE} -lt 1000 ]; then
+                      echo ""
+                      echo "⚠ WARNING: Backup file is very small (${BACKUP_SIZE} bytes)!"
+                      echo "This usually means:"
+                      echo "  1. The databases are empty (no collections or documents)"
+                      echo "  2. The databases don't exist"
+                      echo "  3. There was an issue during backup"
+                      echo ""
+                      echo "Please verify the databases have data by checking MongoDB directly."
+                    fi
                     echo "=========================================="
                   else
                     echo "=========================================="
                     echo "ERROR: Backup failed with exit code: $DUMP_EXIT_CODE"
+                    if [ -s /tmp/mongodump_output.log ]; then
+                      echo "Error details:"
+                      cat /tmp/mongodump_output.log
+                    fi
                     echo "=========================================="
                     exit $DUMP_EXIT_CODE
                   fi
