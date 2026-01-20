@@ -24,37 +24,78 @@ spec:
                   set -e
                   BACKUP_DIR="/tmp/backup/mongodb"
                   BACKUP_FILE="${BACKUP_DIR}/mongodb-$(date +%Y%m%d-%H%M%S).gz"
-                  
-                  echo "Starting MongoDB backup..."
-                  
+
+                  echo "=========================================="
+                  echo "Starting MongoDB backup at $(date)"
+                  echo "=========================================="
+
                   # Create backup directory if it doesn't exist
                   mkdir -p "${BACKUP_DIR}"
-                  
+                  echo "Backup directory: ${BACKUP_DIR}"
+
                   # Build MongoDB connection URI
                   MONGO_URI="mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:27017/?authSource=admin"
-                  
+                  echo "Connecting to MongoDB at: ${MONGO_HOST}:27017"
+                  echo "Backup target: ${BACKUP_FILE}"
+
+                  # Check database sizes before backup
+                  echo "Checking database sizes..."
+                  mongo "${MONGO_URI}" --quiet --eval "
+                    db.adminCommand('listDatabases').databases.forEach(function(database) {
+                      if (database.name === 'shodan_intel' || database.name === 'apexforge_intelligence') {
+                        print('Database: ' + database.name + ', Size: ' + (database.sizeOnDisk / 1024 / 1024).toFixed(2) + ' MB');
+                      }
+                    });
+                  " 2>/dev/null || echo "Could not check database sizes (mongo client may not be available)"
+
+                  echo "Starting mongodump..."
+                  START_TIME=$(date +%s)
+
                   # Perform backup with compression and archive format
                   # Using --gzip and --archive for efficient streaming backup
+                  # Redirect stderr to stdout to capture all output
+                  echo "Executing: mongodump --uri=*** --gzip --archive=${BACKUP_FILE} --numParallelCollections=4 --db=shodan_intel --db=apexforge_intelligence"
                   mongodump \
                     --uri="${MONGO_URI}" \
                     --gzip \
                     --archive="${BACKUP_FILE}" \
                     --numParallelCollections=4 \
                     --db=shodan_intel \
-                    --db=apexforge_intelligence
-                  
-                  echo "Backup completed: ${BACKUP_FILE}"
-                  ls -lh "${BACKUP_FILE}"
-                  
+                    --db=apexforge_intelligence 2>&1 | while IFS= read -r line; do
+                      echo "[mongodump] $(date '+%Y-%m-%d %H:%M:%S') $line"
+                    done
+
+                  DUMP_EXIT_CODE=${PIPESTATUS[0]}
+                  END_TIME=$(date +%s)
+                  DURATION=$((END_TIME - START_TIME))
+
+                  if [ $DUMP_EXIT_CODE -eq 0 ]; then
+                    echo "=========================================="
+                    echo "Backup completed successfully!"
+                    echo "Duration: ${DURATION} seconds"
+                    echo "Backup file: ${BACKUP_FILE}"
+                    ls -lh "${BACKUP_FILE}"
+                    echo "File size: $(du -h "${BACKUP_FILE}" | cut -f1)"
+                    echo "=========================================="
+                  else
+                    echo "=========================================="
+                    echo "ERROR: Backup failed with exit code: $DUMP_EXIT_CODE"
+                    echo "=========================================="
+                    exit $DUMP_EXIT_CODE
+                  fi
+
                   # Cleanup old backups (keep last 7 days)
                   echo "Cleaning up backups older than 7 days..."
-                  find "${BACKUP_DIR}" -name "mongodb-*.gz" -mtime +7 -delete
-                  
+                  DELETED_COUNT=$(find "${BACKUP_DIR}" -name "mongodb-*.gz" -mtime +7 -delete -print | wc -l)
+                  echo "Deleted ${DELETED_COUNT} old backup(s)"
+
                   # List remaining backups
+                  echo "=========================================="
                   echo "Remaining backups:"
                   ls -lh "${BACKUP_DIR}/mongodb-"*.gz 2>/dev/null || echo "No backups found"
-                  
-                  echo "MongoDB backup job completed successfully"
+                  echo "=========================================="
+
+                  echo "MongoDB backup job completed successfully at $(date)"
               volumeMounts:
                 - name: backup-storage
                   mountPath: /tmp/backup
