@@ -16,7 +16,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: postgres-backup
-              image: postgres:15
+              image: postgres:15.15
               command:
                 - /bin/bash
                 - -c
