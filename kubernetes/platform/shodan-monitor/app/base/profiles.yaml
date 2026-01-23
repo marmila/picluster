@@ -1,0 +1,159 @@
+# Optimized Profiles Configuration for Shodan Membership Plan (100 query credits/month)
+# 
+# Credit Budget:
+# - 18 profiles × 3 cycles/month (10-day interval) = 54 credits/month
+# - Remaining: 46 credits for my assets monitoring (or use Monitor API for 0 credits)
+#
+# This configuration includes critical and high-priority profiles optimized for credit usage.
+
+intelligence_profiles:
+  # ============================================
+  # CRITICAL PRIORITY - Always Active
+  # ============================================
+  
+  # --- DATABASE LEAKS (Critical) ---
+  - name: unauthenticated_databases
+    query: "product:mongodb port:27017 -authentication"
+    severity: critical
+    tags: [database, leak]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: unauthenticated_redis
+    query: "product:redis port:6379 -authentication"
+    severity: critical
+    tags: [database, leak, cache]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: unauthenticated_postgresql
+    query: "product:postgresql port:5432 -authentication"
+    severity: critical
+    tags: [database, leak]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: exposed_mysql
+    query: "product:mysql port:3306"
+    severity: critical
+    tags: [database, mysql]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- CRITICAL VULNERABILITIES ---
+  - name: log4j_exposed
+    query: "product:log4j vuln:\"CVE-2021-44228\""
+    severity: critical
+    tags: [java, log4j, critical_vuln]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- MALWARE & C2 ---
+  - name: cobalt_strike_c2
+    query: "hash:-2007783223"
+    severity: high
+    tags: [malware, c2]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  # --- CRITICAL ORCHESTRATION EXPOSURE ---
+  - name: exposed_kubernetes_api
+    query: "product:kubernetes port:6443"
+    severity: critical
+    tags: [orchestration, container, cloud]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  - name: exposed_etcd
+    query: "product:etcd port:2379"
+    severity: critical
+    tags: [orchestration, etcd, kubernetes]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  # --- HIGH-VALUE REMOTE ACCESS ---
+  - name: exposed_rdp
+    query: "product:rdp port:3389"
+    severity: high
+    tags: [remote_access, windows]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- ADMIN INTERFACES ---
+  - name: exposed_phpmyadmin
+    query: "http.title:phpMyAdmin"
+    severity: high
+    tags: [web, admin_interface]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: exposed_jenkins
+    query: "product:jenkins port:8080"
+    severity: high
+    tags: [cicd, automation, web]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # ============================================
+  # HIGH PRIORITY - Active
+  # ============================================
+  
+  # --- DATABASE & STORAGE (High Priority) ---
+  - name: exposed_elasticsearch
+    query: "product:elasticsearch port:9200"
+    severity: high
+    tags: [database, search, leak]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: exposed_memcached
+    query: "product:memcached port:11211"
+    severity: high
+    tags: [database, cache, ddos]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_influxdb
+    query: "product:influxdb port:8086"
+    severity: high
+    tags: [database, timeseries]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_cassandra
+    query: "product:cassandra port:9042"
+    severity: high
+    tags: [database, nosql]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- CLOUD & CONTAINER SERVICES ---
+  - name: exposed_docker_registry
+    query: "product:docker port:5000"
+    severity: high
+    tags: [cloud, container, registry]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_consul
+    query: "product:consul port:8500"
+    severity: high
+    tags: [service_discovery, consul]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- MESSAGING & QUEUES ---
+  - name: exposed_rabbitmq
+    query: "product:rabbitmq port:5672"
+    severity: high
+    tags: [messaging, queue, amqp]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- FILE SHARING ---
+  - name: exposed_smb
+    query: "product:smb port:445"
+    severity: high
+    tags: [file_sharing, windows]
+    enrich_with_internetdb: true
+    max_results: 5000

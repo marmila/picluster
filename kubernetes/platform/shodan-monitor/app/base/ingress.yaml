@@ -1,0 +1,29 @@
+# HTTPS Ingress for ApexForge Web UI and API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apexforge-ingress
+  namespace: shodan-monitor
+  annotations:
+    # Enable cert-manager to create automatically the SSL certificate and store in Secret
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    cert-manager.io/common-name: apexforge.${CLUSTER_DOMAIN}
+    # Optional: Add rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - apexforge.${CLUSTER_DOMAIN}
+      secretName: apexforge-tls
+  rules:
+    - host: apexforge.${CLUSTER_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apexforge-collector
+                port:
+                  number: 8000

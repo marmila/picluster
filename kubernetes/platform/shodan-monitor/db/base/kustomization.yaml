@@ -8,7 +8,7 @@ resources:
   - external-secret.yaml
   - db-init-job.yaml
   - maintenance-cronjob.yaml
-  - mongodb.yaml
   - mongo-sync-cronjob.yaml
+  - mongodb.yaml
   - postgres-backup-cronjob.yaml
   - mongo-backup-cronjob.yaml

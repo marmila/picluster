@@ -12,12 +12,18 @@ resources:
   - external-secret-virustotal.yaml
   - service-monitor.yaml
   - apexforge-collector-service.yaml
+  - ingress.yaml
 
 configMapGenerator:
   - name: shodan-config
     literals:
       - INTERVAL_SECONDS=3600
       - LOG_LEVEL=INFO
+
+  - name: shodan-profiles
+    behavior: create
+    files:
+      - profiles.yaml
 
 
 
