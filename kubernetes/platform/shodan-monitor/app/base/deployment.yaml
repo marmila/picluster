@@ -28,7 +28,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:3.0.6
+          image: ghcr.io/marmila/apex-forge:6.0.4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -42,6 +42,12 @@ spec:
               cpu: "500m"
               memory: "768Mi"
           env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: OPENAI_API_KEY
+
             - name: SHODAN_API_KEY
               valueFrom:
                 secretKeyRef:
