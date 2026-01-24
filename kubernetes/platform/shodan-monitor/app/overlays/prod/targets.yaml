@@ -1,6 +1,6 @@
 # My Assets Configuration - Production
 #
-# 🎯 IMPORTANT: Shodan Monitor API (Up to 16 IPs - NO Credits!)
+# IMPORTANT: Shodan Monitor API (Up to 16 IPs - NO Credits!)
 # ==============================================================
 # Your Shodan Membership plan includes Monitor API for up to 16 IPs.
 # Monitor API does NOT consume query credits - it's FREE for those 16 IPs!
@@ -28,14 +28,82 @@ my_assets:
   # TIER 1: Critical Assets (Use Monitor API - First 16 IPs)
   # These should be set up in Shodan Monitor for 0 credits
   # ============================================
-  
-  # Add your production assets here
-  # Example:
-  # - ip: "192.0.2.1"
-  #   name: "Production API Server"
-  #   description: "Main API endpoint for production"
-  #   tags: [production, critical, monitor_api]
-  #   monitor_interval_hours: 6  # Monitor API handles scanning automatically
+
+  # Production Website
+  - ip: "192.168.1.2"
+    name: "marmilan.com"
+    description: "Production website running Docker/Nginx"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 6
+
+  # Cloud VM
+  - ip: "89.168.19.79"
+    name: "Oracle Cloud VM"
+    description: "Testing VM with httpd/mysql"
+    tags: [cloud, test, monitor_api]
+    monitor_interval_hours: 12
+
+  # Homelab Infrastructure - Router
+  - ip: "192.168.1.21"
+    name: "OpenWRT Router"
+    description: "Home Gateway Router"
+    tags: [homelab, router, monitor_api]
+    monitor_interval_hours: 6
+
+  # Homelab Infrastructure - Nodes
+  - ip: "10.0.0.11"
+    name: "node1"
+    description: "RPi 4 - HA Proxy, DNS, Vault"
+    tags: [homelab, infra, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.12"
+    name: "node2"
+    description: "RPi - k3s master"
+    tags: [homelab, k3s, master, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.13"
+    name: "node3"
+    description: "RPi - k3s master"
+    tags: [homelab, k3s, master, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.14"
+    name: "node4"
+    description: "RPi - k3s master"
+    tags: [homelab, k3s, master, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.15"
+    name: "node5"
+    description: "RPi - k3s worker"
+    tags: [homelab, k3s, worker, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.16"
+    name: "node6"
+    description: "RPi - k3s worker"
+    tags: [homelab, k3s, worker, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.20"
+    name: "node-hp-1"
+    description: "HP - k3s worker"
+    tags: [homelab, k3s, worker, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.21"
+    name: "node-hp-2"
+    description: "HP - k3s worker"
+    tags: [homelab, k3s, worker, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "10.0.0.22"
+    name: "node-hp-3"
+    description: "HP - k3s worker"
+    tags: [homelab, k3s, worker, monitor_api]
+    monitor_interval_hours: 24
 
 # Notes:
 # - Monitor API (first 16 IPs): NO query credits consumed - FREE!
@@ -43,12 +111,3 @@ my_assets:
 # - monitor_interval_hours: For Host API, determines check frequency
 #                          For Monitor API, Shodan controls scan frequency
 # - Tags are used for filtering and organization in the UI
-# - Assets are tracked over time for change detection and alerts
-# - The system automatically skips checks if an asset was recently checked
-# - Priority: Use Monitor API for your 16 most critical assets
-#
-# Setup Monitor API:
-# 1. First 16 assets in this file will use Monitor API (0 credits)
-# 2. Set up Monitor alerts in Shodan or use the API to create them
-# 3. Configure webhook endpoint to receive Monitor notifications
-# 4. See SHODAN_MONITOR_API_GUIDE.md for detailed instructions
