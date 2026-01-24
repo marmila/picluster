@@ -17,7 +17,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: db-init
-          image: ghcr.io/marmila/apex-forge:6.0.7
+          image: ghcr.io/marmila/apex-forge:6.0.8
           command: ["python", "-c"]
           args:
             - |
