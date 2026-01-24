@@ -29,10 +29,10 @@ my_assets:
   # These should be set up in Shodan Monitor for 0 credits
   # ============================================
 
-  # Production Website
-  - ip: "192.168.1.2"
-    name: "marmilan.com"
-    description: "Production website running Docker/Nginx"
+  # Production Website / ISP Router
+  - ip: "93.40.1.188"
+    name: "marmilan.com (Public)"
+    description: "Public IP for Marmilan.com (Port Forwarded)"
     tags: [production, web, monitor_api]
     monitor_interval_hours: 6
 
@@ -42,68 +42,6 @@ my_assets:
     description: "Testing VM with httpd/mysql"
     tags: [cloud, test, monitor_api]
     monitor_interval_hours: 12
-
-  # Homelab Infrastructure - Router
-  - ip: "192.168.1.21"
-    name: "OpenWRT Router"
-    description: "Home Gateway Router"
-    tags: [homelab, router, monitor_api]
-    monitor_interval_hours: 6
-
-  # Homelab Infrastructure - Nodes
-  - ip: "10.0.0.11"
-    name: "node1"
-    description: "RPi 4 - HA Proxy, DNS, Vault"
-    tags: [homelab, infra, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.12"
-    name: "node2"
-    description: "RPi - k3s master"
-    tags: [homelab, k3s, master, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.13"
-    name: "node3"
-    description: "RPi - k3s master"
-    tags: [homelab, k3s, master, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.14"
-    name: "node4"
-    description: "RPi - k3s master"
-    tags: [homelab, k3s, master, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.15"
-    name: "node5"
-    description: "RPi - k3s worker"
-    tags: [homelab, k3s, worker, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.16"
-    name: "node6"
-    description: "RPi - k3s worker"
-    tags: [homelab, k3s, worker, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.20"
-    name: "node-hp-1"
-    description: "HP - k3s worker"
-    tags: [homelab, k3s, worker, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.21"
-    name: "node-hp-2"
-    description: "HP - k3s worker"
-    tags: [homelab, k3s, worker, monitor_api]
-    monitor_interval_hours: 24
-
-  - ip: "10.0.0.22"
-    name: "node-hp-3"
-    description: "HP - k3s worker"
-    tags: [homelab, k3s, worker, monitor_api]
-    monitor_interval_hours: 24
 
 # Notes:
 # - Monitor API (first 16 IPs): NO query credits consumed - FREE!
