@@ -28,7 +28,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:6.0.4
+          image: ghcr.io/marmila/apex-forge:3.0.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -53,12 +53,6 @@ spec:
                secretKeyRef:
                  name: virustotal-secret
                  key: VIRUSTOTAL_API_KEY
-
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: openai-secret
-                  key: OPENAI_API_KEY
 
             - name: MONGO_PASS
               valueFrom:
@@ -95,6 +89,9 @@ spec:
             - name: profiles-volume
               mountPath: /app/profiles.yaml
               subPath: profiles.yaml
+            - name: targets-volume
+              mountPath: /app/targets.yaml
+              subPath: targets.yaml
 
           # Health checks — critical for reliable rollout
           # Increased timeouts to handle slow MongoDB queries without causing restarts
@@ -119,5 +116,8 @@ spec:
         - name: profiles-volume
           configMap:
             name: shodan-profiles
+        - name: targets-volume
+          configMap:
+            name: shodan-targets
 
 
