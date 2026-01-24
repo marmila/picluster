@@ -10,6 +10,7 @@ resources:
   - deployment.yaml
   - external-secret.yaml
   - external-secret-virustotal.yaml
+  - external-secret-openai.yaml
   - service-monitor.yaml
   - apexforge-collector-service.yaml
   - ingress.yaml
