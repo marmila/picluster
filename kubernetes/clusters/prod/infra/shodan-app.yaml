@@ -14,3 +14,7 @@ spec:
   path: ./kubernetes/platform/shodan-monitor/app/overlays/prod
   prune: true
   wait: false
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
