@@ -54,6 +54,12 @@ spec:
                  name: virustotal-secret
                  key: VIRUSTOTAL_API_KEY
 
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: OPENAI_API_KEY
+
             - name: MONGO_PASS
               valueFrom:
                 secretKeyRef:
