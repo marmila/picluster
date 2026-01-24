@@ -19,7 +19,7 @@ configMapGenerator:
       - LOG_LEVEL=INFO
 
   - name: shodan-targets
-    behavior: create
+    behavior: replace
     files:
       - targets.yaml
 
