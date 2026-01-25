@@ -28,7 +28,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:7.0.9
+          image: ghcr.io/marmila/apex-forge:8.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
