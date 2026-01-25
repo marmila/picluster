@@ -20,6 +20,12 @@ configMapGenerator:
     literals:
       - INTERVAL_SECONDS=3600
       - LOG_LEVEL=INFO
+      - VT_DAILY_BUDGET=450
+      - VT_RATE_LIMIT_PER_MIN=4
+      - VT_CACHE_TTL_HOURS=168
+      - VT_PRIORITY_ONLY=true
+      - ABUSEIPDB_DAILY_BUDGET=900
+      - ABUSEIPDB_CACHE_TTL_HOURS=24
 
   - name: shodan-profiles
     behavior: create
