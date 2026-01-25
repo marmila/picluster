@@ -43,9 +43,49 @@ my_assets:
     tags: [cloud, test, monitor_api]
     monitor_interval_hours: 12
 
+  # ============================================
+  # TIER 2: Research Targets (Legitimate Test Infrastructure)
+  # These are publicly available, intentionally vulnerable/exposed
+  # systems meant for security research and testing
+  # ============================================
+
+  # Nmap Official Test Targets
+  - ip: "45.33.32.156"
+    name: "scanme.nmap.org"
+    description: "Nmap's official test target - explicit permission to scan"
+    tags: [research, nmap, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "45.33.49.119"
+    name: "ack.nmap.org"
+    description: "Nmap ACK scan test host"
+    tags: [research, nmap, monitor_api]
+    monitor_interval_hours: 24
+
+  # Acunetix Intentionally Vulnerable Test Sites
+  - ip: "44.228.249.3"
+    name: "testphp.vulnweb.com"
+    description: "Acunetix vulnerable PHP test site (intentionally exposed)"
+    tags: [research, vulnweb, vulnerable, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "44.238.29.244"
+    name: "testasp.vulnweb.com"
+    description: "Acunetix vulnerable ASP.NET test site (intentionally exposed)"
+    tags: [research, vulnweb, vulnerable, monitor_api]
+    monitor_interval_hours: 24
+
+  # IBM Security Test Infrastructure
+  - ip: "65.61.137.117"
+    name: "demo.testfire.net"
+    description: "IBM AppScan demo vulnerable banking app (intentionally exposed)"
+    tags: [research, ibm, vulnerable, monitor_api]
+    monitor_interval_hours: 24
+
 # Notes:
 # - Monitor API (first 16 IPs): NO query credits consumed - FREE!
 # - Host API (additional IPs): Each IP lookup = 1 query credit
 # - monitor_interval_hours: For Host API, determines check frequency
 #                          For Monitor API, Shodan controls scan frequency
 # - Tags are used for filtering and organization in the UI
+# - Research targets are intentionally vulnerable/exposed systems for learning
