@@ -157,3 +157,19 @@ intelligence_profiles:
     tags: [file_sharing, windows]
     enrich_with_internetdb: true
     max_results: 5000
+
+  # --- WEB CMS ---
+  - name: exposed_wordpress_login
+    query: "http.title:\"Log In\" http.html:\"wp-login\""
+    severity: high
+    tags: [web, cms, wordpress, admin_interface]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- AI/ML INFRASTRUCTURE ---
+  - name: exposed_jupyter_notebooks
+    query: "http.title:\"Jupyter Notebook\" OR http.title:\"JupyterLab\""
+    severity: critical
+    tags: [ai, ml, jupyter, code_execution]
+    enrich_with_internetdb: true
+    max_results: 2000
