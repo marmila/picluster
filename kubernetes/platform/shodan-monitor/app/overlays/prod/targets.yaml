@@ -89,12 +89,6 @@ my_assets:
     tags: [research, vulnerable, dvwa, web, monitor_api]
     monitor_interval_hours: 24
 
-  - ip: "35.185.115.185"
-    name: "OWASP Juice Shop Demo"
-    description: "OWASP Juice Shop - modern intentionally vulnerable web app"
-    tags: [research, vulnerable, owasp, web, monitor_api]
-    monitor_interval_hours: 24
-
 # Notes:
 # - Monitor API (first 16 IPs): NO query credits consumed - FREE!
 # - Host API (additional IPs): Each IP lookup = 1 query credit

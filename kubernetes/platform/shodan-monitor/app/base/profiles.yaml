@@ -48,28 +48,28 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- MALWARE & C2 ---
-  - name: cobalt_strike_c2
-    query: "hash:-2007783223"
+  # --- MONITORING & DASHBOARDS ---
+  - name: exposed_grafana
+    query: "http.title:Grafana"
     severity: high
-    tags: [malware, c2]
+    tags: [monitoring, dashboard, metrics]
     enrich_with_internetdb: true
-    max_results: 1000
+    max_results: 5000
 
-  # --- CRITICAL ORCHESTRATION EXPOSURE ---
-  - name: exposed_kubernetes_api
-    query: "product:kubernetes port:6443"
-    severity: critical
-    tags: [orchestration, container, cloud]
+  - name: exposed_kibana
+    query: "product:kibana port:5601"
+    severity: high
+    tags: [monitoring, elasticsearch, logs]
     enrich_with_internetdb: true
-    max_results: 1000
+    max_results: 5000
 
-  - name: exposed_etcd
-    query: "product:etcd port:2379"
+  # --- CODE REPOSITORIES ---
+  - name: exposed_gitlab
+    query: "http.title:GitLab"
     severity: critical
-    tags: [orchestration, etcd, kubernetes]
+    tags: [code, repository, git, source_code]
     enrich_with_internetdb: true
-    max_results: 1000
+    max_results: 3000
 
   # --- HIGH-VALUE REMOTE ACCESS ---
   - name: exposed_rdp
@@ -106,12 +106,12 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 3000
 
-  - name: exposed_memcached
-    query: "product:memcached port:11211"
+  - name: exposed_telnet
+    query: "product:telnet port:23"
     severity: high
-    tags: [database, cache, ddos]
+    tags: [remote_access, unencrypted, legacy]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 10000
 
   - name: exposed_influxdb
     query: "product:influxdb port:8086"
@@ -150,11 +150,11 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 2000
 
-  # --- FILE SHARING ---
-  - name: exposed_smb
-    query: "product:smb port:445"
+  # --- SEARCH ENGINES & DATA ---
+  - name: exposed_solr
+    query: "product:solr port:8983"
     severity: high
-    tags: [file_sharing, windows]
+    tags: [search, apache, data_leak]
     enrich_with_internetdb: true
     max_results: 5000
 
@@ -166,10 +166,18 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- AI/ML INFRASTRUCTURE ---
-  - name: exposed_jupyter_notebooks
-    query: "http.title:\"Jupyter Notebook\" OR http.title:\"JupyterLab\""
-    severity: critical
-    tags: [ai, ml, jupyter, code_execution]
+  # --- FILE TRANSFER & DATA LEAKS ---
+  - name: exposed_ftp
+    query: "product:ftp port:21"
+    severity: high
+    tags: [file_transfer, data_leak, ftp]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 10000
+
+  # --- REMOTE ACCESS ---
+  - name: exposed_vnc
+    query: "product:vnc port:5900"
+    severity: critical
+    tags: [remote_access, vnc, screen_sharing]
+    enrich_with_internetdb: true
+    max_results: 10000
