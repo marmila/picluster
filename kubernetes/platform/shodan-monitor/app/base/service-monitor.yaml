@@ -8,7 +8,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: apexforge-collector
+      app: apexforge-api
   endpoints:
     - port: metrics
       path: /metrics

@@ -17,7 +17,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: db-init
-          image: ghcr.io/marmila/apex-forge:9.0.10
+          image: ghcr.io/marmila/apex-forge:9.0.11
           command: ["python", "-c"]
           args:
             - |
@@ -35,13 +35,6 @@ spec:
                 secretKeyRef:
                   name: shodan-secret
                   key: SHODAN_API_KEY
-
-            # OpenAI API key
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: openai-secret
-                  key: OPENAI_API_KEY
 
             # MongoDB credentials
             - name: MONGO_USER

@@ -17,11 +17,6 @@
 # - Recommended budget: 40-55 credits/month for additional assets
 #   (assuming 18 intelligence profiles using 54 credits/month)
 #
-# Credit Calculation Examples:
-# - 10 assets @ 12h interval = 10 × 60 checks/month = 60 credits/month
-# - 15 assets @ 24h interval = 15 × 30 checks/month = 45 credits/month
-# - 20 assets @ 24h interval = 20 × 30 checks/month = 60 credits/month
-#
 # Interval Recommendations:
 # - Critical production assets: 6-12 hours
 # - Important assets: 12-24 hours
@@ -33,43 +28,20 @@ my_assets:
   # TIER 1: Critical Assets (Use Monitor API - First 16 IPs)
   # These should be set up in Shodan Monitor for 0 credits
   # ============================================
-  
-  # Example: Critical production server (Monitor API - 0 credits)
-  - ip: "192.0.2.1"
-    name: "Production API Server"
-    description: "Main API endpoint for production"
-    tags: [production, critical, monitor_api]
-    monitor_interval_hours: 6  # Monitor API handles scanning automatically
-    # Credit cost: 0/month (uses Monitor API - first 16 IPs are free!)
 
-  # Example: Important staging environment (Monitor API - 0 credits)
-  - ip: "198.51.100.10"
-    name: "Staging Server"
-    description: "Staging environment for testing"
-    tags: [staging, monitor_api]
-    monitor_interval_hours: 12  # Monitor API handles scanning
-    # Credit cost: 0/month (uses Monitor API)
+  # Production Website / ISP Router
+  - ip: "93.40.1.188"
+    name: "Marmilan.com (Public)"
+    description: "Public IP for Marmilan.com (Port Forwarded)"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 6
 
-  # Example: Home lab (Monitor API - 0 credits)
-  - ip: "203.0.113.5"
-    name: "Home Lab"
-    description: "Personal homelab infrastructure"
-    tags: [homelab, monitor_api]
-    monitor_interval_hours: 24  # Monitor API handles scanning
-    # Credit cost: 0/month (uses Monitor API)
-
-  # ============================================
-  # TIER 2: Additional Assets (Use Host API - Consumes Credits)
-  # Assets beyond the first 16 use Host API (1 credit per lookup)
-  # ============================================
-  
-  # Example: Additional asset (Host API - consumes credits)
-  # - ip: "203.0.113.6"
-  #   name: "Development Server"
-  #   description: "Internal dev server"
-  #   tags: [development, host_api]
-  #   monitor_interval_hours: 48  # Check every 2 days
-  #   # Credit cost: ~15/month (uses Host API - beyond 16 IP limit)
+  # Cloud VM
+  - ip: "89.168.19.79"
+    name: "Oracle Cloud VM"
+    description: "Testing VM with httpd/mysql"
+    tags: [cloud, test, monitor_api]
+    monitor_interval_hours: 12
 
 # Notes:
 # - Monitor API (first 16 IPs): NO query credits consumed - FREE!
@@ -77,12 +49,3 @@ my_assets:
 # - monitor_interval_hours: For Host API, determines check frequency
 #                          For Monitor API, Shodan controls scan frequency
 # - Tags are used for filtering and organization in the UI
-# - Assets are tracked over time for change detection and alerts
-# - The system automatically skips checks if an asset was recently checked
-# - Priority: Use Monitor API for your 16 most critical assets
-#
-# Setup Monitor API:
-# 1. First 16 assets in this file will use Monitor API (0 credits)
-# 2. Set up Monitor alerts in Shodan or use the API to create them
-# 3. Configure webhook endpoint to receive Monitor notifications
-# 4. See SHODAN_MONITOR_API_GUIDE.md for detailed instructions

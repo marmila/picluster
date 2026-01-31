@@ -1,470 +1,181 @@
-# Optimized Profiles Configuration for Shodan Membership Plan (100 query credits/month)
+# ApexForge – 24 profiles, capped max_results to save credits
 #
-# ApexForge Intelligence Profiles – Shodan Freelancer Plan (10,000 query credits/month)
-#
-# Credit Budget (Freelancer):
-# - Each profile run = 1 search = 1 credit. Example: 45 profiles × 3 cycles/month = 135 credits.
-# - Plenty of headroom for my assets monitoring and ad-hoc searches.
-#
-# Categories: databases, cloud/containers, AI/ML, IoT, ICS, admin interfaces, remote access, messaging.
+# 24 profiles × 3 cycles/month ≈ 72 Shodan credits. max_results 1000–2500 per profile.
 
 intelligence_profiles:
-  # ============================================
-  # CRITICAL PRIORITY - Always Active
-  # ============================================
-
-  # --- DATABASE LEAKS (Critical) ---
+  # --- CRITICAL: DB LEAKS ---
   - name: unauthenticated_databases
     query: "product:mongodb port:27017 -authentication"
     severity: critical
     tags: [database, leak]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
   - name: unauthenticated_redis
     query: "product:redis port:6379 -authentication"
     severity: critical
     tags: [database, leak, cache]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
   - name: unauthenticated_postgresql
     query: "product:postgresql port:5432 -authentication"
     severity: critical
     tags: [database, leak]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
   - name: exposed_mysql
     query: "product:mysql port:3306"
     severity: critical
     tags: [database, mysql]
     enrich_with_internetdb: true
-    max_results: 5000
+    max_results: 2500
 
-  # --- CRITICAL VULNERABILITIES ---
-  - name: log4j_exposed
-    query: "product:log4j vuln:\"CVE-2021-44228\""
-    severity: critical
-    tags: [java, log4j, critical_vuln]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  # --- MONITORING & DASHBOARDS ---
-  - name: exposed_grafana
-    query: "http.title:Grafana"
-    severity: high
-    tags: [monitoring, dashboard, metrics]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_kibana
-    query: "product:kibana port:5601"
-    severity: high
-    tags: [monitoring, elasticsearch, logs]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  # --- CODE REPOSITORIES ---
+  # --- CODE / ADMIN ---
   - name: exposed_gitlab
     query: "http.title:GitLab"
     severity: critical
-    tags: [code, repository, git, source_code]
+    tags: [code, repository, git]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
-  # --- HIGH-VALUE REMOTE ACCESS ---
-  - name: exposed_rdp
-    query: "product:rdp port:3389"
-    severity: high
-    tags: [remote_access, windows]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  # --- ADMIN INTERFACES ---
   - name: exposed_phpmyadmin
     query: "http.title:phpMyAdmin"
     severity: high
     tags: [web, admin_interface]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
   - name: exposed_jenkins
     query: "product:jenkins port:8080"
     severity: high
     tags: [cicd, automation, web]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
-  # ============================================
-  # HIGH PRIORITY - Active
-  # ============================================
+  # --- REMOTE ACCESS (capped) ---
+  - name: exposed_rdp
+    query: "product:rdp port:3389"
+    severity: high
+    tags: [remote_access, windows]
+    enrich_with_internetdb: true
+    max_results: 2000
 
-  # --- DATABASE & STORAGE (High Priority) ---
+  - name: exposed_vnc
+    query: "product:vnc port:5900"
+    severity: critical
+    tags: [remote_access, vnc]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- MONITORING / DATA ---
+  - name: exposed_grafana
+    query: "http.title:Grafana"
+    severity: high
+    tags: [monitoring, dashboard]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: exposed_kibana
+    query: "product:kibana port:5601"
+    severity: high
+    tags: [monitoring, elasticsearch]
+    enrich_with_internetdb: true
+    max_results: 2000
+
   - name: exposed_elasticsearch
     query: "product:elasticsearch port:9200"
     severity: high
     tags: [database, search, leak]
     enrich_with_internetdb: true
-    max_results: 3000
+    max_results: 2000
 
-  - name: exposed_telnet
-    query: "product:telnet port:23"
+  # --- CONTAINER / CLOUD ---
+  - name: exposed_docker_registry
+    query: "product:docker port:5000"
     severity: high
-    tags: [remote_access, unencrypted, legacy]
+    tags: [cloud, container, registry]
     enrich_with_internetdb: true
-    max_results: 10000
+    max_results: 1500
+
+  - name: exposed_kubernetes_api
+    query: "product:kubernetes port:6443"
+    severity: critical
+    tags: [cloud, kubernetes]
+    enrich_with_internetdb: true
+    max_results: 1500
+
+  # --- MALWARE / C2 ---
+  - name: exposed_cobalt_strike
+    query: "hash:-2007783223"
+    severity: critical
+    tags: [malware, c2]
+    enrich_with_internetdb: true
+    max_results: 1000
+
+  # --- SEARCH / MESSAGING / TIMESERIES ---
+  - name: exposed_solr
+    query: "product:solr port:8983"
+    severity: high
+    tags: [search, apache, data_leak]
+    enrich_with_internetdb: true
+    max_results: 1500
+
+  - name: exposed_rabbitmq
+    query: "product:rabbitmq port:5672"
+    severity: high
+    tags: [messaging, queue, amqp]
+    enrich_with_internetdb: true
+    max_results: 1500
 
   - name: exposed_influxdb
     query: "product:influxdb port:8086"
     severity: high
     tags: [database, timeseries]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 1500
 
-  - name: exposed_cassandra
-    query: "product:cassandra port:9042"
-    severity: high
-    tags: [database, nosql]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # --- CLOUD & CONTAINER SERVICES ---
-  - name: exposed_docker_registry
-    query: "product:docker port:5000"
-    severity: high
-    tags: [cloud, container, registry]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_consul
-    query: "product:consul port:8500"
-    severity: high
-    tags: [service_discovery, consul]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # --- MESSAGING & QUEUES ---
-  - name: exposed_rabbitmq
-    query: "product:rabbitmq port:5672"
-    severity: high
-    tags: [messaging, queue, amqp]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # --- SEARCH ENGINES & DATA ---
-  - name: exposed_solr
-    query: "product:solr port:8983"
-    severity: high
-    tags: [search, apache, data_leak]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  # --- WEB CMS ---
+  # --- CMS / WEB ---
   - name: exposed_wordpress_login
     query: "http.title:\"Log In\" http.html:\"wp-login\""
     severity: high
-    tags: [web, cms, wordpress, admin_interface]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  # --- FILE TRANSFER & DATA LEAKS ---
-  - name: exposed_ftp
-    query: "product:ftp port:21"
-    severity: high
-    tags: [file_transfer, data_leak, ftp]
-    enrich_with_internetdb: true
-    max_results: 10000
-
-  # --- REMOTE ACCESS ---
-  - name: exposed_vnc
-    query: "product:vnc port:5900"
-    severity: critical
-    tags: [remote_access, vnc, screen_sharing]
-    enrich_with_internetdb: true
-    max_results: 10000
-
-  # ============================================
-  # CLOUD & KUBERNETES
-  # ============================================
-
-  - name: exposed_kubernetes_api
-    query: "product:kubernetes port:6443"
-    severity: critical
-    tags: [cloud, kubernetes, orchestration, container]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  - name: kubernetes_dashboard
-    query: "http.title:Kubernetes port:443"
-    severity: high
-    tags: [cloud, kubernetes, dashboard]
+    tags: [cms, wordpress, admin_interface]
     enrich_with_internetdb: true
     max_results: 2000
 
-  - name: exposed_etcd
-    query: "product:etcd port:2379"
-    severity: critical
-    tags: [cloud, kubernetes, etcd, config_store]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_nomad
-    query: "product:nomad port:4646"
+  - name: exposed_drupal
+    query: "http.html:\"Drupal\""
     severity: high
-    tags: [cloud, orchestration, hashicorp]
+    tags: [cms, drupal, web]
     enrich_with_internetdb: true
     max_results: 1500
 
-  # ============================================
-  # AI / ML SERVICES
-  # ============================================
-
-  - name: exposed_jupyter
-    query: "port:8888 http.title:Jupyter"
+  - name: exposed_joomla
+    query: "http.html:\"Joomla\""
     severity: high
-    tags: [ai, ml, jupyter, notebook, data_science]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  - name: exposed_ollama
-    query: "port:11434 product:ollama"
-    severity: critical
-    tags: [ai, llm, ollama, model_serving]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_mlflow
-    query: "http.title:MLflow port:5000"
-    severity: high
-    tags: [ai, ml, mlflow, experiment_tracking]
+    tags: [cms, joomla, web]
     enrich_with_internetdb: true
     max_results: 1500
 
-  - name: exposed_tensorboard
-    query: "http.title:TensorBoard port:6006"
-    severity: high
-    tags: [ai, ml, tensorboard, visualization]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-  # ============================================
-  # IoT & MESSAGING PROTOCOLS
-  # ============================================
-
+  # --- IoT / DEVOPS / ICS ---
   - name: exposed_mqtt
     query: "port:1883 product:mqtt"
     severity: high
-    tags: [iot, mqtt, messaging, sensors]
+    tags: [iot, mqtt, messaging]
     enrich_with_internetdb: true
-    max_results: 5000
+    max_results: 1500
 
-  - name: exposed_mqtt_tls
-    query: "port:8883 product:mqtt"
+  - name: exposed_nexus
+    query: "http.title:Nexus port:8081"
     severity: high
-    tags: [iot, mqtt, tls, messaging]
+    tags: [devops, artifact, repository]
     enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_coap
-    query: "port:5683 product:CoAP"
-    severity: high
-    tags: [iot, coap, constrained, sensors]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  # ============================================
-  # INDUSTRIAL (ICS/SCADA/OT)
-  # ============================================
+    max_results: 1500
 
   - name: industrial_modbus
     query: "port:502 product:modbus"
     severity: critical
     tags: [ics, scada, modbus, ot]
     enrich_with_internetdb: false
-    max_results: 5000
-
-  - name: industrial_s7
-    query: "product:\"Siemens S7\" port:102"
-    severity: critical
-    tags: [ics, scada, siemens, ot]
-    enrich_with_internetdb: false
-    max_results: 3000
-
-  - name: industrial_bacnet
-    query: "port:47808 product:bacnet"
-    severity: high
-    tags: [ics, bacnet, building_automation, ot]
-    enrich_with_internetdb: false
-    max_results: 2000
-
-  - name: industrial_codesys
-    query: "product:codesys port:2455"
-    severity: high
-    tags: [ics, plc, codesys, ot]
-    enrich_with_internetdb: true
     max_results: 1500
-
-  # ============================================
-  # MORE DATABASES & CACHES
-  # ============================================
-
-  - name: exposed_memcached
-    query: "product:memcached port:11211"
-    severity: high
-    tags: [database, cache, ddos_amplification]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_couchdb
-    query: "product:couchdb port:5984"
-    severity: high
-    tags: [database, nosql, document]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_cockroachdb
-    query: "product:cockroachdb port:26257"
-    severity: high
-    tags: [database, distributed, sql]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-  - name: exposed_timescaledb
-    query: "product:timescaledb port:5432"
-    severity: medium
-    tags: [database, timeseries, postgresql]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-  # ============================================
-  # MONITORING & OBSERVABILITY
-  # ============================================
-
-  - name: exposed_prometheus
-    query: "product:prometheus port:9090"
-    severity: high
-    tags: [monitoring, metrics, prometheus]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_weave_scope
-    query: "http.title:Weave port:4040"
-    severity: high
-    tags: [monitoring, container, weave]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-  - name: exposed_splunk
-    query: "http.title:Splunk port:8000"
-    severity: high
-    tags: [monitoring, siem, logs]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # ============================================
-  # CODE & DEVOPS (MORE)
-  # ============================================
-
-  - name: exposed_github_enterprise
-    query: "http.title:\"GitHub Enterprise\""
-    severity: critical
-    tags: [code, repository, github, source_code]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_bitbucket
-    query: "http.title:Bitbucket port:7990"
-    severity: high
-    tags: [code, repository, bitbucket, git]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_nexus
-    query: "http.title:Nexus port:8081"
-    severity: high
-    tags: [devops, artifact, repository, nexus]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_harbor
-    query: "http.title:Harbor port:443"
-    severity: high
-    tags: [cloud, container, registry, harbor]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # ============================================
-  # VPN & GATEWAYS
-  # ============================================
-
-  - name: exposed_openvpn
-    query: "product:openvpn port:1194"
-    severity: high
-    tags: [vpn, openvpn, remote_access]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_pptp
-    query: "product:pptp port:1723"
-    severity: high
-    tags: [vpn, pptp, legacy, weak]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  # ============================================
-  # STREAMING & CAMERAS
-  # ============================================
-
-  - name: exposed_rtsp
-    query: "product:rtsp port:554"
-    severity: high
-    tags: [iot, camera, streaming, rtsp]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_webrtc
-    query: "http.title:WebRTC port:443"
-    severity: medium
-    tags: [streaming, webrtc, media]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  # ============================================
-  # ADDITIONAL HIGH-VALUE TARGETS
-  # ============================================
-
-  - name: exposed_smb
-    query: "product:smb port:445"
-    severity: high
-    tags: [file_sharing, windows, smb]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_ldap
-    query: "product:ldap port:389"
-    severity: high
-    tags: [directory, ldap, identity]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_tomcat
-    query: "product:\"Apache Tomcat\" port:8080"
-    severity: high
-    tags: [web, java, tomcat]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_activemq
-    query: "product:activemq port:8161"
-    severity: high
-    tags: [messaging, jms, activemq]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: exposed_cobalt_strike
-    query: "hash:-2007783223"
-    severity: critical
-    tags: [malware, c2, cobalt_strike]
-    enrich_with_internetdb: true
-    max_results: 1000

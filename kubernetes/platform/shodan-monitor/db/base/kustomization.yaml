@@ -6,6 +6,7 @@ resources:
   - namespace.yaml
   - postgres.yaml
   - external-secret.yaml
+  - external-secret-shodan.yaml
   - db-init-job.yaml
   - maintenance-cronjob.yaml
   - mongo-sync-cronjob.yaml

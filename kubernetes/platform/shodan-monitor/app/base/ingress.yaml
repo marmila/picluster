@@ -10,6 +10,9 @@ metadata:
     cert-manager.io/common-name: apexforge.${CLUSTER_DOMAIN}
     # Optional: Add rate limiting
     nginx.ingress.kubernetes.io/rate-limit: "100"
+    # Allow slow explore/dashboard queries on large DBs (default 60s can cause 502)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
 spec:
   ingressClassName: nginx
   tls:
@@ -24,6 +27,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: apexforge-collector
+                name: apexforge-api
                 port:
-                  name: metrics
+                  number: 8000

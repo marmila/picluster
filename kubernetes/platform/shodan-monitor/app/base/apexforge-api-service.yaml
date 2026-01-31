@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: apexforge-api
+  namespace: shodan-monitor
+  labels:
+    app: apexforge-api
+    kustomize.toolkit.fluxcd.io/name: shodan-app
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+spec:
+  selector:
+    app: apexforge-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

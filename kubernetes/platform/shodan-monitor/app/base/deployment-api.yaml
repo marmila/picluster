@@ -1,18 +1,22 @@
-# Collector-only deployment: runs Shodan collection loop. No HTTP server (no API/UI).
+# API-only deployment: serves UI, REST API, and /metrics. No collector in this pod.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: apexforge-collector
+  name: apexforge-api
   namespace: shodan-monitor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: apexforge-collector
+      app: apexforge-api
   template:
     metadata:
       labels:
-        app: apexforge-collector
+        app: apexforge-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       initContainers:
         - name: wait-for-dbs
@@ -24,18 +28,22 @@ spec:
               until nslookup shodan-postgres.shodan-monitor.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
-        - name: apexforge-collector
+        - name: apexforge-api
           image: ghcr.io/marmila/apex-forge:9.0.11
           imagePullPolicy: IfNotPresent
           args:
-            - --collector-only
+            - --api-only
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
           resources:
             requests:
-              cpu: "150m"
-              memory: "384Mi"
+              cpu: "200m"
+              memory: "512Mi"
             limits:
-              cpu: "500m"
-              memory: "768Mi"
+              cpu: "1000m"
+              memory: "1Gi"
           env:
             - name: OPENAI_API_KEY
               valueFrom:
@@ -90,21 +98,22 @@ spec:
             - name: targets-volume
               mountPath: /app/targets.yaml
               subPath: targets.yaml
-          # No HTTP server in collector-only mode; use exec probes
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 15
+            failureThreshold: 6
           livenessProbe:
-            exec:
-              command: ["python", "-c", "import sys; sys.exit(0)"]
+            httpGet:
+              path: /health
+              port: 8000
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 5
+            timeoutSeconds: 20
             failureThreshold: 5
-          readinessProbe:
-            exec:
-              command: ["python", "-c", "import sys; sys.exit(0)"]
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
       volumes:
         - name: profiles-volume
           configMap:
