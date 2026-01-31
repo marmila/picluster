@@ -1,6 +1,6 @@
-# ApexForge – 24 profiles, capped max_results to save credits
+# ApexForge – 20 profiles, capped max_results to save credits
 #
-# 24 profiles × 3 cycles/month ≈ 72 Shodan credits. max_results 1000–2500 per profile.
+# 20 profiles × 3 cycles/month ≈ 60 Shodan credits. max_results 1000–2500 per profile.
 
 intelligence_profiles:
   # --- CRITICAL: DB LEAKS ---
@@ -62,13 +62,6 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 2000
 
-  - name: exposed_vnc
-    query: "product:vnc port:5900"
-    severity: critical
-    tags: [remote_access, vnc]
-    enrich_with_internetdb: true
-    max_results: 2000
-
   # --- MONITORING / DATA ---
   - name: exposed_grafana
     query: "http.title:Grafana"
@@ -98,21 +91,6 @@ intelligence_profiles:
     tags: [cloud, container, registry]
     enrich_with_internetdb: true
     max_results: 1500
-
-  - name: exposed_kubernetes_api
-    query: "product:kubernetes port:6443"
-    severity: critical
-    tags: [cloud, kubernetes]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-  # --- MALWARE / C2 ---
-  - name: exposed_cobalt_strike
-    query: "hash:-2007783223"
-    severity: critical
-    tags: [malware, c2]
-    enrich_with_internetdb: true
-    max_results: 1000
 
   # --- SEARCH / MESSAGING / TIMESERIES ---
   - name: exposed_solr
@@ -159,13 +137,6 @@ intelligence_profiles:
     max_results: 1500
 
   # --- IoT / DEVOPS / ICS ---
-  - name: exposed_mqtt
-    query: "port:1883 product:mqtt"
-    severity: high
-    tags: [iot, mqtt, messaging]
-    enrich_with_internetdb: true
-    max_results: 1500
-
   - name: exposed_nexus
     query: "http.title:Nexus port:8081"
     severity: high
