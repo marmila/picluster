@@ -1,51 +1,86 @@
-# My Assets Configuration
-#
-# 🎯 IMPORTANT: Shodan Monitor API (Up to 16 IPs - NO Credits!)
-# ==============================================================
-# Your Shodan Membership plan includes Monitor API for up to 16 IPs.
-# Monitor API does NOT consume query credits - it's FREE for those 16 IPs!
-#
-# Recommendation:
-# - First 16 assets: Use Shodan Monitor API (0 credits)
-# - Additional assets: Use Host API (1 credit per lookup)
-#
-# CREDIT BUDGETING GUIDE:
-# =======================
-# With Shodan Membership Plan (100 query credits/month):
-# - Monitor API: Up to 16 IPs = 0 credits/month ✅
-# - Host API: Each IP lookup = 1 query credit
-# - Recommended budget: 40-55 credits/month for additional assets
-#   (assuming 18 intelligence profiles using 54 credits/month)
-#
-# Interval Recommendations:
-# - Critical production assets: 6-12 hours
-# - Important assets: 12-24 hours
-# - Standard assets: 24 hours
-# - Low-priority assets: 48+ hours
-#
-my_assets:
-  # ============================================
-  # TIER 1: Critical Assets (Use Monitor API - First 16 IPs)
-  # These should be set up in Shodan Monitor for 0 credits
-  # ============================================
+# My Assets Configuration - Production
 
-  # Production Website / ISP Router
+my_assets:
+  # TIER 1: Critical Assets (Monitor API)
+
   - ip: "93.40.1.188"
     name: "Marmilan.com (Public)"
     description: "Public IP for Marmilan.com (Port Forwarded)"
     tags: [production, web, monitor_api]
     monitor_interval_hours: 6
 
-  # Cloud VM
   - ip: "89.168.19.79"
     name: "Oracle Cloud VM"
     description: "Testing VM with httpd/mysql"
     tags: [cloud, test, monitor_api]
     monitor_interval_hours: 12
 
-# Notes:
-# - Monitor API (first 16 IPs): NO query credits consumed - FREE!
-# - Host API (additional IPs): Each IP lookup = 1 query credit
-# - monitor_interval_hours: For Host API, determines check frequency
-#                          For Monitor API, Shodan controls scan frequency
-# - Tags are used for filtering and organization in the UI
+  # Websites
+
+  - ip: "86.107.32.160"
+    name: "coachmandelli.com"
+    description: "Production website"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "35.214.164.98"
+    name: "dariomoroldo.com"
+    description: "Production website"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "212.237.2.158"
+    name: "staging.eurcon.it"
+    description: "Staging website"
+    tags: [staging, web, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "86.105.14.12"
+    name: "farmacialaudense.com"
+    description: "Production website"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "86.105.14.12"
+    name: "staging.farmacialaudense.com"
+    description: "Staging website"
+    tags: [staging, web, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "104.21.64.206"
+    name: "moparch.it (CF node 1)"
+    description: "Production website behind Cloudflare"
+    tags: [production, web, cloudflare, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "172.67.155.212"
+    name: "moparch.it (CF node 2)"
+    description: "Production website behind Cloudflare"
+    tags: [production, web, cloudflare, monitor_api]
+    monitor_interval_hours: 24
+
+  - ip: "185.116.60.11"
+    name: "teverivabio.it"
+    description: "Production website"
+    tags: [production, web, monitor_api]
+    monitor_interval_hours: 24
+
+  # TIER 2: Security Labs / Research Targets
+
+  - ip: "192.168.56.101"
+    name: "DVWA Local Lab"
+    description: "Damn Vulnerable Web App (local lab example)"
+    tags: [lab, security, dvwa, research]
+    monitor_interval_hours: 48
+
+  - ip: "demo.testfire.net"
+    name: "OWASP WebGoat (Public Demo)"
+    description: "OWASP intentionally vulnerable app"
+    tags: [lab, security, owasp, research]
+    monitor_interval_hours: 48
+
+  - ip: "testphp.vulnweb.com"
+    name: "Acunetix Test Site"
+    description: "Acunetix intentionally vulnerable target"
+    tags: [lab, security, acunetix, research]
+    monitor_interval_hours: 48
