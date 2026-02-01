@@ -9,6 +9,7 @@ resources:
   - namespace.yaml
   - deployment.yaml
   - deployment-api.yaml
+  - apexforge-api-rbac.yaml
   - apexforge-api-service.yaml
   - external-secret.yaml
   - external-secret-virustotal.yaml

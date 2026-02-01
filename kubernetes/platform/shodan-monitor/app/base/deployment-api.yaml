@@ -18,6 +18,7 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: apexforge-api
       initContainers:
         - name: wait-for-dbs
           image: busybox:1.28
@@ -29,7 +30,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-api
-          image: ghcr.io/marmila/apex-forge:9.2.8
+          image: ghcr.io/marmila/apex-forge:9.3.0
           imagePullPolicy: IfNotPresent
           command: ["python", "scripts/run_server.py", "--api-only"]
           ports:
@@ -87,6 +88,8 @@ spec:
                   key: DB_PASS
             - name: PYTHONPATH
               value: "/app"
+            - name: BACKUP_MOUNT_PATH
+              value: "/backup"
           envFrom:
             - configMapRef:
                 name: shodan-config
@@ -97,6 +100,8 @@ spec:
             - name: targets-volume
               mountPath: /app/targets.yaml
               subPath: targets.yaml
+            - name: backup-volume
+              mountPath: /backup
           readinessProbe:
             httpGet:
               path: /health
@@ -120,3 +125,6 @@ spec:
         - name: targets-volume
           configMap:
             name: shodan-targets
+        - name: backup-volume
+          persistentVolumeClaim:
+            claimName: apexforge-backup-pvc

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apexforge-api
+  namespace: shodan-monitor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: apexforge-api-backup
+  namespace: shodan-monitor
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: apexforge-api-backup
+  namespace: shodan-monitor
+subjects:
+  - kind: ServiceAccount
+    name: apexforge-api
+    namespace: shodan-monitor
+roleRef:
+  kind: Role
+  name: apexforge-api-backup
+  apiGroup: rbac.authorization.k8s.io
