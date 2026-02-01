@@ -73,13 +73,13 @@ my_assets:
     tags: [lab, security, dvwa, research]
     monitor_interval_hours: 48
 
-  - ip: "demo.testfire.net"
+  - ip: "65.61.137.117"
     name: "OWASP WebGoat (Public Demo)"
     description: "OWASP intentionally vulnerable app"
     tags: [lab, security, owasp, research]
     monitor_interval_hours: 48
 
-  - ip: "testphp.vulnweb.com"
+  - ip: "44.228.249.3"
     name: "Acunetix Test Site"
     description: "Acunetix intentionally vulnerable target"
     tags: [lab, security, acunetix, research]
