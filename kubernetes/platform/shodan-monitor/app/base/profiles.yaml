@@ -1,6 +1,9 @@
-# ApexForge – 20 profiles, capped max_results to save credits
+# ApexForge – 22 profiles, capped max_results to save credits
 #
-# 20 profiles × 3 cycles/month ≈ 60 Shodan credits. max_results 1000–2500 per profile.
+# 22 profiles × 3 cycles/month ≈ 66 Shodan credits. max_results 1500–2500 per profile.
+#
+# Replaced solr/nexus/rabbitmq with firewall/VPN; RDP with cloud + dorks (MinIO, directory listing, Swagger).
+# Fortinet/Cisco ASA/Palo Alto — ArcaneDoor, CVE-2025-20333, GlobalProtect brute force.
 
 intelligence_profiles:
   # --- CRITICAL: DB LEAKS ---
@@ -54,11 +57,26 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 2000
 
-  # --- REMOTE ACCESS (capped) ---
-  - name: exposed_rdp
-    query: "product:rdp port:3389"
+  # --- CLOUD / OBJECT STORAGE ---
+  - name: exposed_minio
+    query: "MinIO"
+    severity: critical
+    tags: [cloud, storage, s3, object_storage]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- DORKS ---
+  - name: directory_listing_index_of
+    query: "http.html:\"Index of\""
     severity: high
-    tags: [remote_access, windows]
+    tags: [dork, directory_listing, data_leak]
+    enrich_with_internetdb: true
+    max_results: 2500
+
+  - name: exposed_swagger_ui
+    query: "http.title:Swagger"
+    severity: high
+    tags: [dork, api, documentation]
     enrich_with_internetdb: true
     max_results: 2000
 
@@ -92,21 +110,29 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 1500
 
-  # --- SEARCH / MESSAGING / TIMESERIES ---
-  - name: exposed_solr
-    query: "product:solr port:8983"
-    severity: high
-    tags: [search, apache, data_leak]
+  # --- FIREWALL / VPN VENDORS (high-value targets in real campaigns) ---
+  - name: exposed_fortinet_fortigate
+    query: "FortiGate"
+    severity: critical
+    tags: [firewall, vpn, fortinet, vendor]
     enrich_with_internetdb: true
-    max_results: 1500
+    max_results: 2500
 
-  - name: exposed_rabbitmq
-    query: "product:rabbitmq port:5672"
-    severity: high
-    tags: [messaging, queue, amqp]
+  - name: exposed_cisco_asa_vpn
+    query: "Cisco ASA SSL VPN"
+    severity: critical
+    tags: [firewall, vpn, cisco, vendor]
     enrich_with_internetdb: true
-    max_results: 1500
+    max_results: 2500
 
+  - name: exposed_paloalto_globalprotect
+    query: "GlobalProtect"
+    severity: critical
+    tags: [firewall, vpn, paloalto, vendor]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- TIMESERIES ---
   - name: exposed_influxdb
     query: "product:influxdb port:8086"
     severity: high
@@ -136,14 +162,7 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 1500
 
-  # --- IoT / DEVOPS / ICS ---
-  - name: exposed_nexus
-    query: "http.title:Nexus port:8081"
-    severity: high
-    tags: [devops, artifact, repository]
-    enrich_with_internetdb: true
-    max_results: 1500
-
+  # --- ICS / OT ---
   - name: industrial_modbus
     query: "port:502 product:modbus"
     severity: critical
