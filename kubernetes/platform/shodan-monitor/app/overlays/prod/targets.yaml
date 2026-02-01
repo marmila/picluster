@@ -60,6 +60,25 @@ my_assets:
     monitor_interval_hours: 24
 
   # TIER 2: Security Labs / Research Targets
+  # (Intentionally exposed / permission-to-scan targets for research only)
+
+  - ip: "45.33.32.156"
+    name: "scanme.nmap.org"
+    description: "Nmap official test target - explicit permission to scan (Fyodor)"
+    tags: [lab, security, nmap, research]
+    monitor_interval_hours: 48
+
+  - ip: "45.33.49.119"
+    name: "ack.nmap.org"
+    description: "Nmap ACK scan test host (official)"
+    tags: [lab, security, nmap, research]
+    monitor_interval_hours: 48
+
+  - ip: "44.238.29.244"
+    name: "testasp.vulnweb.com"
+    description: "Acunetix vulnerable ASP.NET test site (intentionally exposed)"
+    tags: [lab, security, acunetix, research]
+    monitor_interval_hours: 48
 
   - ip: "65.61.137.117"
     name: "OWASP WebGoat (Public Demo)"
@@ -68,7 +87,7 @@ my_assets:
     monitor_interval_hours: 48
 
   - ip: "44.228.249.3"
-    name: "Acunetix Test Site"
-    description: "Acunetix intentionally vulnerable target"
+    name: "Acunetix Test Site (PHP)"
+    description: "Acunetix vulnerable PHP test site (intentionally exposed)"
     tags: [lab, security, acunetix, research]
     monitor_interval_hours: 48
