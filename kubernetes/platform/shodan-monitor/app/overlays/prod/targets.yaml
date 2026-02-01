@@ -23,12 +23,6 @@ my_assets:
     tags: [production, web, monitor_api]
     monitor_interval_hours: 24
 
-  - ip: "35.214.164.98"
-    name: "dariomoroldo.com"
-    description: "Production website"
-    tags: [production, web, monitor_api]
-    monitor_interval_hours: 24
-
   - ip: "212.237.2.158"
     name: "staging.eurcon.it"
     description: "Staging website"
@@ -66,12 +60,6 @@ my_assets:
     monitor_interval_hours: 24
 
   # TIER 2: Security Labs / Research Targets
-
-  - ip: "192.168.56.101"
-    name: "DVWA Local Lab"
-    description: "Damn Vulnerable Web App (local lab example)"
-    tags: [lab, security, dvwa, research]
-    monitor_interval_hours: 48
 
   - ip: "65.61.137.117"
     name: "OWASP WebGoat (Public Demo)"
