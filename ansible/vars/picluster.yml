@@ -333,7 +333,7 @@ velero_secret_content: |
 ##########################
 
 # renovate: datasource=github-releases depName=longhorn/longhorn
-longhorn_version: v1.10.1
+longhorn_version: v1.11.0
 
 # Minio user, key and bucket
 minio_longhorn_user: "{{ vault.minio.longhorn.user }}"
@@ -344,7 +344,7 @@ minio_longhorn_key: "{{ vault.minio.longhorn.key }}"
 #######################
 
 # renovate: datasource=github-releases depName=istio/istio
-istio_version: 1.28.2
+istio_version: 1.28.3
 
 ###################
 # Logging Secrets #
