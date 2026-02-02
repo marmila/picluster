@@ -1,4 +1,4 @@
-# ApexForge – 24 profiles (Freelancer plan: higher max_results)
+# ApexForge – 23 profiles (Freelancer plan: higher max_results)
 #
 # 27 profiles × 3 cycles/month. max_results 3000–5000 per profile.
 #
@@ -147,14 +147,7 @@ intelligence_profiles:
     enrich_with_internetdb: false
     max_results: 3000
 
-  # --- BUILDING AUTOMATION (BACnet, BMS) ---
-  - name: bacnet_building_automation
-    query: "port:47808"
-    severity: critical
-    tags: [ics, bacnet, building, hvac]
-    enrich_with_internetdb: true
-    max_results: 4000
-
+  # --- BUILDING AUTOMATION (BMS) ---
   - name: niagara_bms
     query: "Niagara4"
     severity: critical
