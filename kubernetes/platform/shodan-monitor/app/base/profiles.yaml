@@ -1,9 +1,8 @@
-# ApexForge – 22 profiles, capped max_results to save credits
+# ApexForge – 24 profiles (Freelancer plan: higher max_results)
 #
-# 22 profiles × 3 cycles/month ≈ 66 Shodan credits. max_results 1500–2500 per profile.
+# 27 profiles × 3 cycles/month. max_results 3000–5000 per profile.
 #
-# Replaced solr/nexus/rabbitmq with firewall/VPN; RDP with cloud + dorks (MinIO, directory listing, Swagger).
-# Fortinet/Cisco ASA/Palo Alto — ArcaneDoor, CVE-2025-20333, GlobalProtect brute force.
+# RDP replaced with cloud + dorks (MinIO, directory listing, Swagger). Firewall/VPN vendor profiles removed.
 
 intelligence_profiles:
   # --- CRITICAL: DB LEAKS ---
@@ -12,28 +11,28 @@ intelligence_profiles:
     severity: critical
     tags: [database, leak]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: unauthenticated_redis
     query: "product:redis port:6379 -authentication"
     severity: critical
     tags: [database, leak, cache]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: unauthenticated_postgresql
     query: "product:postgresql port:5432 -authentication"
     severity: critical
     tags: [database, leak]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_mysql
     query: "product:mysql port:3306"
     severity: critical
     tags: [database, mysql]
     enrich_with_internetdb: true
-    max_results: 2500
+    max_results: 5000
 
   # --- CODE / ADMIN ---
   - name: exposed_gitlab
@@ -41,21 +40,21 @@ intelligence_profiles:
     severity: critical
     tags: [code, repository, git]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_phpmyadmin
     query: "http.title:phpMyAdmin"
     severity: high
     tags: [web, admin_interface]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_jenkins
     query: "product:jenkins port:8080"
     severity: high
     tags: [cicd, automation, web]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   # --- CLOUD / OBJECT STORAGE ---
   - name: exposed_minio
@@ -63,7 +62,7 @@ intelligence_profiles:
     severity: critical
     tags: [cloud, storage, s3, object_storage]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   # --- DORKS ---
   - name: directory_listing_index_of
@@ -71,14 +70,14 @@ intelligence_profiles:
     severity: high
     tags: [dork, directory_listing, data_leak]
     enrich_with_internetdb: true
-    max_results: 2500
+    max_results: 5000
 
   - name: exposed_swagger_ui
     query: "http.title:Swagger"
     severity: high
     tags: [dork, api, documentation]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   # --- MONITORING / DATA ---
   - name: exposed_grafana
@@ -86,21 +85,21 @@ intelligence_profiles:
     severity: high
     tags: [monitoring, dashboard]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_kibana
     query: "product:kibana port:5601"
     severity: high
     tags: [monitoring, elasticsearch]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_elasticsearch
     query: "product:elasticsearch port:9200"
     severity: high
     tags: [database, search, leak]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   # --- CONTAINER / CLOUD ---
   - name: exposed_docker_registry
@@ -108,29 +107,7 @@ intelligence_profiles:
     severity: high
     tags: [cloud, container, registry]
     enrich_with_internetdb: true
-    max_results: 1500
-
-  # --- FIREWALL / VPN VENDORS (high-value targets in real campaigns) ---
-  - name: exposed_fortinet_fortigate
-    query: "FortiGate"
-    severity: critical
-    tags: [firewall, vpn, fortinet, vendor]
-    enrich_with_internetdb: true
-    max_results: 2500
-
-  - name: exposed_cisco_asa_vpn
-    query: "Cisco ASA SSL VPN"
-    severity: critical
-    tags: [firewall, vpn, cisco, vendor]
-    enrich_with_internetdb: true
-    max_results: 2500
-
-  - name: exposed_paloalto_globalprotect
-    query: "GlobalProtect"
-    severity: critical
-    tags: [firewall, vpn, paloalto, vendor]
-    enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 3000
 
   # --- TIMESERIES ---
   - name: exposed_influxdb
@@ -138,7 +115,7 @@ intelligence_profiles:
     severity: high
     tags: [database, timeseries]
     enrich_with_internetdb: true
-    max_results: 1500
+    max_results: 3000
 
   # --- CMS / WEB ---
   - name: exposed_wordpress_login
@@ -146,21 +123,21 @@ intelligence_profiles:
     severity: high
     tags: [cms, wordpress, admin_interface]
     enrich_with_internetdb: true
-    max_results: 2000
+    max_results: 4000
 
   - name: exposed_drupal
     query: "http.html:\"Drupal\""
     severity: high
     tags: [cms, drupal, web]
     enrich_with_internetdb: true
-    max_results: 1500
+    max_results: 3000
 
   - name: exposed_joomla
     query: "http.html:\"Joomla\""
     severity: high
     tags: [cms, joomla, web]
     enrich_with_internetdb: true
-    max_results: 1500
+    max_results: 3000
 
   # --- ICS / OT ---
   - name: industrial_modbus
@@ -168,4 +145,42 @@ intelligence_profiles:
     severity: critical
     tags: [ics, scada, modbus, ot]
     enrich_with_internetdb: false
-    max_results: 1500
+    max_results: 3000
+
+  # --- BUILDING AUTOMATION (BACnet, BMS) ---
+  - name: bacnet_building_automation
+    query: "port:47808"
+    severity: critical
+    tags: [ics, bacnet, building, hvac]
+    enrich_with_internetdb: true
+    max_results: 4000
+
+  - name: niagara_bms
+    query: "Niagara4"
+    severity: critical
+    tags: [ics, building, tridium, bms]
+    enrich_with_internetdb: true
+    max_results: 4000
+
+  # --- SURVEILLANCE ---
+  - name: exposed_hikvision_cameras
+    query: "Hikvision"
+    severity: high
+    tags: [surveillance, camera, iot]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- STREAMING / COORDINATION ---
+  - name: exposed_zookeeper
+    query: "port:2181 product:zookeeper"
+    severity: high
+    tags: [coordination, apache, cluster]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: exposed_kafka_brokers
+    query: "port:9092 product:kafka"
+    severity: critical
+    tags: [streaming, messaging, apache]
+    enrich_with_internetdb: true
+    max_results: 3000
