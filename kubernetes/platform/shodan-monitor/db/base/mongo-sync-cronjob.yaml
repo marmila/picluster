@@ -15,7 +15,7 @@ spec:
           containers:
             - name: mongo-sync
               image: ghcr.io/marmila/apex-forge:9.3.6
-              imagePullPolicy: Always
+              imagePullPolicy: IfNotPresent
               env:
                 - name: MONGO_USER
                   valueFrom:
