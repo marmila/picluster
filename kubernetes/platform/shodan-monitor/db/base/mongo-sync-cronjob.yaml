@@ -14,7 +14,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: mongo-sync
-              image: ghcr.io/marmila/apex-forge:9.3.10
+              image: ghcr.io/marmila/apex-forge:9.3.11
               imagePullPolicy: IfNotPresent
               env:
                 - name: MONGO_USER
