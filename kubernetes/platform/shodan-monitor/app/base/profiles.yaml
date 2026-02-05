@@ -128,28 +128,12 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 4000
 
-  - name: exposed_influxdb
-    query: "product:influxdb port:8086"
+  # --- NODE RUNTIME (exposure-stack) ---
+  - name: nodejs_express_stack
+    query: "http.html:\"X-Powered-By\" \"Express\""
     severity: high
     category: exposure-stack
-    tags: [database, timeseries, monitoring]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  # --- CONTAINER / CLOUD (exposure-stack) ---
-  - name: exposed_docker_registry
-    query: "product:docker port:5000"
-    severity: high
-    category: exposure-stack
-    tags: [cloud, container, registry]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  - name: exposed_minio
-    query: "MinIO"
-    severity: high
-    category: exposure-stack
-    tags: [cloud, storage, s3, object_storage]
+    tags: [web, node, express]
     enrich_with_internetdb: true
     max_results: 3000
 
