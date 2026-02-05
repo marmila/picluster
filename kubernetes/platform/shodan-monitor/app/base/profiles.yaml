@@ -1,14 +1,13 @@
-# ApexForge – 23 profiles (Freelancer plan: higher max_results)
-#
-# 27 profiles × 3 cycles/month. max_results 3000–5000 per profile.
-#
-# RDP replaced with cloud + dorks (MinIO, directory listing, Swagger). Firewall/VPN vendor profiles removed.
+# ApexForge – LAMP / web stack profiles (consistent with website monitoring)
+# category: exposure-core (critical leaks/admin) | exposure-stack (same stack as targets) | tech-radar (optional)
+# No industrial/IoT; if you monitor IoT later, change only this file and assets, not the code.
 
 intelligence_profiles:
-  # --- CRITICAL: DB LEAKS ---
+  # --- CRITICAL: DB LEAKS (exposure-core) ---
   - name: unauthenticated_databases
     query: "product:mongodb port:27017 -authentication"
     severity: critical
+    category: exposure-core
     tags: [database, leak]
     enrich_with_internetdb: true
     max_results: 4000
@@ -16,6 +15,7 @@ intelligence_profiles:
   - name: unauthenticated_redis
     query: "product:redis port:6379 -authentication"
     severity: critical
+    category: exposure-core
     tags: [database, leak, cache]
     enrich_with_internetdb: true
     max_results: 4000
@@ -23,6 +23,7 @@ intelligence_profiles:
   - name: unauthenticated_postgresql
     query: "product:postgresql port:5432 -authentication"
     severity: critical
+    category: exposure-core
     tags: [database, leak]
     enrich_with_internetdb: true
     max_results: 4000
@@ -30,14 +31,16 @@ intelligence_profiles:
   - name: exposed_mysql
     query: "product:mysql port:3306"
     severity: critical
-    tags: [database, mysql]
+    category: exposure-core
+    tags: [database, mysql, lamp]
     enrich_with_internetdb: true
     max_results: 5000
 
-  # --- CODE / ADMIN ---
+  # --- CODE / ADMIN (exposure-core) ---
   - name: exposed_gitlab
     query: "http.title:GitLab"
     severity: critical
+    category: exposure-core
     tags: [code, repository, git]
     enrich_with_internetdb: true
     max_results: 4000
@@ -45,29 +48,49 @@ intelligence_profiles:
   - name: exposed_phpmyadmin
     query: "http.title:phpMyAdmin"
     severity: high
-    tags: [web, admin_interface]
+    category: exposure-core
+    tags: [web, admin_interface, php, mysql]
     enrich_with_internetdb: true
     max_results: 4000
 
   - name: exposed_jenkins
     query: "product:jenkins port:8080"
     severity: high
+    category: exposure-core
     tags: [cicd, automation, web]
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- CLOUD / OBJECT STORAGE ---
-  - name: exposed_minio
-    query: "MinIO"
-    severity: critical
-    tags: [cloud, storage, s3, object_storage]
+  # --- WEB SERVER / LAMP STACK (exposure-stack) ---
+  - name: apache_http_server
+    query: "http.component:apache"
+    severity: high
+    category: exposure-stack
+    tags: [web, apache, lamp, server]
     enrich_with_internetdb: true
-    max_results: 4000
+    max_results: 5000
 
-  # --- DORKS ---
+  - name: nginx_http_server
+    query: "http.component:nginx"
+    severity: high
+    category: exposure-stack
+    tags: [web, nginx, server]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: php_powered
+    query: "http.html:\"X-Powered-By\" \"PHP\""
+    severity: high
+    category: exposure-stack
+    tags: [web, php, lamp]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  # --- DORKS / API (exposure-core) ---
   - name: directory_listing_index_of
     query: "http.html:\"Index of\""
     severity: high
+    category: exposure-core
     tags: [dork, directory_listing, data_leak]
     enrich_with_internetdb: true
     max_results: 5000
@@ -75,14 +98,16 @@ intelligence_profiles:
   - name: exposed_swagger_ui
     query: "http.title:Swagger"
     severity: high
+    category: exposure-core
     tags: [dork, api, documentation]
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- MONITORING / DATA ---
+  # --- MONITORING / DATA (exposure-stack) ---
   - name: exposed_grafana
     query: "http.title:Grafana"
     severity: high
+    category: exposure-stack
     tags: [monitoring, dashboard]
     enrich_with_internetdb: true
     max_results: 4000
@@ -90,6 +115,7 @@ intelligence_profiles:
   - name: exposed_kibana
     query: "product:kibana port:5601"
     severity: high
+    category: exposure-stack
     tags: [monitoring, elasticsearch]
     enrich_with_internetdb: true
     max_results: 4000
@@ -97,83 +123,99 @@ intelligence_profiles:
   - name: exposed_elasticsearch
     query: "product:elasticsearch port:9200"
     severity: high
+    category: exposure-stack
     tags: [database, search, leak]
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- CONTAINER / CLOUD ---
+  - name: exposed_influxdb
+    query: "product:influxdb port:8086"
+    severity: high
+    category: exposure-stack
+    tags: [database, timeseries, monitoring]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- CONTAINER / CLOUD (exposure-stack) ---
   - name: exposed_docker_registry
     query: "product:docker port:5000"
     severity: high
+    category: exposure-stack
     tags: [cloud, container, registry]
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- TIMESERIES ---
-  - name: exposed_influxdb
-    query: "product:influxdb port:8086"
+  - name: exposed_minio
+    query: "MinIO"
     severity: high
-    tags: [database, timeseries]
+    category: exposure-stack
+    tags: [cloud, storage, s3, object_storage]
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- CMS / WEB ---
+  # --- CMS / WEB (exposure-stack) ---
   - name: exposed_wordpress_login
     query: "http.title:\"Log In\" http.html:\"wp-login\""
     severity: high
-    tags: [cms, wordpress, admin_interface]
+    category: exposure-stack
+    tags: [cms, wordpress, admin_interface, php]
     enrich_with_internetdb: true
     max_results: 4000
 
   - name: exposed_drupal
     query: "http.html:\"Drupal\""
     severity: high
-    tags: [cms, drupal, web]
+    category: exposure-stack
+    tags: [cms, drupal, web, php]
     enrich_with_internetdb: true
     max_results: 3000
 
   - name: exposed_joomla
     query: "http.html:\"Joomla\""
     severity: high
-    tags: [cms, joomla, web]
+    category: exposure-stack
+    tags: [cms, joomla, web, php]
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- ICS / OT ---
-  - name: industrial_modbus
-    query: "port:502 product:modbus"
-    severity: critical
-    tags: [ics, scada, modbus, ot]
-    enrich_with_internetdb: false
-    max_results: 3000
-
-  # --- BUILDING AUTOMATION (BMS) ---
-  - name: niagara_bms
-    query: "Niagara4"
-    severity: critical
-    tags: [ics, building, tridium, bms]
+  # --- NODE / MODERN CMS (exposure-stack) ---
+  - name: exposed_ghost
+    query: "http.component:ghost"
+    severity: high
+    category: exposure-stack
+    tags: [cms, ghost, blog, node]
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- SURVEILLANCE ---
-  - name: exposed_hikvision_cameras
-    query: "Hikvision"
+  - name: exposed_strapi
+    query: "http.html:\"Strapi\""
     severity: high
-    tags: [surveillance, camera, iot]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  # --- STREAMING / COORDINATION ---
-  - name: exposed_zookeeper
-    query: "port:2181 product:zookeeper"
-    severity: high
-    tags: [coordination, apache, cluster]
+    category: exposure-stack
+    tags: [cms, strapi, headless, node]
     enrich_with_internetdb: true
     max_results: 3000
 
-  - name: exposed_kafka_brokers
-    query: "port:9092 product:kafka"
-    severity: critical
-    tags: [streaming, messaging, apache]
+  - name: exposed_directus
+    query: "http.html:\"Directus\""
+    severity: high
+    category: exposure-stack
+    tags: [cms, directus, headless, api]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- PHP FRAMEWORK / E‑COMMERCE (exposure-stack) ---
+  - name: exposed_laravel
+    query: "http.html:\"Laravel\""
+    severity: high
+    category: exposure-stack
+    tags: [web, laravel, php, framework]
+    enrich_with_internetdb: true
+    max_results: 4000
+
+  - name: exposed_magento
+    query: "http.html:\"Magento\""
+    severity: high
+    category: exposure-stack
+    tags: [cms, magento, ecommerce, php]
     enrich_with_internetdb: true
     max_results: 3000
