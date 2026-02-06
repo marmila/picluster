@@ -119,3 +119,7 @@ queryFrontend:
 # Disable Minio server installation
 minio:
   enabled: false
+
+# Disable anonymous usage reporting (avoids usage-report module S3 ListObjects error)
+tempo:
+  reportingEnabled: false
