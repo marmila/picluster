@@ -6,10 +6,10 @@ resources:
 
 images:
   - name: ghcr.io/marmila/apex-forge
-    newTag: 10.2.1
+    newTag: 10.3.0
   - name: ghcr.io/marmila/shodan-intel-sentinel
     newName: ghcr.io/marmila/apex-forge
-    newTag: 10.2.1
+    newTag: 10.3.0
 
 configMapGenerator:
   - name: shodan-config
@@ -18,12 +18,7 @@ configMapGenerator:
       - INTERVAL_SECONDS=864000
       - LOG_LEVEL=INFO
 
-  - name: shodan-targets
-    behavior: merge
-    files:
-      - targets.yaml
-
-  # Note: profiles.yaml is inherited from base, no override needed
+  # Note: profiles.yaml is inherited from base; my assets are from DB only (no targets.yaml)
 
 
 

@@ -30,7 +30,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-api
-          image: ghcr.io/marmila/apex-forge:10.2.1
+          image: ghcr.io/marmila/apex-forge:10.3.0
           imagePullPolicy: IfNotPresent
           command: ["python", "scripts/run_server.py", "--api-only"]
           ports:
@@ -97,9 +97,6 @@ spec:
             - name: profiles-volume
               mountPath: /app/profiles.yaml
               subPath: profiles.yaml
-            - name: targets-volume
-              mountPath: /app/targets.yaml
-              subPath: targets.yaml
             - name: backup-volume
               mountPath: /backup
           readinessProbe:
@@ -122,9 +119,6 @@ spec:
         - name: profiles-volume
           configMap:
             name: shodan-profiles
-        - name: targets-volume
-          configMap:
-            name: shodan-targets
         - name: backup-volume
           persistentVolumeClaim:
             claimName: apexforge-backup-pvc
