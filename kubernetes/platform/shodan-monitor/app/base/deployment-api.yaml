@@ -30,7 +30,7 @@ spec:
               until nslookup shodan-mongo-svc.shodan-monitor.svc.cluster.local; do echo "waiting for mongo..."; sleep 2; done
       containers:
         - name: apexforge-api
-          image: ghcr.io/marmila/apex-forge:10.4.13
+          image: ghcr.io/marmila/apex-forge:10.4.14
           imagePullPolicy: IfNotPresent
           command: ["python", "scripts/run_server.py", "--api-only"]
           ports:
