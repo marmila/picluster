@@ -1,14 +1,14 @@
 # ApexForge – LAMP / web stack profiles (consistent with website monitoring)
 # category: exposure-core (critical leaks/admin) | exposure-stack (same stack as targets) | tech-radar (optional)
-# No industrial/IoT; if you monitor IoT later, change only this file and assets, not the code.
 
 intelligence_profiles:
-  # --- CRITICAL: DB LEAKS (exposure-core) ---
-  - name: unauthenticated_databases
+
+  # --- CRITICAL: DB / CACHE LEAKS (exposure-core) ---
+  - name: unauthenticated_mongodb
     query: "product:mongodb port:27017 -authentication"
     severity: critical
     category: exposure-core
-    tags: [database, leak]
+    tags: [database, nosql, leak]
     enrich_with_internetdb: true
     max_results: 4000
 
@@ -16,15 +16,7 @@ intelligence_profiles:
     query: "product:redis port:6379 -authentication"
     severity: critical
     category: exposure-core
-    tags: [database, leak, cache]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-  - name: unauthenticated_postgresql
-    query: "product:postgresql port:5432 -authentication"
-    severity: critical
-    category: exposure-core
-    tags: [database, leak]
+    tags: [cache, redis, leak]
     enrich_with_internetdb: true
     max_results: 4000
 
@@ -36,12 +28,13 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 5000
 
-  # --- CODE / ADMIN (exposure-core) ---
-  - name: exposed_gitlab
-    query: "http.title:GitLab"
+
+  # --- CODE / ADMIN INTERFACES (exposure-core) ---
+  - name: exposed_git_repos
+    query: "http.title:GitLab OR http.title:Gitea OR http.title:\"GitHub Enterprise\""
     severity: critical
     category: exposure-core
-    tags: [code, repository, git]
+    tags: [code, git, repository]
     enrich_with_internetdb: true
     max_results: 4000
 
@@ -49,7 +42,7 @@ intelligence_profiles:
     query: "http.title:phpMyAdmin"
     severity: high
     category: exposure-core
-    tags: [web, admin_interface, php, mysql]
+    tags: [web, admin, mysql, php]
     enrich_with_internetdb: true
     max_results: 4000
 
@@ -61,12 +54,13 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- WEB SERVER / LAMP STACK (exposure-stack) ---
+
+  # --- WEB SERVERS / CORE STACK (exposure-stack) ---
   - name: apache_http_server
     query: "http.component:apache"
     severity: high
     category: exposure-stack
-    tags: [web, apache, lamp, server]
+    tags: [web, apache, lamp]
     enrich_with_internetdb: true
     max_results: 5000
 
@@ -74,11 +68,11 @@ intelligence_profiles:
     query: "http.component:nginx"
     severity: high
     category: exposure-stack
-    tags: [web, nginx, server]
+    tags: [web, nginx]
     enrich_with_internetdb: true
     max_results: 5000
 
-  - name: php_powered
+  - name: php_powered_sites
     query: "http.html:\"X-Powered-By\" \"PHP\""
     severity: high
     category: exposure-stack
@@ -86,120 +80,148 @@ intelligence_profiles:
     enrich_with_internetdb: true
     max_results: 5000
 
-  # --- DORKS / API (exposure-core) ---
-  - name: directory_listing_index_of
-    query: "http.html:\"Index of\""
+
+  # --- GENERIC WEB LEAKS / DORKS (exposure-core) ---
+  - name: directory_listing
+    query: "http.html:\"Index of /\""
     severity: high
     category: exposure-core
     tags: [dork, directory_listing, data_leak]
     enrich_with_internetdb: true
     max_results: 5000
 
-  - name: exposed_swagger_ui
+  - name: exposed_swagger
     query: "http.title:Swagger"
     severity: high
     category: exposure-core
-    tags: [dork, api, documentation]
+    tags: [api, documentation, leak]
     enrich_with_internetdb: true
     max_results: 4000
 
-  # --- MONITORING / DATA (exposure-stack) ---
-  - name: exposed_grafana
-    query: "http.title:Grafana"
-    severity: high
-    category: exposure-stack
-    tags: [monitoring, dashboard]
-    enrich_with_internetdb: true
-    max_results: 4000
 
-  - name: exposed_kibana
-    query: "product:kibana port:5601"
-    severity: high
-    category: exposure-stack
-    tags: [monitoring, elasticsearch]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-  - name: exposed_elasticsearch
-    query: "product:elasticsearch port:9200"
-    severity: high
-    category: exposure-stack
-    tags: [database, search, leak]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-  # --- NODE RUNTIME (exposure-stack) ---
-  - name: nodejs_express_stack
+  # --- NODE WEB STACK (exposure-stack) ---
+  - name: node_express_stack
     query: "http.html:\"X-Powered-By\" \"Express\""
     severity: high
     category: exposure-stack
     tags: [web, node, express]
     enrich_with_internetdb: true
-    max_results: 3000
-
-  # --- CMS / WEB (exposure-stack) ---
-  - name: exposed_wordpress_login
-    query: "http.title:\"Log In\" http.html:\"wp-login\""
-    severity: high
-    category: exposure-stack
-    tags: [cms, wordpress, admin_interface, php]
-    enrich_with_internetdb: true
     max_results: 4000
 
-  - name: exposed_drupal
-    query: "http.html:\"Drupal\""
+
+  # =====================================================
+  # ================= WORDPRESS CORE ====================
+  # =====================================================
+
+  - name: wordpress_sites
+    query: "http.html:\"wp-content\""
     severity: high
     category: exposure-stack
-    tags: [cms, drupal, web, php]
+    tags: [cms, wordpress, php]
+    enrich_with_internetdb: true
+    max_results: 6000
+
+  - name: wordpress_login
+    query: "http.html:\"wp-login.php\""
+    severity: high
+    category: exposure-core
+    tags: [cms, wordpress, admin]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: wordpress_admin
+    query: "http.html:\"/wp-admin\""
+    severity: high
+    category: exposure-core
+    tags: [cms, wordpress, admin]
+    enrich_with_internetdb: true
+    max_results: 5000
+
+  - name: wordpress_debug
+    query: "http.html:\"WP_DEBUG\""
+    severity: critical
+    category: exposure-core
+    tags: [cms, wordpress, debug, leak]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: wordpress_backup_files
+    query: "http.html:\"wp-config.php.bak\" OR http.html:\"wp-config.php~\""
+    severity: critical
+    category: exposure-core
+    tags: [cms, wordpress, config, leak]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: wordpress_plugins_index
+    query: "http.html:\"/wp-content/plugins/\" \"Index of\""
+    severity: high
+    category: exposure-core
+    tags: [cms, wordpress, plugin, leak]
     enrich_with_internetdb: true
     max_results: 3000
 
-  - name: exposed_joomla
-    query: "http.html:\"Joomla\""
-    severity: high
-    category: exposure-stack
-    tags: [cms, joomla, web, php]
-    enrich_with_internetdb: true
-    max_results: 3000
 
-  # --- NODE / MODERN CMS (exposure-stack) ---
-  - name: exposed_ghost
+  # =====================================================
+  # ================= GHOST CMS =========================
+  # =====================================================
+
+  - name: ghost_sites
     query: "http.component:ghost"
     severity: high
     category: exposure-stack
-    tags: [cms, ghost, blog, node]
+    tags: [cms, ghost, node]
     enrich_with_internetdb: true
     max_results: 4000
 
-  - name: exposed_strapi
+  - name: ghost_admin
+    query: "http.html:\"/ghost/#/signin\""
+    severity: high
+    category: exposure-core
+    tags: [cms, ghost, admin]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: ghost_debug
+    query: "http.html:\"GhostError\""
+    severity: critical
+    category: exposure-core
+    tags: [cms, ghost, debug, leak]
+    enrich_with_internetdb: true
+    max_results: 1500
+
+
+  # --- MODERN HEADLESS CMS (tech-radar) ---
+  - name: strapi_sites
     query: "http.html:\"Strapi\""
-    severity: high
-    category: exposure-stack
-    tags: [cms, strapi, headless, node]
+    severity: medium
+    category: tech-radar
+    tags: [cms, strapi, headless]
     enrich_with_internetdb: true
     max_results: 3000
 
-  - name: exposed_directus
+  - name: directus_sites
     query: "http.html:\"Directus\""
-    severity: high
-    category: exposure-stack
-    tags: [cms, directus, headless, api]
+    severity: medium
+    category: tech-radar
+    tags: [cms, directus, headless]
     enrich_with_internetdb: true
     max_results: 3000
 
-  # --- PHP FRAMEWORK / E‑COMMERCE (exposure-stack) ---
-  - name: exposed_laravel
+
+  # --- PHP FRAMEWORK / E-COMMERCE (exposure-stack) ---
+  - name: laravel_sites
     query: "http.html:\"Laravel\""
     severity: high
     category: exposure-stack
-    tags: [web, laravel, php, framework]
+    tags: [web, laravel, php]
     enrich_with_internetdb: true
     max_results: 4000
 
-  - name: exposed_magento
+  - name: magento_sites
     query: "http.html:\"Magento\""
     severity: high
     category: exposure-stack
-    tags: [cms, magento, ecommerce, php]
+    tags: [cms, magento, ecommerce]
     enrich_with_internetdb: true
     max_results: 3000
