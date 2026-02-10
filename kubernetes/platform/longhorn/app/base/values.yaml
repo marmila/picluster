@@ -1,5 +1,16 @@
 # longhorn helm values (base)
 
-# Storage path
+# Storage and core behavior
+# See: https://longhorn.io/docs/1.10.0/advanced-resources/deploy/customizing-default-settings
 defaultSettings:
+  # Where Longhorn stores data on each node
   defaultDataPath: "/storage"
+
+  # Limit how much rebuild/restore work a single node does in parallel.
+  # This reduces CPU spikes from replica rebuilds and volume restores,
+  # at the cost of slower recovery when many volumes need work.
+  concurrentReplicaRebuildPerNodeLimit: 1
+  concurrentVolumeBackupRestorePerNodeLimit: 1
+
+  # Avoid aggressive fast-rebuild behavior; prefer lower background churn.
+  fastReplicaRebuildEnabled: false
