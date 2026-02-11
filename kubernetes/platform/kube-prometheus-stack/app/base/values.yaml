@@ -6,6 +6,22 @@ cleanPrometheusOperatorObjectNames: true
 alertmanager:
   alertmanagerSpec:
     ##
+    ## Run on amd64 and prefer not to share a node with Prometheus
+    nodeSelector:
+      kubernetes.io/arch: amd64
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - prometheus
+              topologyKey: kubernetes.io/hostname
+    ##
     ## Configure access to AlertManager via sub-path
     externalUrl: http://monitoring.${CLUSTER_DOMAIN}/alertmanager/
     routePrefix: /alertmanager
@@ -49,6 +65,22 @@ prometheus:
     externalUrl: http://monitoring.${CLUSTER_DOMAIN}/prometheus/
     routePrefix: /prometheus
     ##
+    ## Run on amd64 and prefer not to share a node with Alertmanager
+    nodeSelector:
+      kubernetes.io/arch: amd64
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - alertmanager
+              topologyKey: kubernetes.io/hostname
+    ##
     ## HA configuration: Replicas & Shards
     ## Number of replicas of each shard to deploy for a Prometheus deployment.
     ## Number of replicas multiplied by shards is the total number of Pods created.
@@ -68,11 +100,13 @@ prometheus:
       # Enable Memory snapshot on shutdown.
       - memory-snapshot-on-shutdown
     ##
-    ## Limit POD Resources
+    ## Limit POD Resources (requests aligned to observed ~260m CPU / ~1.8Gi RAM)
     resources:
       requests:
-        cpu: 100m
+        cpu: 500m
+        memory: 1Gi
       limits:
+        cpu: 2000m
         memory: 2000Mi
     ##
     ## POD Storage Spec
