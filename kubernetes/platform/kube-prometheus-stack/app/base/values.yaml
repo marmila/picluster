@@ -9,6 +9,8 @@ alertmanager:
     ## Run on amd64 and prefer not to share a node with Prometheus
     nodeSelector:
       kubernetes.io/arch: amd64
+    # Disable chart default podAntiAffinity so only our affinity is rendered (avoids duplicate key)
+    podAntiAffinity: ""
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
@@ -68,6 +70,8 @@ prometheus:
     ## Run on amd64 and prefer not to share a node with Alertmanager
     nodeSelector:
       kubernetes.io/arch: amd64
+    # Disable chart default podAntiAffinity so only our affinity is rendered (avoids duplicate key)
+    podAntiAffinity: ""
     affinity:
       podAntiAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
