@@ -19,6 +19,20 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: apexforge-api
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - apexforge-api
+                topologyKey: kubernetes.io/hostname
       initContainers:
         - name: wait-for-dbs
           image: busybox:1.28
