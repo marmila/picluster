@@ -50,6 +50,15 @@ distributor:
           key: MINIO_SECRET_ACCESS_KEY
 # Configure ingester
 ingester:
+  # Spread ingester replicas across nodes to avoid stacking on a single node (e.g. node5)
+  topologySpreadConstraints: |
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: tempo
+          app.kubernetes.io/component: ingester
   # Enable environment variables in config file
   # https://grafana.com/docs/tempo/latest/configuration/#use-environment-variables-in-the-configuration
   extraArgs:
