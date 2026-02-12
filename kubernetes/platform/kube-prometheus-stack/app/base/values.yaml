@@ -2,6 +2,10 @@
 
 # Produce cleaner resources names
 cleanPrometheusOperatorObjectNames: true
+# Run Prometheus Operator on amd64 to reduce load on ARM nodes (e.g. node5)
+prometheusOperator:
+  nodeSelector:
+    kubernetes.io/arch: amd64
 # AlertManager configuration
 alertmanager:
   alertmanagerSpec:
@@ -144,9 +148,11 @@ prometheus-node-exporter:
           replacement: $1
           sourceLabels: ["__meta_kubernetes_pod_node_name"]
           targetLabel: kubernetes_node
-# Kube-State-Metrics Configuration
+# Kube-State-Metrics Configuration (run on amd64 to reduce load on ARM nodes e.g. node5)
 kube-state-metrics:
   fullnameOverride: kube-state-metrics
+  nodeSelector:
+    kubernetes.io/arch: amd64
   metricLabelsAllowlist:
     - pods=[*]
     - deployments=[*]
