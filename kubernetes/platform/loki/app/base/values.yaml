@@ -38,6 +38,14 @@ loki:
 write:
   # Number of replicas for the write
   replicas: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: loki
+          app.kubernetes.io/component: write
   persistence:
     # -- Size of persistent disk
     size: 2Gi
@@ -64,6 +72,14 @@ write:
 read:
   # Number of replicas for the read
   replicas: 2
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: loki
+          app.kubernetes.io/component: read
   persistence:
     # -- Size of persistent disk
     size: 2Gi
@@ -90,6 +106,14 @@ read:
 backend:
   # Number of replicas for the backend
   replicas: 3
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: loki
+          app.kubernetes.io/component: backend
   persistence:
     # -- Size of persistent disk
     size: 1Gi
