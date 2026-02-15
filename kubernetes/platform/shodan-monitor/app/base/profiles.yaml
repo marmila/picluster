@@ -1,227 +1,136 @@
-# ApexForge – LAMP / web stack profiles (consistent with website monitoring)
-# category: exposure-core (critical leaks/admin) | exposure-stack (same stack as targets) | tech-radar (optional)
+# ApexForge – High-signal threat intel (WordPress plugins, MySQL, critical CVEs)
+# Scope via SHODAN_SCOPE_COUNTRY, SHODAN_SCOPE_ASN, or SHODAN_SCOPE_NET
 
 intelligence_profiles:
-
-  # --- CRITICAL: DB / CACHE LEAKS (exposure-core) ---
-  - name: unauthenticated_mongodb
-    query: "product:mongodb port:27017 -authentication"
+  # --- WORDPRESS: VULNERABLE / EXPLOITED PLUGINS (exposure-core) ---
+  - name: wp_file_manager
+    query: 'http.html:"wp-content/plugins/wp-file-manager"'
     severity: critical
     category: exposure-core
-    tags: [database, nosql, leak]
+    tags: [wordpress, plugin, rce, cve-2020-25213]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: wp_elementor
+    query: 'http.html:"wp-content/plugins/elementor"'
+    severity: high
+    category: exposure-core
+    tags: [wordpress, plugin, xss, rce]
     enrich_with_internetdb: true
     max_results: 4000
 
-  - name: unauthenticated_redis
-    query: "product:redis port:6379 -authentication"
-    severity: critical
+  - name: wp_woocommerce
+    query: 'http.html:"wp-content/plugins/woocommerce"'
+    severity: high
     category: exposure-core
-    tags: [cache, redis, leak]
+    tags: [wordpress, plugin, ecommerce]
     enrich_with_internetdb: true
     max_results: 4000
 
+  - name: wp_contact_form_7
+    query: 'http.html:"wp-content/plugins/contact-form-7"'
+    severity: high
+    category: exposure-core
+    tags: [wordpress, plugin, form]
+    enrich_with_internetdb: true
+    max_results: 4000
+
+  - name: wp_duplicator
+    query: 'http.html:"wp-content/plugins/duplicator"'
+    severity: high
+    category: exposure-core
+    tags: [wordpress, plugin, backup, lfi]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: wp_updraftplus
+    query: 'http.html:"wp-content/plugins/updraftplus"'
+    severity: high
+    category: exposure-core
+    tags: [wordpress, plugin, backup]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  - name: wp_wordfence
+    query: 'http.html:"wp-content/plugins/wordfence"'
+    severity: high
+    category: exposure-core
+    tags: [wordpress, plugin, security]
+    enrich_with_internetdb: true
+    max_results: 3000
+
+  # --- MYSQL (exposure-core) ---
   - name: exposed_mysql
-    query: "product:mysql port:3306"
+    query: 'product:mysql port:3306'
     severity: critical
     category: exposure-core
     tags: [database, mysql, lamp]
     enrich_with_internetdb: true
     max_results: 5000
 
-
-  # --- CODE / ADMIN INTERFACES (exposure-core) ---
-  - name: exposed_git_repos
-    query: "http.title:GitLab OR http.title:Gitea OR http.title:\"GitHub Enterprise\""
-    severity: critical
+  - name: exposed_phpmyadmin
+    query: 'http.title:phpMyAdmin'
+    severity: high
     category: exposure-core
-    tags: [code, git, repository]
+    tags: [mysql, admin, php]
     enrich_with_internetdb: true
     max_results: 4000
 
-  - name: exposed_phpmyadmin
-    query: "http.title:phpMyAdmin"
-    severity: high
+  # --- CRITICAL CVEs / VERSIONS (exposure-core) ---
+  - name: apache_2_4_49
+    query: '"Apache/2.4.49"'
+    severity: critical
     category: exposure-core
-    tags: [web, admin, mysql, php]
+    tags: [apache, cve, path_traversal]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  - name: apache_2_4_50
+    query: '"Apache/2.4.50"'
+    severity: critical
+    category: exposure-core
+    tags: [apache, cve, path_traversal]
+    enrich_with_internetdb: true
+    max_results: 2000
+
+  # --- CODE / CI (exposure-core) ---
+  - name: exposed_gitlab
+    query: 'http.title:GitLab'
+    severity: critical
+    category: exposure-core
+    tags: [code, repository, git]
     enrich_with_internetdb: true
     max_results: 4000
 
   - name: exposed_jenkins
-    query: "product:jenkins port:8080"
+    query: 'product:jenkins port:8080'
     severity: high
     category: exposure-core
-    tags: [cicd, automation, web]
+    tags: [cicd, automation]
     enrich_with_internetdb: true
     max_results: 4000
 
-
-  # --- WEB SERVERS / CORE STACK (exposure-stack) ---
-  - name: apache_http_server
-    query: "http.component:apache"
-    severity: high
-    category: exposure-stack
-    tags: [web, apache, lamp]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: nginx_http_server
-    query: "http.component:nginx"
-    severity: high
-    category: exposure-stack
-    tags: [web, nginx]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: php_powered_sites
-    query: "http.html:\"X-Powered-By\" \"PHP\""
-    severity: high
-    category: exposure-stack
-    tags: [web, php, lamp]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-
-  # --- GENERIC WEB LEAKS / DORKS (exposure-core) ---
-  - name: directory_listing
-    query: "http.html:\"Index of /\""
-    severity: high
-    category: exposure-core
-    tags: [dork, directory_listing, data_leak]
-    enrich_with_internetdb: true
-    max_results: 5000
-
-  - name: exposed_swagger
-    query: "http.title:Swagger"
-    severity: high
-    category: exposure-core
-    tags: [api, documentation, leak]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-
-  # --- NODE WEB STACK (exposure-stack) ---
-  - name: node_express_stack
-    query: "http.html:\"X-Powered-By\" \"Express\""
-    severity: high
-    category: exposure-stack
-    tags: [web, node, express]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-
-  # =====================================================
-  # ================= WORDPRESS CORE ====================
-  # =====================================================
-
+  # --- STACK CONTEXT (exposure-stack) ---
   - name: wordpress_sites
-    query: "http.html:\"wp-content\""
+    query: 'http.html:"wp-includes" "wp-content"'
     severity: high
     category: exposure-stack
-    tags: [cms, wordpress, php]
-    enrich_with_internetdb: true
-    max_results: 6000
-
-  - name: wordpress_login
-    query: "http.html:\"wp-login.php\""
-    severity: high
-    category: exposure-core
-    tags: [cms, wordpress, admin]
+    tags: [wordpress, cms]
     enrich_with_internetdb: true
     max_results: 5000
 
-  - name: wordpress_admin
-    query: "http.html:\"/wp-admin\""
+  - name: php_sites
+    query: 'http.html:"X-Powered-By" "PHP"'
     severity: high
-    category: exposure-core
-    tags: [cms, wordpress, admin]
+    category: exposure-stack
+    tags: [php, lamp]
     enrich_with_internetdb: true
     max_results: 5000
 
-  - name: wordpress_debug
-    query: "http.html:\"WP_DEBUG\""
-    severity: critical
-    category: exposure-core
-    tags: [cms, wordpress, debug, leak]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: wordpress_backup_files
-    query: "http.html:\"wp-config.php.bak\" OR http.html:\"wp-config.php~\""
-    severity: critical
-    category: exposure-core
-    tags: [cms, wordpress, config, leak]
-    enrich_with_internetdb: true
-    max_results: 2000
-
-  - name: wordpress_plugins_index
-    query: "http.html:\"/wp-content/plugins/\" \"Index of\""
-    severity: high
-    category: exposure-core
-    tags: [cms, wordpress, plugin, leak]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-
-  # =====================================================
-  # ================= GHOST CMS =========================
-  # =====================================================
-
-  - name: ghost_sites
-    query: "http.component:ghost"
+  - name: exposed_grafana
+    query: 'http.title:Grafana'
     severity: high
     category: exposure-stack
-    tags: [cms, ghost, node]
+    tags: [monitoring, dashboard]
     enrich_with_internetdb: true
     max_results: 4000
-
-  - name: ghost_admin
-    query: "http.html:\"/ghost/#/signin\""
-    severity: high
-    category: exposure-core
-    tags: [cms, ghost, admin]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  - name: ghost_debug
-    query: "http.html:\"GhostError\""
-    severity: critical
-    category: exposure-core
-    tags: [cms, ghost, debug, leak]
-    enrich_with_internetdb: true
-    max_results: 1500
-
-
-  # --- MODERN HEADLESS CMS (tech-radar) ---
-  - name: strapi_sites
-    query: "http.html:\"Strapi\""
-    severity: medium
-    category: tech-radar
-    tags: [cms, strapi, headless]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-  - name: directus_sites
-    query: "http.html:\"Directus\""
-    severity: medium
-    category: tech-radar
-    tags: [cms, directus, headless]
-    enrich_with_internetdb: true
-    max_results: 3000
-
-
-  # --- PHP FRAMEWORK / E-COMMERCE (exposure-stack) ---
-  - name: laravel_sites
-    query: "http.html:\"Laravel\""
-    severity: high
-    category: exposure-stack
-    tags: [web, laravel, php]
-    enrich_with_internetdb: true
-    max_results: 4000
-
-  - name: magento_sites
-    query: "http.html:\"Magento\""
-    severity: high
-    category: exposure-stack
-    tags: [cms, magento, ecommerce]
-    enrich_with_internetdb: true
-    max_results: 3000
