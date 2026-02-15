@@ -6,10 +6,10 @@ resources:
 
 images:
   - name: ghcr.io/marmila/apex-forge
-    newTag: 11.0.13
+    newTag: 11.0.14
   - name: ghcr.io/marmila/shodan-intel-sentinel
     newName: ghcr.io/marmila/apex-forge
-    newTag: 11.0.13
+    newTag: 11.0.14
 
 configMapGenerator:
   - name: shodan-config
