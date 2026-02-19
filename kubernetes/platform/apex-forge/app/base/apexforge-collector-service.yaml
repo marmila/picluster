@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: apexforge-collector
+  namespace: apex-forge
+  labels:
+    app: apexforge-collector
+spec:
+  selector:
+    app: apexforge-collector
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

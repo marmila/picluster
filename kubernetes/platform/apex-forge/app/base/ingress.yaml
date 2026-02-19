@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apexforge-ingress
+  namespace: apex-forge
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    cert-manager.io/common-name: apexforge.${CLUSTER_DOMAIN}
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - apexforge.${CLUSTER_DOMAIN}
+      secretName: apexforge-tls
+  rules:
+    - host: apexforge.${CLUSTER_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apexforge-api
+                port:
+                  number: 8000

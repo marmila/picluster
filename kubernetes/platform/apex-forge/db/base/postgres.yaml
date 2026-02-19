@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apex-forge-postgres
+  namespace: apex-forge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apex-forge-postgres
+  template:
+    metadata:
+      labels:
+        app: apex-forge-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              value: shodan
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_PASS
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          ports:
+            - containerPort: 5432
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "shodan", "-d", "shodan"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "shodan", "-d", "shodan"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: apex-forge-postgres-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apex-forge-postgres-pvc
+  namespace: apex-forge
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apex-forge-postgres
+  namespace: apex-forge
+spec:
+  selector:
+    app: apex-forge-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres

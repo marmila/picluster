@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: apexforge-maintenance
+  namespace: apex-forge
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: maintenance
+              image: ghcr.io/marmila/apex-forge:11.0.18
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DB_HOST
+                  value: apex-forge-postgres.apex-forge.svc.cluster.local
+                - name: DB_NAME
+                  value: shodan
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: apex-forge-db-credentials
+                      key: DB_USER
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: apex-forge-db-credentials
+                      key: DB_PASS
+                - name: LOG_LEVEL
+                  value: "INFO"
+              command: ["python", "scripts/maintenance.py"]
+              args: ["--days", "30"]

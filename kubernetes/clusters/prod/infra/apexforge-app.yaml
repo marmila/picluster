@@ -1,0 +1,20 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: shodan-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: apex-forge
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: apexforge-db
+  path: ./kubernetes/platform/apex-forge/app/overlays/prod
+  prune: true
+  wait: false
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings

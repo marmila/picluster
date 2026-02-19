@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apexforge-db-init
+  namespace: apex-forge
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.28
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until nslookup apex-forge-postgres.apex-forge.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
+      containers:
+        - name: db-init
+          image: ghcr.io/marmila/apex-forge:11.0.18
+          command: ["python", "-c"]
+          args:
+            - |
+              from apex_forge.db import init_databases
+              import logging
+              logging.basicConfig(level=logging.INFO)
+              logger = logging.getLogger("apexforge.db-init")
+              logger.info("Starting ApexForge database schema initialization")
+              init_databases()
+              logger.info("ApexForge database schema initialized successfully")
+          env:
+            - name: DB_HOST
+              value: apex-forge-postgres.apex-forge.svc.cluster.local
+            - name: DB_NAME
+              value: shodan
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_PASS
+      restartPolicy: OnFailure

@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apexforge-collector
+  namespace: apex-forge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apexforge-collector
+  template:
+    metadata:
+      labels:
+        app: apexforge-collector
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.28
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until nslookup apex-forge-postgres.apex-forge.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
+      containers:
+        - name: apexforge-collector
+          image: ghcr.io/marmila/apex-forge:11.0.18
+          imagePullPolicy: IfNotPresent
+          command: ["python", "scripts/run_server.py", "--collector-only"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: OPENAI_API_KEY
+            - name: SHODAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: shodan-secret
+                  key: SHODAN_API_KEY
+            - name: VIRUSTOTAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virustotal-secret
+                  key: VIRUSTOTAL_API_KEY
+            - name: ABUSEIPDB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: abuseipdb-secret
+                  key: ABUSEIPDB_API_KEY
+            - name: DB_HOST
+              value: "apex-forge-postgres.apex-forge.svc.cluster.local"
+            - name: DB_NAME
+              value: "shodan"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: apex-forge-db-credentials
+                  key: DB_PASS
+            - name: PYTHONPATH
+              value: "/app"
+          envFrom:
+            - configMapRef:
+                name: apexforge-config
+          livenessProbe:
+            exec:
+              command: ["python", "-c", "import sys; sys.exit(0)"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command: ["python", "-c", "import sys; sys.exit(0)"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

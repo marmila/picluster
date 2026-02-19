@@ -1,0 +1,18 @@
+# Scrapes /metrics from the API pod (apexforge_info + process metrics; Nmap/sites mode).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apexforge-metrics
+  namespace: apex-forge
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: apexforge-api
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      scheme: http
