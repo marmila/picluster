@@ -18,7 +18,7 @@ spec:
               until nslookup apex-forge-postgres.apex-forge.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
       containers:
         - name: db-init
-          image: ghcr.io/marmila/apex-forge:11.0.20
+          image: ghcr.io/marmila/apex-forge:11.0.21
           command: ["python", "-c"]
           args:
             - |
