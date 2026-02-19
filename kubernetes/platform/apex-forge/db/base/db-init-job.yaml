@@ -6,6 +6,8 @@ metadata:
 spec:
   template:
     spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
       initContainers:
         - name: wait-for-db
           image: busybox:1.28

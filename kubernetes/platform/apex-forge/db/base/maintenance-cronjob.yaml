@@ -11,6 +11,8 @@ spec:
       ttlSecondsAfterFinished: 3600
       template:
         spec:
+          nodeSelector:
+            kubernetes.io/arch: amd64
           restartPolicy: OnFailure
           containers:
             - name: maintenance

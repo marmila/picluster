@@ -18,6 +18,8 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
       serviceAccountName: apexforge-api
       initContainers:
         - name: wait-for-db
