@@ -6,7 +6,7 @@ resources:
 
 images:
   - name: ghcr.io/marmila/apex-forge
-    newTag: 11.0.24
+    newTag: 11.0.25
 
 configMapGenerator:
   - name: apexforge-config
