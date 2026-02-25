@@ -29,6 +29,6 @@ resources:
   - tempo-app.yaml
   - vault-app.yaml
   - velero-app.yaml
-  - apexforge-db.yaml
-  - apexforge-app.yaml
+  #- apexforge-db.yaml
+  #- apexforge-app.yaml
 
