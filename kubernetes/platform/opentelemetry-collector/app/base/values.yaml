@@ -58,6 +58,12 @@ config:
     debug:
       verbosity: basic
 
+  # Mandatory for this chart: liveness/readiness probe on :13133
+  # https://github.com/open-telemetry/opentelemetry-helm-charts/blob/main/charts/opentelemetry-collector/values.yaml
+  extensions:
+    health_check:
+      endpoint: ${env:MY_POD_IP}:13133
+
   processors:
     # Add service instance id from k8s.pod.uid
     resource:
