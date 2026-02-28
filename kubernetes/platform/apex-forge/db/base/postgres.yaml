@@ -17,7 +17,7 @@ spec:
         kubernetes.io/arch: amd64
       containers:
         - name: postgres
-          image: postgres:15
+          image: postgres:18
           env:
             - name: POSTGRES_DB
               value: shodan
