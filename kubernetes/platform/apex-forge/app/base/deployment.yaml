@@ -25,7 +25,7 @@ spec:
               until nslookup apex-forge-postgres.apex-forge.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:11.0.27
+          image: ghcr.io/marmila/apex-forge:11.0.28
           imagePullPolicy: IfNotPresent
           command: ["python", "scripts/run_server.py", "--collector-only"]
           resources:
