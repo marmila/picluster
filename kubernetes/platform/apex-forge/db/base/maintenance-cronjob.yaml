@@ -16,7 +16,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: maintenance
-              image: ghcr.io/marmila/apex-forge:12.0.4
+              image: ghcr.io/marmila/apex-forge:12.0.5
               imagePullPolicy: IfNotPresent
               env:
                 - name: DB_HOST
