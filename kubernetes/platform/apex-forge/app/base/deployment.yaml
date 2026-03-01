@@ -56,6 +56,11 @@ spec:
                 secretKeyRef:
                   name: abuseipdb-secret
                   key: ABUSEIPDB_API_KEY
+            - name: WPSCAN_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: wpscan-secret
+                  key: WPSCAN_API_TOKEN
             - name: DB_HOST
               value: "apex-forge-postgres.apex-forge.svc.cluster.local"
             - name: DB_NAME
