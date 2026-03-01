@@ -1,0 +1,13 @@
+- op: add
+  path: /spec/template/spec/affinity
+  value:
+    # Run Schema Registry only on amd64 (x86) nodes.
+    # Use when the cluster has mixed arch (e.g. arm64) and Schema Registry must run on x86.
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64

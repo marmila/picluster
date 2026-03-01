@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: kafka
 
 components:
+  - ../../components/affinity-amd64-only
   - ../../components/kafka-security
   - ../../components/rest-api-security
 
