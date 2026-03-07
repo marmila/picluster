@@ -23,7 +23,7 @@ spec:
               until nslookup apex-forge-postgres.apex-forge.svc.cluster.local; do echo "waiting for postgres..."; sleep 2; done
       containers:
         - name: apexforge-collector
-          image: ghcr.io/marmila/apex-forge:13.0.6
+          image: ghcr.io/marmila/apex-forge:13.0.7
           imagePullPolicy: IfNotPresent
           # CAP_NET_RAW lets nmap -O (OS detection) work so we get OS guess per asset
           securityContext:
