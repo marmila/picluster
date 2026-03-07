@@ -13,8 +13,6 @@ spec:
       labels:
         app: apexforge-collector
     spec:
-      nodeSelector:
-        kubernetes.io/arch: amd64
       initContainers:
         - name: wait-for-db
           image: busybox:1.28
@@ -27,6 +25,10 @@ spec:
         - name: apexforge-collector
           image: ghcr.io/marmila/apex-forge:13.0.6
           imagePullPolicy: IfNotPresent
+          # CAP_NET_RAW lets nmap -O (OS detection) work so we get OS guess per asset
+          securityContext:
+            capabilities:
+              add: ["NET_RAW"]
           command: ["python", "scripts/run_server.py", "--collector-only"]
           resources:
             requests:
@@ -94,3 +96,4 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+
