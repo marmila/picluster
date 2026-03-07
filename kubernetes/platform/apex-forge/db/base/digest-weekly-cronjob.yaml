@@ -14,7 +14,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: digest
-              image: ghcr.io/marmila/apex-forge:13.0.3
+              image: ghcr.io/marmila/apex-forge:13.0.4
               imagePullPolicy: IfNotPresent
               env:
                 - name: DB_HOST
