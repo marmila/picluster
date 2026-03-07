@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: apexforge-digest-weekly
+  namespace: apex-forge
+spec:
+  schedule: "0 9 * * 1"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: digest
+              image: ghcr.io/marmila/apex-forge:13.0.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: DB_HOST
+                  value: apex-forge-postgres.apex-forge.svc.cluster.local
+                - name: DB_NAME
+                  value: shodan
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: apex-forge-db-credentials
+                      key: DB_USER
+                - name: DB_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: apex-forge-db-credentials
+                      key: DB_PASS
+                - name: LOG_LEVEL
+                  value: "INFO"
+                - name: TELEGRAM_BOT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-secret
+                      key: TELEGRAM_BOT_TOKEN
+                      optional: true
+                - name: TELEGRAM_CHAT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-secret
+                      key: TELEGRAM_CHAT_ID
+                      optional: true
+              command: ["python", "scripts/send_digest.py"]
+              args: ["--weekly"]
