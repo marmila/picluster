@@ -14,18 +14,10 @@ services:
       - ./../terraform:/terraform
       - ./../metal/x86/pxe-files:/metal/x86/pxe-files
       - ${HOME}/.secrets:/home/runner/.secrets
-      - ${HOME}/.ssh:/home/runner/.ssh_host:ro
+      - ${HOME}/.ssh:/home/runner/.ssh:ro
       - ${HOME}/.kube:/home/runner/.kube
       - ${HOME}/.certbot/log:/home/runner/.certbot/log
       - ${HOME}/.certbot/config:/home/runner/.certbot/config
       - ${HOME}/.certbot/work:/home/runner/.certbot/work
-    entrypoint: >
-      /bin/bash -c "
-      mkdir -p /home/runner/.ssh &&
-      cp /home/runner/.ssh_host/id_rsa /home/runner/.ssh/id_rsa &&
-      cp /home/runner/.ssh_host/id_rsa.pub /home/runner/.ssh/id_rsa.pub &&
-      chmod 600 /home/runner/.ssh/id_rsa &&
-      chmod 644 /home/runner/.ssh/id_rsa.pub &&
-      tail -f /dev/null
-      "
+    command: tail -f /dev/null
     user: runner
