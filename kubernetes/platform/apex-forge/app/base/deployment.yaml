@@ -25,10 +25,12 @@ spec:
         - name: apexforge-collector
           image: ghcr.io/marmila/apex-forge:13.0.7
           imagePullPolicy: IfNotPresent
-          # CAP_NET_RAW lets nmap -O (OS detection) work so we get OS guess per asset
+          # nmap -O (OS detection) needs raw sockets; run as root so it works (caps alone often fail in K8s)
           securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
             capabilities:
-              add: ["NET_RAW"]
+              add: ["NET_RAW", "NET_ADMIN"]
           command: ["python", "scripts/run_server.py", "--collector-only"]
           resources:
             requests:
