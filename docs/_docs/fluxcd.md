@@ -2,7 +2,7 @@
 title: GitOps (FluxCD)
 permalink: /docs/fluxcd/
 description: How to apply GitOps to Pi cluster configuration using FluxCD.
-last_modified_at: "17-08-2025"
+last_modified_at: "08-03-2026"
 ---
 
 ## What is Flux
@@ -104,7 +104,7 @@ flux create secret git flux-system \
 See command reference: https://fluxcd.io/flux/cmd/flux_create_secret_git/
 
 {{site.data.alerts.note}}
-See details about Github HTTP authentication in [Git documentation - Authenticating to the REST API](https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api)
+See details about GitHub HTTP authentication in [Git documentation - Authenticating to the REST API](https://docs.github.com/en/rest/authentication/authenticating-to-the-rest-api)
 
 {{site.data.alerts.end}}
 
@@ -177,7 +177,7 @@ Where:
 
 - `spec.sourceRef`: Reference to the GitRepository where the application is located
 - `spec.path`: Path within GitRepository where the kubernetes manifest files or the kustomize application is located.
-- `spec.targetNamespace`: namespace where all the kuberentes manifest files will be deployed.
+- `spec.targetNamespace`: namespace where all the kubernetes manifest files will be deployed.
 - `spec.interval`: specifies the interval at which the Kustomization runs a a server-side apply dry-run to detect and correct drift inside the cluster.
 - `spec.prune`: It enables/disables garbage collection for a Kustomization. See details in [Prune resources (Garbage Collection)](#prune-resources-garbage-collection)
 - `spec.dependsOn`: List of other Kustomization objects the application depends on. See details in [Dependencies](#dependencies)
@@ -426,7 +426,7 @@ Where:
 
 ### Disabling K3S Add-Ons
 
-To have the control of any kuberentes configuration deployed in the cluster, K3s add-ons need to be disabled
+To have the control of any kubernetes configuration deployed in the cluster, K3s add-ons need to be disabled
 
 By default K3s install a HelmChart controller and configure basic Kubernetes networking packages and 
 
@@ -464,7 +464,7 @@ flux -v
 ```
 Flux version should be printed.
 
-#### Flux Bootstrap for Github
+#### Flux Bootstrap for GitHub
 
 The [flux bootstrap github](https://fluxcd.io/flux/cmd/flux_bootstrap_github/) command deploys the Flux controllers on a Kubernetes cluster and configures the controllers to sync the cluster state from a GitHub repository. Besides installing the controllers, the bootstrap command pushes the Flux manifests to the GitHub repository and configures Flux to update itself from Git.
 
@@ -481,7 +481,7 @@ flux bootstrap github \
 ```
 
 ##### GitHub access requirements
-During bootstrapping process, `flux bootstrap` command need to access the Github repo and perform commits containing flux installation and bootstrapping manifest files. 
+During bootstrapping process, `flux bootstrap` command needs to access the GitHub repo and perform commits containing flux installation and bootstrapping manifest files.
 For accessing the GitHub REST API, the bootstrap command requires a GitHub Personal Access Token (PAT) with administration permissions.
 
 {{site.data.alerts.note}}
@@ -520,7 +520,7 @@ the following actions are taken:
 1. Flux installation and bootstrap cluster manifest files are committed to Git repo. The following files are created under `kubernetes/cluster/dev` folder (`path`parameter in bootstrap command)
 
 	- `flux-system/gotk-components.yaml`: YAML file containing flux instalaltion manifest files
-	- `flux-system/gotk-sync.yaml`: Containing *GitRepository* definition and initial *Kustomization* application bootstraping
+  - `flux-system/gotk-sync.yaml`: Containing *GitRepository* definition and initial *Kustomization* application bootstrapping
 
 		```yaml
 		---
@@ -820,7 +820,7 @@ The report is update at regular intervals and contains information about the dep
 📁 kubernetes
 ├── 📁 clusters                   # clusters configuration
 │   ├── 📁 bootstrap      # Bootstrap configuration files to apply before installed flux
-|   |    ├── helmfile.yaml # Deploy Kuberentes CNI, DNS, etc.
+|   |    ├── helmfile.yaml # Deploy Kubernetes CNI, DNS, etc.
 |   |    ├── 📁 vault      # Configure external Vault (external-secrets)
 │   ├── 📁 dev            # Dev cluster bootstrap files
 │   └── 📁 prod           # Prod cluster bootstrap files
@@ -1373,6 +1373,214 @@ By default, if you were to have Flux reconcile a Job resource, it would apply it
 
 Job resources annotated with `kustomize.toolkit.fluxcd.io/force: enabled` will be automatically recreated by FluxCD whenever there are changes to be applied.
 
+## Flux Tofu Controller
+
+[Tofu Controller](https://github.com/flux-iac/tofu-controller) extends Flux with a `Terraform` custom resource (`infra.contrib.fluxcd.io/v1alpha2`) so Terraform/OpenTofu modules can be reconciled declaratively from Git.
+
+Tofu Controller can be installed directly with Helm.
+
+### Installation
+
+1. Add Helm repository for tofu-controller:
+
+```shell
+helm repo add tofu-controller https://flux-iac.github.io/tofu-controller
+helm repo update
+```
+
+2. Install tofu-controller in `flux-system` namespace:
+
+```shell
+helm install tofu-controller tofu-controller/tofu-controller \
+  --namespace flux-system \
+  --create-namespace \
+  --version 0.16.1
+```
+
+3. Verify installation:
+
+```shell
+kubectl get pods -n flux-system -l app.kubernetes.io/name=tofu-controller
+kubectl get crd | grep -i terraform.infra.contrib.fluxcd.io
+```
+
+### Controller sizing
+
+To support larger Terraform state/plan payloads, runner gRPC message size can be increased by setting Helm values:
+
+```yaml
+runner:
+  grpc:
+    maxMessageSize: 20
+```
+
+This increases the default 4 MiB gRPC message limit and helps prevent `ResourceExhausted` errors for larger modules.
+
+Example upgrade command:
+
+```shell
+helm upgrade tofu-controller tofu-controller/tofu-controller \
+  --namespace flux-system \
+  --version 0.16.1 \
+  --set runner.grpc.maxMessageSize=20
+```
+
+### Useful Helm commands
+
+```shell
+helm list -n flux-system | grep tofu-controller
+helm upgrade --install tofu-controller tofu-controller/tofu-controller -n flux-system --version 0.16.1
+```
+
+### Flux Tofu Controller Usage
+
+After the controller is installed, create `Terraform` custom resources to reconcile OpenTofu modules from Git.
+
+#### Sample Terraform custom resource
+
+This example `Terraform` resource applies a Terraform/OpenTofu module located in `./terraform/elastic` directory of the same Git repository where Flux is reconciling from. The module provisions an Elastic Stack deployment and configures it to use Vault as secrets provider.
+
+```yaml
+---
+apiVersion: infra.contrib.fluxcd.io/v1alpha2
+kind: Terraform
+metadata:
+  name: config-elastic
+  namespace: flux-system
+spec:
+  interval: 30m
+  approvePlan: auto
+  destroyResourcesOnDeletion: true
+  path: ./terraform/elastic
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  vars:
+    - name: tofu_controller_execution
+      value: "true"
+    - name: vault_address
+      value: "https://vault.${CLUSTER_DOMAIN}:8200"
+    - name: vault_kubernetes_auth_login_path
+      value: "auth/kubernetes/login"
+    - name: vault_kubernetes_auth_role
+      value: "tf-runner"
+    - name: elasticsearch_endpoint
+      value: "http://efk-es-http.elastic.svc:9200"
+    - name: kibana_endpoint
+      value: "http://efk-kb-http.elastic.svc:5601"
+  writeOutputsToSecret:
+    name: tf-config-elastic-output
+```
+
+Where:
+
+- `spec.path`: Points to the Terraform/OpenTofu module path inside this Git repository (`./terraform/elastic`).
+- `spec.sourceRef`: Indicates which Flux `GitRepository` provides the module source.
+- `spec.interval`: Reconciliation interval.
+- `spec.approvePlan: auto`: Applies plans automatically (no manual approval gate).
+- `spec.destroyResourcesOnDeletion: true`: Destroys managed resources if this `Terraform` CR is deleted.
+- `spec.vars`: Passes values to Terraform module input variables (`variable` blocks in `terraform/elastic/variables.tf`).
+- `spec.writeOutputsToSecret.name`: Stores Terraform module outputs in a Kubernetes Secret (`tf-config-elastic-output`).
+
+Terraform variable mapping for this sample:
+
+- `tofu_controller_execution`: Enables in-cluster execution mode for providers.
+- `vault_address`: Vault URL used by the Vault provider.
+- `vault_kubernetes_auth_login_path`: Vault Kubernetes auth login endpoint.
+- `vault_kubernetes_auth_role`: Vault role used by tf-runner pods.
+- `elasticsearch_endpoint`: Elasticsearch API endpoint used by the elasticstack provider.
+- `kibana_endpoint`: Kibana API endpoint used by the elasticstack provider.
+
+About outputs:
+
+- Outputs are defined in the module `outputs.tf` (for example in `terraform/elastic/outputs.tf`).
+- With `writeOutputsToSecret`, tofu-controller writes those output values into the Secret named `tf-config-elastic-output` in the same namespace as the `Terraform` resource.
+
+About Terraform state (`tfstate`):
+
+- By default (when no remote backend is configured in the `Terraform` CR), tofu-controller stores Terraform state in a Kubernetes Secret in the same namespace as the `Terraform` resource.
+- For this example, state is stored in `flux-system` because `metadata.namespace` is `flux-system`.
+- You can list and inspect the state Secret with:
+
+```shell
+kubectl -n flux-system get secrets | grep -i config-elastic
+```
+
+Cross-namespace limitations:
+
+- By default, tofu-controller **disallows cross-namespace references** for security reasons.
+- This affects Terraform CR reference fields such as `.spec.sourceRef`, `.spec.dependsOn[*]`, and `.spec.cliConfigSecretRef`.
+- References to objects in a different namespace put the `Terraform` resource in a non-Ready state unless cross-namespace refs are explicitly enabled.
+- To allow cross-namespace refs, set controller flag `--allow-cross-namespace-refs` (Helm value: `allowCrossNamespaceRefs=true`).
+- See details in [Tofu Controller documentation: Using Cross-Namespace References](https://flux-iac.github.io/tofu-controller/use-tf-controller/use-cross-namespace-refs/).
+
+
+#### Vault access from tf-runner (Kubernetes auth)
+
+When Terraform modules read secrets from Vault, the runner pods must authenticate to Vault using Kubernetes auth.
+
+tf-runner pods authenticate to Vault using a Kubernetes service account token, which is exchanged for a Vault token with the appropriate policies and TTL. This allows Terraform modules to read secrets from Vault securely without hardcoding credentials. The service account used by tf-runner pods, `tf-runner`, must be bound to a Vault role that allows Kubernetes authentication and has the necessary policies to read secrets and create child tokens if needed.
+
+For detailed Kubernetes auth setup steps, see [Vault documentation: Configure Kubernetes Auth Method](/docs/vault/#configure-kubernetes-auth-method-not-using-vault-helm-chart).
+
+Required setup in Vault:
+
+1. Enable and configure Kubernetes auth backend.
+2. Create policies `readonly` and `create-child-token`.
+3. Create Kubernetes auth role `tf-runner` bound to `tf-runner` service account in `flux-system`.
+
+
+```shell
+# Policy: readonly
+vault policy write readonly - <<'EOF'
+path "secret/*" {
+  capabilities = ["read", "list"]
+}
+path "secret/metadata/*" {
+  capabilities = ["list", "read"]
+}
+EOF
+
+# Policy: create-child-token
+vault policy write create-child-token - <<'EOF'
+path "auth/token/create" {
+  capabilities = ["update"]
+}
+path "auth/token/create-orphan" {
+  capabilities = ["update"]
+}
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+EOF
+
+# Bind Kubernetes service account to Vault role
+vault write auth/kubernetes/role/tf-runner \
+  bound_service_account_names=tf-runner \
+  bound_service_account_namespaces=flux-system \
+  policies=readonly,create-child-token \
+  audience="https://kubernetes.default.svc.cluster.local" \
+  ttl=3600 \
+  max_ttl=86400
+
+# Verify role
+vault read auth/kubernetes/role/tf-runner
+```
+
+
+
+#### Operational notes
+
+- Keep Terraform module outputs compact. Very large outputs can increase reconciliation payload size.
+- Use `writeOutputsToSecret` only when needed; exporting many/large outputs to Secrets increases controller payload and storage pressure.
+- `TF_LOG` cannot be manually set via `runnerPodTemplate` due controller restrictions (known limitation).
+- Prefer reducing source artifact size in `FluxInstance.spec.sync.ignore` for non-cluster directories when using large monorepos.
+
+
 ## Observability
 
 ### Metrics
@@ -1420,7 +1628,7 @@ When using Kube-Prometheus-Stack, add values to helm chart configuration defined
 
 #### Grafana Dashboards
 
-Flux provides 2 Grafana Dashboards to display metrics collected by Prometheus available at [Flux monitoring example Github repo](https://github.com/fluxcd/flux2-monitoring-example)
+Flux provides 2 Grafana Dashboards to display metrics collected by Prometheus available at [Flux monitoring example GitHub repo](https://github.com/fluxcd/flux2-monitoring-example)
 
 -   Control plane dashboard: [control-plane.json](https://github.com/fluxcd/flux2-monitoring-example/blob/main/monitoring/configs/dashboards/control-plane.json)
 -   Cluster reconciliation dashboard: [cluster.json](https://github.com/fluxcd/flux2-monitoring-example/blob/main/monitoring/configs/dashboards/cluster.json)

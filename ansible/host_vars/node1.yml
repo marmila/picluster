@@ -135,9 +135,9 @@ fluentbit_outputs: |
   [OUTPUT]
       Name forward
       Match *
-      Host {{ fluentd_dns }}
+      Host fluentd.{{ dns_domain }}
       Port 24224
-      Self_Hostname {{ ansible_hostname }}
+  Self_Hostname {{ ansible_facts['hostname'] }}
       Shared_Key {{ fluentd_shared_key }}
       tls true
       tls.verify false

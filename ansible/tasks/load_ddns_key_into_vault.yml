@@ -16,13 +16,14 @@
   ansible.builtin.set_fact:
     bind9_ddns_key: "{{ ddns_key.stdout }}"
 
-- name: Create/update bind9/ddns credentials
-  ansible.builtin.uri:
-    url: "https://{{ vault_dns }}:8200/v1/secret/data/bind9/ddns"
-    method: POST
-    headers:
-      X-Vault-Token: "{{ token_data | community.hashi_vault.vault_login_token }}"
-    body:
+- name: Create/update bind9/ddns credentials in Vault
+  community.hashi_vault.vault_write:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+    ca_cert: "{{ vault_cacert | default(omit) }}"
+    path: "secret/data/bind9/ddns"
+    data:
       data:
         ddns-key: "{{ bind9_ddns_key }}"
-    body_format: json
+  no_log: true

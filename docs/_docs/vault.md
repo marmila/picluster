@@ -2,16 +2,16 @@
 title: Secret Management (Vault)
 permalink: /docs/vault/
 description: How to deploy Hashicorp Vault as a Secret Manager for our Raspberry Pi Kubernetes Cluster.
-last_modified_at: "01-12-2025"
+last_modified_at: "01-03-2026"
 ---
 
 [HashiCorp Vault](https://www.vaultproject.io/) is used as Secret Management solution for Raspberry PI cluster. All cluster secrets (users, passwords, api tokens, etc) will be securely encrypted and stored in Vault.
 
-Vault will be deployed as a external service, not running as a Kuberentes service, so it can be used by GitOps solution, ArgoCD/FluxCD, to deploy automatically all cluster services.
+Vault will be deployed as an external service, not running as a Kubernetes service, so it can be used by GitOps solution, ArgoCD/FluxCD, to deploy automatically all cluster services.
 
-Vault could be installed as Kuberentes service, deploying it using an official Helm Chart or a community operator like [Banzai Bank-Vault](https://banzaicloud.com/products/bank-vaults/).
+Vault could be installed as Kubernetes service, deploying it using an official Helm Chart or a community operator like [Banzai Bank-Vault](https://banzaicloud.com/products/bank-vaults/).
 
-Installing Vault as Kubernetes service will drive us to a chicken/egg situation if we want to use Vault as only source of secrets/credentials for all Kuberentes services deployed. Vault requires to have Block storage solution (Longhorn) deployed first since its POD needs Perstistent Volumes, and to install Longhorn, a few secrets need to be provided to configure its backup (Minio credentials).
+Installing Vault as Kubernetes service will drive us to a chicken/egg situation if we want to use Vault as only source of secrets/credentials for all Kubernetes services deployed. Vault requires to have Block storage solution (Longhorn) deployed first since its POD needs Persistent Volumes, and to install Longhorn, a few secrets need to be provided to configure its backup (Minio credentials).
 
 [External Secrets Operator](https://external-secrets.io/) will be used to automatically generate the Kubernetes Secrets from Vault data that is needed to deploy the different services using FluxCD/ArgoCD.
 
@@ -372,7 +372,7 @@ Storage Type       raft
 HA Enabled         true
 ```
 
-To unseal vault `vault operator unseal` command need to be executed, providing unseal keys generated during initialization process.
+To unseal vault, the `vault operator unseal` command needs to be executed, providing unseal keys generated during initialization process.
 
 
 Using the key stored in `unseal.json` file the following command can be executed:
@@ -656,7 +656,7 @@ Enabling [Vault kubernetes auth method](https://developer.hashicorp.com/vault/do
   kubectl create namespace vault
   ```
 
-- Step 2. Create service account `vault-auth` to be used by Vault kuberentes authentication
+- Step 2. Create service account `vault-auth` to be used by Vault kubernetes authentication
 
   ```yml
   ---
@@ -936,7 +936,7 @@ export VAULT_TOKEN=$(jq -r '.root_token' /etc/vault/unseal.json)
 
 Vault dashboard sample can be downloaded from [Grafana jsonnet libraries repo: vault-mixin](https://github.com/grafana/jsonnet-libs/blob/master/vault-mixin/dashboards/vault.json).
 
-Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dasbhoards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
+Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dashboards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
 
 Add following configuration to Grafana's helm chart values file:
 
@@ -994,6 +994,7 @@ External Secrets Operator is installed through its helm chart.
     vault write auth/kubernetes/role/external-secrets \
       bound_service_account_names=external-secrets \
       bound_service_account_namespaces=external-secrets \
+      audience=https://kubernetes.default.svc.cluster.local \
       policies=readonly \
       ttl=24h
     ```
@@ -1002,37 +1003,47 @@ External Secrets Operator is installed through its helm chart.
 
     ```shell
     curl -k --header "X-Vault-Token:$VAULT_TOKEN" --request POST \
-      --data '{ "bound_service_account_names": "external-secrets", "bound_service_account_namespaces": "external-secrets", "policies": ["readonly"], "ttl" : "24h"}' \
+      --data '{ "bound_service_account_names": "external-secrets", "bound_service_account_namespaces": "external-secrets", "audience": "https://kubernetes.default.svc.cluster.local", "policies": ["readonly"], "ttl" : "24h"}' \
       https://${VAULT_SERVER}:8200/v1/auth/kubernetes/role/external-secrets
     ```
+
+    {{site.data.alerts.note}}
+
+    Vault 1.21+ requires roles to define an `audience`. The audience configured in the Vault role must match the audience requested by External Secrets Operator in `ClusterSecretStore`.
+
+    {{site.data.alerts.end}}
 
 
 -   Step 6: Create Cluster Secret Store
 
-  ```yml
-  apiVersion: external-secrets.io/v1beta1
-   kind: ClusterSecretStore
-   metadata:
-     name: vault-backend
-     namespace: external-secrets
-   spec:
-     provider:
-       vault:
-         server: "https://vault.picluster.ricsanfre.com:8200"
-         # caBundle needed if vault TLS is signed using a custom CA.
-         # If Vault TLS is valid signed by Letsencrypt this is not needed?
-         # ca cert base64 encoded and remobed '\n' characteres"
-         # <vault-ca> =`cat vault-ca.pem | base64 | tr -d "\n"`
-         caBundle: <vault-ca>
-         path: "secret"
-         version: "v2"
-         auth:
-           kubernetes:
-             mountPath: "kubernetes"
-             role: "external-secrets"
-  ```
-
-  Check ClusterSecretStore status
+    ```yml
+    apiVersion: external-secrets.io/v1
+    kind: ClusterSecretStore
+    metadata:
+      name: vault-backend
+      namespace: external-secrets
+    spec:
+      provider:
+        vault:
+          server: "https://${VAULT_SERVER}:8200"
+          # caBundle needed if vault TLS is signed using a custom CA.
+          # If Vault TLS is valid signed by Letsencrypt this is not needed?
+          # ca cert base64 encoded and remobed '\n' characteres"
+          # <vault-ca> =`cat vault-ca.pem | base64 | tr -d "\n"`
+          # caBundle: <vault-ca>
+          path: "secret"
+          version: "v2"
+          auth:
+            kubernetes:
+              mountPath: "kubernetes"
+              role: "external-secrets"
+              serviceAccountRef:
+                name: "external-secrets"
+                namespace: "external-secrets"
+                audiences:
+                  - "https://kubernetes.default.svc.cluster.local"
+    ```
+    {{site.data.alerts.note}}
 
       Substitute variables (`${var}`) in the above yaml file before deploying mangifest file.
       -   Replace `${VAULT_SERVER}` by FQDN of the vault server (i.e. `vault.homelab.com`)
@@ -1050,7 +1061,7 @@ External Secrets Operator is installed through its helm chart.
 -   Step 7: Create External secret
 
     ```yml
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: vault-example

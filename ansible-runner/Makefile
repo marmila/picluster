@@ -1,21 +1,13 @@
+.PHONY: default create-local-directories start-ansible-runner
+LOCAL_DIRS := ${HOME}/.ansible ${HOME}/.ansible/collections ${HOME}/.ansible/roles ${HOME}/.secrets ${HOME}/.ssh ${HOME}/.kube ${HOME}/.certbot/logs ${HOME}/.certbot/config ${HOME}/.certbot/work
 
-include runner/env
+default: start-ansible-runner
 
-RUNNER=./ansible-runner.sh
+create-local-directories:
+	mkdir -p ${LOCAL_DIRS}
 
-.EXPORT_ALL_VARIABLES:
+${HOME}/.ssh/id_rsa:
+	ssh-keygen -t rsa -P '' -f ${HOME}/.ssh/id_rsa
 
-.PHONY: default
-default: start-ansible-runner runner/.ssh/id_rsa runner/.vault/vault_passphrase.gpg
-
-.PHONY: start-ansible-runner
-start-ansible-runner:
+start-ansible-runner: create-local-directories ${HOME}/.ssh/id_rsa
 	docker compose up --detach
-
-
-runner/.ssh/id_rsa:
-	${RUNNER} ssh-keygen -t rsa -P '' -f /home/runner/.ssh/id_rsa
-
-runner/.vault/vault_passphrase.gpg:
-	${RUNNER} /home/runner/scripts/generate_gpg_key.sh
-	${RUNNER} /home/runner/scripts/generate_vault_password.sh

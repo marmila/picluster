@@ -1,53 +1,81 @@
-FROM ghcr.io/helmfile/helmfile:v1.2.3 AS helmfile
+FROM ghcr.io/helmfile/helmfile:v1.4.1 AS helmfile
 
-FROM python:slim
+FROM alpine/kubectl:1.35.2 AS kubectl
 
+FROM alpine/helm:3.20.0 AS helm
+
+FROM alpine:3.23 AS tofu
+COPY --from=ghcr.io/opentofu/opentofu:1.11.5 /usr/local/bin/tofu /usr/local/bin/tofu
+
+FROM ghcr.io/astral-sh/uv:0.10.9 AS uv
+
+
+FROM python:3.14-slim
 ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=--ignore-certs
 ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS=--ignore-certs
-
+ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/home/runner/.venv
 RUN apt-get update -qq && \
-    apt-get install -y sudo git apt-utils python3-pip pwgen gnupg curl && \
+    apt-get install sudo git apt-utils pwgen gnupg curl -y && \
     apt-get clean && \
     rm -rf /usr/share/doc/* /usr/share/man/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN pip3 install --upgrade pip setuptools
-RUN pip3 install ansible-core ansible-runner certbot
+COPY --from=uv /uv /uvx /usr/local/bin/
 
-ADD build /build
 WORKDIR /build
+COPY ansible/pyproject.toml /build/pyproject.toml
+COPY ansible/uv.lock /build/uv.lock
+COPY ansible/requirements.yml /build/requirements.yml
 
-RUN pip3 install -r requirements.txt
+# Install OpenTofu from dedicated image
+COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/tofu
 
-RUN ansible-galaxy role install $ANSIBLE_GALAXY_CLI_ROLE_OPTS -r requirements.yml --roles-path "/usr/share/ansible/roles"
-RUN ANSIBLE_GALAXY_DISABLE_GPG_VERIFY=1 ansible-galaxy collection install $ANSIBLE_GALAXY_CLI_COLLECTION_OPTS -r requirements.yml --collections-path "/usr/share/ansible/collections"
-
-RUN ansible-playbook ansible_runner_setup.yml
+# Install kubectl and Helm from dedicated images
+COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
+COPY --from=helm /usr/bin/helm /usr/local/bin/helm
 
 COPY --from=helmfile /usr/local/bin/helmfile /usr/local/bin/helmfile
 
-ENV USER runner
-ENV FOLDER /home/runner
+ENV USER=runner
+ENV FOLDER=/home/runner
 RUN /usr/sbin/groupadd $USER && \
     /usr/sbin/useradd $USER -m -d $FOLDER -g $USER -s /bin/bash && \
-    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+    echo $USER 'ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    echo 'case ":$PATH:" in *:/home/runner/.venv/bin:*) ;; *) export PATH="/home/runner/.venv/bin:$PATH" ;; esac' >> /home/runner/.bashrc && \
+    echo 'case ":$PATH:" in *:/home/runner/.venv/bin:*) ;; *) export PATH="/home/runner/.venv/bin:$PATH" ;; esac' >> /home/runner/.profile && \
+    mkdir -p /home/runner/.ansible/roles /home/runner/.ansible/collections /home/runner/.local /home/runner/.cache /home/runner/.config /home/runner/.ssh && \
+    chmod 700 /home/runner/.ssh && \
+    chown -R $USER:$USER /home/runner
 
-RUN mkdir -p /runner \
-             /runner/.vault \
-             /runner/.gnupg \
-             /runner/.secrets \
-             /var/lib/letsencrypt \
-             /etc/letsencrypt \
-             /var/log/letsencrypt && \
-    chown -R $USER:$USER /runner /runner/.vault /runner/.gnupg /runner/.secrets \
-             /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt && \
-    chmod -R 775 /runner /runner/.vault /runner/.gnupg /runner/.secrets \
-             /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt
+RUN for dir in \
+      /runner \
+      /ansible \
+      /var/lib/letsencrypt \
+      /etc/letsencrypt \
+      /var/log/letsencrypt ; \
+    do mkdir -p $dir ; chown $USER:$USER $dir; chmod 775 $dir ; done
 
 USER $USER
 
+# Install python dependencies
+RUN uv sync --frozen --no-dev
+
+# Install ansible roles/collections dependencies
+RUN set -eux; \
+        for attempt in 1 2 3; do \
+            uv run ansible-galaxy role install $ANSIBLE_GALAXY_CLI_ROLE_OPTS -r requirements.yml --roles-path "/home/runner/.ansible/roles" --timeout 600 && break; \
+            if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+            sleep 10; \
+        done
+RUN set -eux; \
+        for attempt in 1 2 3; do \
+            uv run ansible-galaxy collection install $ANSIBLE_GALAXY_CLI_COLLECTION_OPTS -r requirements.yml --collections-path "/home/runner/.ansible/collections" && break; \
+            if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+            sleep 10; \
+        done
+
+# Install helmfile required plugins
 RUN helm plugin install https://github.com/aslafy-z/helm-git
 RUN helm plugin install https://github.com/databus23/helm-diff
 
-RUN echo "export GPG_TTY=\$(tty)" >> /home/runner/.bashrc
-
-WORKDIR /runner
+WORKDIR /ansible

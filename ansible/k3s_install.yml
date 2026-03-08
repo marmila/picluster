@@ -14,12 +14,9 @@
   tags: [install]
   become: true
   pre_tasks:
-    - name: Include vault variables
-      ansible.builtin.include_vars: "vars/vault.yml"
-      tags: ["always"]
     - name: Include picluster variables
       ansible.builtin.include_vars: "vars/picluster.yml"
-      tags: ["always"]
+
   roles:
     - role: k3s/prereq
 
@@ -27,13 +24,78 @@
   hosts: k3s_master
   tags: [install, master]
   become: true
+  vars:
+    vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
   pre_tasks:
-    - name: Include vault variables
-      ansible.builtin.include_vars: "vars/vault.yml"
-      tags: ["always"]
     - name: Include picluster variables
       ansible.builtin.include_vars: "vars/picluster.yml"
-      tags: ["always"]
+
+    - name: Check Vault secret file exists on controller
+      ansible.builtin.stat:
+        path: "{{ vault_secret_file }}"
+      register: vault_secret_file_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Validate Vault secret file exists
+      ansible.builtin.assert:
+        that:
+          - vault_secret_file_stat.stat.exists
+          - vault_secret_file_stat.stat.isreg
+        fail_msg: |
+          Vault secret file not found: {{ vault_secret_file }}
+
+          Run external services stage 1 first to generate it.
+      delegate_to: localhost
+      become: false
+
+    - name: Get Vault environment from secret file
+      ansible.builtin.set_fact:
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Validate Vault variables loaded from secret file
+      ansible.builtin.assert:
+        that:
+          - vault_addr is defined and vault_addr != ""
+          - vault_token is defined and vault_token != ""
+        fail_msg: |
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+        success_msg: "Vault environment loaded and validated"
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch k3s cluster token on-demand from Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
+        mount_point: secret
+        path: cluster/k3s
+      register: k3s_vault_secret
+      delegate_to: localhost
+      become: false
+
+    - name: Set k3s_token fact from Vault
+      ansible.builtin.set_fact:
+        k3s_token: "{{ (k3s_vault_secret.secret | default({})).token | default('', true) }}"
+
+    - name: Validate k3s cluster token
+      ansible.builtin.assert:
+        that:
+          - k3s_token is defined
+          - k3s_token | length > 0
+        fail_msg: |
+          Failed to retrieve k3s token from Vault at path secret/cluster/k3s
+          Please ensure the secret exists and contains a 'token' key.
+          You can create it with:
+            vault kv put secret/cluster/k3s token='your-k3s-cluster-token'
+        success_msg: "k3s cluster token retrieved and validated"
+
   roles:
     - role: k3s/master
     - role: ricsanfre.k8s_cli
@@ -42,13 +104,76 @@
   hosts: k3s_worker
   tags: [install, worker]
   become: true
+  vars:
+    vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
   pre_tasks:
-    - name: Include vault variables
-      ansible.builtin.include_vars: "vars/vault.yml"
-      tags: ["always"]
     - name: Include picluster variables
       ansible.builtin.include_vars: "vars/picluster.yml"
-      tags: ["always"]
+
+    - name: Check Vault secret file exists on controller
+      ansible.builtin.stat:
+        path: "{{ vault_secret_file }}"
+      register: vault_secret_file_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Validate Vault secret file exists
+      ansible.builtin.assert:
+        that:
+          - vault_secret_file_stat.stat.exists
+          - vault_secret_file_stat.stat.isreg
+        fail_msg: |
+          Vault secret file not found: {{ vault_secret_file }}
+
+          Run external services stage 1 first to generate it.
+      delegate_to: localhost
+      become: false
+
+    - name: Get Vault environment from secret file
+      ansible.builtin.set_fact:
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+      delegate_to: localhost
+      become: false
+
+    - name: Validate Vault variables loaded from secret file
+      ansible.builtin.assert:
+        that:
+          - vault_addr is defined and vault_addr != ""
+          - vault_token is defined and vault_token != ""
+        fail_msg: |
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+        success_msg: "Vault environment loaded and validated"
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch k3s cluster token on-demand from Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
+        mount_point: secret
+        path: cluster/k3s
+      register: k3s_vault_secret
+      delegate_to: localhost
+      become: false
+
+    - name: Set k3s_token fact from Vault
+      ansible.builtin.set_fact:
+        k3s_token: "{{ (k3s_vault_secret.secret | default({})).token | default('', true) }}"
+    - name: Validate k3s cluster token
+      ansible.builtin.assert:
+        that:
+          - k3s_token is defined
+          - k3s_token | length > 0
+        fail_msg: |
+          Failed to retrieve k3s token from Vault at path secret/cluster/k3s
+          Please ensure the secret exists and contains a 'token' key.
+          You can create it with:
+            vault kv put secret/cluster/k3s token='your-k3s-cluster-token'
+        success_msg: "k3s cluster token retrieved and validated"
   roles:
     - role: k3s/worker
 
@@ -56,12 +181,8 @@
   hosts: k3s_master
   tags: [config]
   pre_tasks:
-    - name: Include vault variables
-      ansible.builtin.include_vars: "vars/vault.yml"
-      tags: ["always"]
     - name: Include picluster variables
       ansible.builtin.include_vars: "vars/picluster.yml"
-      tags: ["always"]
   tasks:
     # - name: "Wait for worker nodes to be ready"
     #   command:
@@ -81,6 +202,9 @@
 - name: Get Kubernets config file
   hosts: k3s_master
   tags: [kube-config]
+  pre_tasks:
+    - name: Include picluster variables
+      ansible.builtin.include_vars: "vars/picluster.yml"
   tasks:
     - name: Get k3s config file
       run_once: true
@@ -95,3 +219,31 @@
         mode: "0600"
       delegate_to: localhost
       run_once: true
+
+- name: Install Cilium CNI and CoreDNS
+  hosts: localhost
+  tags: [install, cni]
+  gather_facts: false
+  become: false
+  pre_tasks:
+    - name: Include picluster variables
+      ansible.builtin.include_vars: "vars/picluster.yml"
+  tasks:
+
+    - name: Set overlay to prod in case not defined by an input argument
+      ansible.builtin.set_fact:
+        overlay: "prod"
+      when: overlay is undefined
+
+    - name: Install cilium and coreDNS
+      become: false
+      ansible.builtin.shell: |
+        set -o pipefail
+        helmfile --quiet --file ../kubernetes/clusters/bootstrap/helmfile.yaml apply --skip-diff-on-install --suppress-diff --concurrency 1
+      args:
+        executable: /bin/bash
+      register: output
+      changed_when: true
+
+    - name: Config Cilium CNI
+      ansible.builtin.include_tasks: tasks/cilium_config.yml

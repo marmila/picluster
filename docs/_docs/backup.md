@@ -29,7 +29,7 @@ Operating Filesystem backup/restore procedures have been also defined using [Res
 
   Velero can be intregrated with different storage backends, including Cloud Service Provider Storage services (AWS S3, Google Cloud Storage, Microsoft Azure Blob Storage, etc). It also supports opensource S3 [Minio](https://min.io).
 
-  Since Velero is a most generic way to backup any Kuberentes cluster (not just K3S) it will be used to implement my cluster K3S backup.
+  Since Velero is a most generic way to backup any Kubernetes cluster (not just K3S) it will be used to implement my cluster K3S backup.
 
 - PODs Persistent Volumes backup and restore.
 
@@ -413,8 +413,8 @@ VolumeSnapshotClass objects from CSI Snapshot API need to be configured
 
 ### Velero installation and configuration
 
-Velero defines a set of Kuberentes' CRDs (Custom Resource Definition) and Controllers that process those CRDs to perform backups and restores.
-Velero also provides a CLI to execute backup/restore commands using Kuberentes API. More details in official documentation, [How Velero works](https://velero.io/docs/latest/how-velero-works/)
+Velero defines a set of Kubernetes' CRDs (Custom Resource Definition) and Controllers that process those CRDs to perform backups and restores.
+Velero also provides a CLI to execute backup/restore commands using Kubernetes API. More details in official documentation, [How Velero works](https://velero.io/docs/latest/how-velero-works/)
 
 The complete backup workflow is the following:
 
@@ -425,47 +425,7 @@ As storage provider, Minio will be used. See [Velero's installation documentatio
 
 ### Velero CLI
 
-Velero requires an object storage bucket to store backups in. In Minio a dedicated S3 bucket is created for Velero (name: `k3s-velero`)
-
-A specific Minio user `velero` is configured with specic access policy to grant the user access to the bucket.
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:DeleteObject",
-                "s3:GetObject",
-                "s3:ListMultipartUploadParts",
-                "s3:PutObject",
-                "s3:AbortMultipartUpload"
-            ],
-            "Resource": [
-                "arn:aws:s3:::k3s-velero/*"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::k3s-velero"
-            ]
-        }
-    ]
-}
-
-```
-
-See more details in [Velero plugin for aws](https://github.com/vmware-tanzu/velero-plugin-for-aws).
-
-
-### Installing Velero CLI
-
-Velero CLI need to be installed joinly with kubectl. `velero` uses kubectl config file (`~/.kube/config`) to connect to Kuberentes API.
+Before installing Velero CLI, `kubectl` has to be installed. `velero` uses kubectl config file (`~/.kube/config`) to connect to Kubernetes API.
 
 {{site.data.alerts.important}} k3s config file is located in `/etc/rancher/k3s/k3s.yaml` and it need to be copied into `$HOME/kube/config` in the server where `kubectl` and `velero` is going to be executed.
 {{site.data.alerts.end}}

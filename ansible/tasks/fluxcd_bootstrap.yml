@@ -1,10 +1,49 @@
 ---
 
+- name: Validate Vault environment
+  ansible.builtin.assert:
+    that:
+      - vault_addr is defined
+      - vault_addr | length > 0
+      - vault_token is defined
+      - vault_token | length > 0
+    fail_msg: |
+      Vault variables are not set.
+      Ensure `vault_addr` and `vault_token` are defined in the calling playbook
+      (for example in k3s_bootstrap.yml pre_tasks).
+    success_msg: "Vault variables validated"
+  tags: ["always"]
+
+- name: Fetch FluxCD GitHub PAT from Vault
+  community.hashi_vault.vault_kv2_get:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+    ca_cert: "{{ vault_cacert | default(omit) }}"
+    mount_point: secret
+    path: flux/github-pat
+  register: flux_vault_secret
+
+- name: Set GitHub PAT from Vault
+  ansible.builtin.set_fact:
+    github_pat: "{{ (flux_vault_secret.secret | default({})).pat | default('', true) }}"
+  no_log: true
+
+- name: Validate GitHub PAT
+  ansible.builtin.assert:
+    that:
+      - github_pat is defined
+      - github_pat | length > 0
+    fail_msg: |
+      Failed to retrieve GitHub PAT from Vault at path secret/flux/github-pat
+        Please ensure the secret exists with 'pat' field.
+    success_msg: "GitHub PAT retrieved and validated"
+
 - name: Deploy Flux CD Operator
   kubernetes.core.helm:
     name: flux-operator
     chart_ref: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
-    chart_version: 0.41.1
+    chart_version: 0.43.0
     release_namespace: flux-system
     create_namespace: true
     values_files:
@@ -16,11 +55,12 @@
   ansible.builtin.shell: |
     kubectl create secret generic flux-system -n flux-system \
     --from-literal=username=git \
-    --from-literal=password="{{ vault.flux.github.pat }}"
+    --from-literal=password="{{ github_pat }}"
   when: git_private_repo
   args:
     executable: /bin/bash
   changed_when: false
+  no_log: true
 
 - name: Add cluster settings
   ansible.builtin.shell: |
@@ -34,7 +74,7 @@
   kubernetes.core.helm:
     name: flux-instance
     chart_ref: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance
-    chart_version: 0.41.1
+    chart_version: 0.43.0
     release_namespace: flux-system
     create_namespace: true
     values_files:

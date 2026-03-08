@@ -143,7 +143,7 @@ There is another list of services that I have decided to run outside the kuberne
 
 Minio backup servive is hosted in a VM running in Public Cloud, using [Oracle Cloud Infrastructure (OCI) free tier](https://www.oracle.com/es/cloud/free/).
 
-Vault service is running in one of the cluster nodes, `node1`, since Vault kubernetes authentication method need access to Kuberentes API, I won't host Vault service in Public Cloud.
+Vault service is running in one of the cluster nodes, `node1`, since Vault kubernetes authentication method needs access to Kubernetes API, I won't host Vault service in Public Cloud.
 
 
 ## What I have built so far
@@ -166,7 +166,7 @@ From hardware perspective I built two different versions of the cluster
 ## What I have developed so far
 
 {{site.data.alerts.important}}
-All source code can be found in the project's github repository [{{site.data.icons.github}}]({{site.git_address}}).
+All source code can be found in the project's GitHub repository [{{site.data.icons.github}}]({{site.git_address}}).
 
 {{site.data.alerts.end}}
 
@@ -179,15 +179,15 @@ From software perspective, I have developed the following:
 
 2. Automate initial OS installation in x86_64 nodes using PXE server and Ubuntu's **auto-install** template files.
 
-3. **Ansible** playbook and roles for configuring cluster nodes and installating and bootstraping K3S cluster
+3. **Ansible** playbook and roles for configuring cluster nodes and installing and bootstrapping K3S cluster
 
    Source code can be found in Pi Cluster Git repository under [`/ansible`]({{site.git_address}}/tree/master/ansible) directory.
 
    Aditionally several ansible roles have been developed to automate different configuration tasks on Ubuntu-based servers that can be reused in other projects. These roles are used by Pi-Cluster Ansible Playbooks
 
-   Each ansible role source code can be found in its dedicated Github repository and is published in Ansible-Galaxy to facilitate its installation with `ansible-galaxy` command.
+   Each ansible role source code can be found in its dedicated GitHub repository and is published in Ansible-Galaxy to facilitate its installation with `ansible-galaxy` command.
 
-   | Ansible role | Description | Github |
+   | Ansible role | Description | GitHub |
    | ---| --- | --- |
    |  [ricsanfre.security](https://galaxy.ansible.com/ricsanfre/security) | Automate SSH hardening configuration tasks  | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-security)|
    | [ricsanfre.ntp](https://galaxy.ansible.com/ricsanfre/ntp)  | Chrony NTP service configuration | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-ntp) |
@@ -204,11 +204,11 @@ From software perspective, I have developed the following:
    | [ricsanfre.vault](https://galaxy.ansible.com/ricsanfre/vault)| Configure Hashicorp Vault | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-vault) |
    {: .table .border-dark }
 
-4. **Packaged Kuberentes applications** (Helm, Kustomize, manifest files) to be deployed using FluxCD
+4. **Packaged Kubernetes applications** (Helm, Kustomize, manifest files) to be deployed using FluxCD
 
    Source code can be found in Pi Cluster Git repository under [`/kubernetes`]({{site.git_address}}/tree/master/kubernetes) directory.
 
-5. This **documentation website**, *picluster.ricsanfre.com*, hosted in Github pages.
+5. This **documentation website**, *picluster.ricsanfre.com*, hosted in GitHub Pages.
 
    Static website generated with [Jekyll](https://jekyllrb.com/).
 
@@ -222,43 +222,43 @@ The software used and the latest version tested of each component
 | Type | Software | Latest Version tested | Notes |
 |-----------| ------- |-------|----|
 | OS | Ubuntu | 24.04.3 | |
-| Control | Ansible | 2.18.6  | |
+| Control | Ansible | 2.20.3  | |
 | Control | cloud-init | 23.1.2 | version pre-integrated into Ubuntu 22.04.2 |
-| Kubernetes | K3S | v1.35.0 | K3S version|
-| Kubernetes | Helm | v3.17.3 ||
-| Kubernetes | etcd | v3.6.6-k3s1 | version pre-integrated into K3S |
+| Kubernetes | K3S | v1.35.2+k3s1 | K3S version|
+| Kubernetes | Helm | v3.20.0 ||
+| Kubernetes | etcd | v3.6.7-k3s1 | version pre-integrated into K3S |
 | Computing | containerd | v2.1.5-k3s1 | version pre-integrated into K3S |
-| Networking | Cilium | 1.18.6 | |
+| Networking | Cilium | 1.19.1 | |
 | Networking | CoreDNS | v1.13.1 | Helm chart version: 1.45.2 |
 | Networking | External-DNS | 0.20.0 | Helm chart version: 1.20.0 |
 | Metric Server | Kubernetes Metrics Server | v0.8.0 | Helm chart version: 3.13.0|
-| Service Mesh | Istio | v1.28.3 | Helm chart version: 1.28.3 |
-| Service Proxy | Ingress NGINX | v1.14.2 | Helm chart version: 4.14.2 |
-| Storage | Longhorn | v1.10.1 | Helm chart version: 1.10.1 |
+| Service Mesh | Istio | v1.29.0 | Helm chart version: 1.29.0 |
+| Service Proxy | Ingress NGINX | v1.14.3 | Helm chart version: 4.14.3 |
+| Storage | Longhorn | v1.11.0 | Helm chart version: 1.11.0 |
 | Storage | Minio | RELEASE.2024-12-18T13-15-44Z | Helm chart version: 5.4.0 |
-| TLS Certificates | Certmanager | v1.19.2 | Helm chart version: v1.19.2  |
-| Logging | ECK Operator |  3.1.0 | Helm chart version: 3.1.0 |
-| Logging | Elastic Search | 8.19.10 | Deployed with ECK Operator |
-| Logging | Kibana | 8.19.10 | Deployed with ECK Operator |
-| Logging | Fluentbit | 4.2.2 | Helm chart version: 0.55.0 |
-| Logging | Fluentd | 1.17.1 | Helm chart version: 0.5.3 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.17.1|
-| Logging | Loki | 3.6.3 | Helm chart grafana/loki version: 6.51.0  |
-| Monitoring | Kube Prometheus Stack | v81.4.2 | Helm chart version: 81.4.2 |
-| Monitoring | Prometheus Operator | v0.88.1 | Installed by Kube Prometheus Stack. Helm chart version: 81.4.2 |
-| Monitoring | Prometheus | v3.9.1 | Installed by Kube Prometheus Stack. Helm chart version: 81.4.2 |
-| Monitoring | AlertManager | v0.30.1 | Installed by Kube Prometheus Stack. Helm chart version: 81.4.2 |
-| Monitoring | Prometheus Node Exporter | v1.10.2 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 81.4.2 |
-| Monitoring | Kube State Metrics | 2.18.0 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 81.4.2 |
-| Monitoring | Prometheus Elasticsearch Exporter | 1.10.0 | Helm chart version: prometheus-elasticsearch-exporter-7.2.1 |
+| TLS Certificates | Certmanager | v1.19.4 | Helm chart version: v1.19.4  |
+| Logging | ECK Operator |  3.3.1 | Helm chart version: 3.3.1 |
+| Logging | Elastic Search | 8.19.12 | Deployed with ECK Operator |
+| Logging | Kibana | 8.19.12 | Deployed with ECK Operator |
+| Logging | Fluentbit | 4.2.3 | Helm chart version: 0.56.0 |
+| Logging | Fluentd | 1.18.0 | Helm chart version: 0.5.3 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.18 |
+| Logging | Loki | 3.6.5 | Helm chart grafana/loki version: 6.53.0  |
+| Monitoring | Kube Prometheus Stack | v82.10.1 | Helm chart version: 82.10.1 |
+| Monitoring | Prometheus Operator | v0.89.0 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
+| Monitoring | Prometheus | v3.10.0 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
+| Monitoring | AlertManager | v0.31.1 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
+| Monitoring | Prometheus Node Exporter | v1.10.2 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 82.10.1 |
+| Monitoring | Kube State Metrics | v2.8.2 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 82.10.1 |
+| Monitoring | Prometheus Elasticsearch Exporter | v1.10.0 | Helm chart version: prometheus-elasticsearch-exporter-7.2.1 |
 | Monitoring | Grafana | 12.3.1 | Helm chart version: 10.5.15 |
 | Tracing | Grafana Tempo | 2.9.0 | Helm chart: tempo-distributed (v1.61.3) |
-| Backup | Minio External (self-hosted) | RELEASE.2025-10-15T17-29-55Z | |
-| Backup | Restic | 0.18.0 | |
-| Backup | Velero | 1.17.1 | Helm chart version: 11.3.2 |
-| Secrets Management | Hashicorp Vault | 1.21.2 | |
-| Secrets Management | External Secret Operator | 1.3.1 | Helm chart version: 1.3.1 |
-| Identity Access Management | Keycloak | 26.5.2 | Keycloak Operator |
-| Identity Access Management | Oauth2.0 Proxy | 7.13.0 | Helm chart version: 10.1.2 |
-| GitOps | Flux CD | v2.7.3 |  |
-| GitOps | Flux Tofu Controller | 0.16.0 | |
+| Backup | Minio External (self-hosted) | RELEASE.2025-09-07T16-13-09Z | |
+| Backup | Restic | 0.18.1 | |
+| Backup | Velero | 1.17.1 | Helm chart version: 11.4.0 |
+| Secrets Management | Hashicorp Vault | 1.21.4 | |
+| Secrets Management | External Secret Operator | 2.0.1 | Helm chart version: 2.0.1 |
+| Identity Access Management | Keycloak | 26.5.5 | Keycloak Operator |
+| Identity Access Management | Oauth2.0 Proxy | 7.14.2 | Helm chart version: 10.1.4 |
+| GitOps | Flux CD | v2.8.1 |  |
+| GitOps | Flux Tofu Controller | 0.16.1 | |
 {: .table .border-dark }

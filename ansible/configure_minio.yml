@@ -1,0 +1,196 @@
+---
+# Configure MinIO Resources (Buckets, Users, Policies) using Terraform
+#
+# This playbook handles:
+# 1. Fetches MinIO credentials from HashiCorp Vault using on-demand lookups
+# 2. Applies Terraform configuration for buckets, users, and policies
+#
+# Prerequisites:
+#   - MinIO server deployed and reachable
+#   - MinIO secrets loaded in Vault at 'secret/minio/root'
+#   - Vault environment file exists:
+#     * ~/.secrets/vault.env
+#   - Terraform installed
+#
+# Usage:
+#   # Ensure Vault credentials file exists
+#   # ~/.secrets/vault.env with:
+#   # VAULT_ADDR=https://vault.example.com:8200
+#   # VAULT_TOKEN=s.xxxxxxxxxxxxx
+#   # VAULT_CACERT=/path/to/certificates/CA.pem
+#   ansible-playbook ansible/configure_minio.yml
+
+- name: Configure MinIO Resources with Terraform
+  hosts: localhost
+  gather_facts: false
+  tags: [minio, terraform]
+  vars:
+    terraform_project_dir: "../terraform/minio"
+    vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
+
+  pre_tasks:
+    - name: Include picluster variables
+      ansible.builtin.include_vars: "vars/picluster.yml"
+
+    - name: Check Vault secret file exists
+      ansible.builtin.stat:
+        path: "{{ vault_secret_file }}"
+      register: vault_secret_file_stat
+
+    - name: Validate Vault secret file exists
+      ansible.builtin.assert:
+        that:
+          - vault_secret_file_stat.stat.exists
+          - vault_secret_file_stat.stat.isreg
+        fail_msg: |
+          Vault secret file not found: {{ vault_secret_file }}
+
+          Run external services stage 1 first to generate it, or create it with:
+
+            VAULT_ADDR=https://vault.example.com:8200
+            VAULT_TOKEN=s.xxxxxxxxxxxxx
+            VAULT_CACERT=/path/to/certificates/CA.pem
+
+    - name: Get Vault environment from secret file
+      ansible.builtin.set_fact:
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+
+    - name: Validate Vault variables loaded from secret file
+      ansible.builtin.assert:
+        that:
+          - vault_addr is defined and vault_addr != ""
+          - vault_token is defined and vault_token != ""
+        fail_msg: |
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+
+    - name: Fetch MinIO credentials from Vault
+      community.hashi_vault.vault_kv2_get:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
+        mount_point: "secret"
+        path: "minio/root"
+      register: minio_vault_secret
+      no_log: true
+
+    - name: Set MinIO credentials from Vault
+      ansible.builtin.set_fact:
+        minio_root_user: >-
+          {{ (minio_vault_secret.secret | default({})).username | default('', true) }}
+        minio_root_password: >-
+          {{ (minio_vault_secret.secret | default({})).key | default('', true) }}
+      no_log: true
+
+    - name: Validate MinIO credentials were retrieved from Vault
+      ansible.builtin.assert:
+        that:
+          - minio_root_user is defined
+          - minio_root_user | length > 0
+          - minio_root_password is defined
+          - minio_root_password | length > 0
+        fail_msg: |
+          ⚠️  Failed to retrieve MinIO credentials from Vault!
+
+          The following credentials are missing or empty:
+          {% if minio_root_user is not defined or minio_root_user | length == 0 %}
+            - minio_root_user (root_user)
+          {% endif %}
+          {% if minio_root_password is not defined or minio_root_password | length == 0 %}
+            - minio_root_password (root_password)
+          {% endif %}
+
+          Please verify:
+          1. Vault is accessible at: {{ vault_addr }}
+          2. Secret exists at path: secret/minio/root
+          3. Secret contains keys: username, key
+
+          To check the secret:
+            vault kv get secret/minio/root
+        success_msg: "✓ MinIO credentials successfully retrieved from Vault for Terraform"
+
+  tasks:
+    - name: Initialize Terraform
+      ansible.builtin.command:
+        cmd: tofu init -no-color
+        chdir: "{{ terraform_project_dir }}"
+      register: terraform_init
+      changed_when: "'Terraform has been successfully initialized!' in terraform_init.stdout"
+
+    - name: Plan Terraform changes
+      ansible.builtin.command:
+        cmd: >-
+          tofu plan
+          -no-color
+          -out=tfplan
+        chdir: "{{ terraform_project_dir }}"
+      environment:
+        VAULT_ADDR: "{{ vault_addr }}"
+        VAULT_TOKEN: "{{ vault_token }}"
+        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
+        TF_VAR_minio_use_ssl: "true"
+        TF_VAR_minio_ssl_verify: "true"
+        TF_VAR_minio_admin_user: "{{ minio_root_user }}"
+        TF_VAR_minio_admin_password: "{{ minio_root_password }}"
+        TF_VAR_vault_address: "{{ vault_addr }}"
+        TF_VAR_vault_token: "{{ vault_token }}"
+      changed_when: false
+      register: terraform_plan
+
+    - name: Display Terraform plan summary
+      ansible.builtin.debug:
+        msg: "{{ terraform_plan.stdout_lines[-20:] | join('\n') }}"
+
+    - name: Apply Terraform configuration
+      ansible.builtin.command:
+        cmd: tofu apply -no-color -auto-approve tfplan
+        chdir: "{{ terraform_project_dir }}"
+      environment:
+        VAULT_ADDR: "{{ vault_addr }}"
+        VAULT_TOKEN: "{{ vault_token }}"
+        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
+        TF_VAR_minio_use_ssl: "true"
+        TF_VAR_minio_ssl_verify: "true"
+        TF_VAR_minio_admin_user: "{{ minio_root_user }}"
+        TF_VAR_minio_admin_password: "{{ minio_root_password }}"
+        TF_VAR_vault_address: "{{ vault_addr }}"
+        TF_VAR_vault_token: "{{ vault_token }}"
+      register: terraform_apply
+      changed_when: "'Apply complete!' in terraform_apply.stdout"
+      no_log: false
+
+    - name: Display Terraform outputs
+      ansible.builtin.command:
+        cmd: tofu output -no-color -json
+        chdir: "{{ terraform_project_dir }}"
+      register: terraform_outputs
+      changed_when: false
+
+    - name: Display MinIO configuration information
+      ansible.builtin.debug:
+        msg: |
+         ╔════════════════════════════════════════════════════════════╗
+         ║       MinIO Configuration Completed Successfully!          ║
+         ╚════════════════════════════════════════════════════════════╝
+
+         Buckets Created: {{ (terraform_outputs.stdout | from_json).buckets.value | default({}) | length }}
+         Users Created: {{ (terraform_outputs.stdout | from_json).users.value | default({}) | length }}
+         Policies Created: {{ (terraform_outputs.stdout | from_json).policies.value | default({}) | length }}
+
+         Access Information:
+
+         API Server:
+           URL: https://{{ minio_hostname }}:9000
+           Access via: mc alias set minio https://{{ minio_hostname }}:9000 $USERNAME $PASSWORD
+
+         Console (Web UI):
+           URL: https://{{ minio_hostname }}:9001
+           Open in browser and login with credentials from Vault
+
+         Credentials:
+           Stored securely in Vault at: secret/minio/root
+           Retrieved on-demand during configuration
