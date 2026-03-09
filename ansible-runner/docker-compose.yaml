@@ -4,8 +4,10 @@ services:
     build:
       context: ..
       dockerfile: ansible-runner/Dockerfile
+    command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
+    user: runner
     environment:
       ANSIBLE_PRIVATE_KEY_FILE: /home/runner/.ssh/id_rsa
     volumes:
@@ -19,5 +21,3 @@ services:
       - ${HOME}/.certbot/log:/home/runner/.certbot/log
       - ${HOME}/.certbot/config:/home/runner/.certbot/config
       - ${HOME}/.certbot/work:/home/runner/.certbot/work
-    command: tail -f /dev/null
-    user: runner
