@@ -7,7 +7,7 @@ services:
     command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
-    user: runner
+    user: "${UID}:${GID}"
     environment:
       ANSIBLE_PRIVATE_KEY_FILE: /home/runner/.ssh/id_rsa
     volumes:
