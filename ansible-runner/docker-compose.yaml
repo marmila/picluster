@@ -1,11 +1,15 @@
 services:
-  # Ansible-runner
   ansible-runner:
     image: ansible-runner
     build:
       context: ..
       dockerfile: ansible-runner/Dockerfile
-    command: tail -f /dev/null
+    command: >
+      bash -c "cp /tmp/ssh/id_rsa /home/runner/.ssh/id_rsa &&
+               cp /tmp/ssh/id_rsa.pub /home/runner/.ssh/id_rsa.pub &&
+               chmod 600 /home/runner/.ssh/id_rsa &&
+               chmod 644 /home/runner/.ssh/id_rsa.pub &&
+               tail -f /dev/null"
     container_name: ansible-runner
     restart: unless-stopped
     volumes:
@@ -14,8 +18,8 @@ services:
       - ./../terraform:/terraform
       - ./../metal/x86/pxe-files:/metal/x86/pxe-files
       - ${HOME}/.secrets:/home/runner/.secrets
-      - ${HOME}/.ssh/id_rsa:/home/runner/.ssh/id_rsa:ro
-      - ${HOME}/.ssh/id_rsa.pub:/home/runner/.ssh/id_rsa.pub:ro
+      - ${HOME}/.ssh/id_rsa:/tmp/ssh/id_rsa:ro        # mount to tmp first
+      - ${HOME}/.ssh/id_rsa.pub:/tmp/ssh/id_rsa.pub:ro
       - ${HOME}/.kube:/home/runner/.kube
       - ${HOME}/.certbot/log:/home/runner/.certbot/log
       - ${HOME}/.certbot/config:/home/runner/.certbot/config
