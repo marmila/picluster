@@ -34,6 +34,7 @@ COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/tofu
 COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=helm /usr/bin/helm /usr/local/bin/helm
 
+# Copy helmfile
 COPY --from=helmfile /usr/local/bin/helmfile /usr/local/bin/helmfile
 
 ENV USER=runner

@@ -1,4 +1,5 @@
 services:
+  # Ansible-runner
   ansible-runner:
     image: ansible-runner
     build:
@@ -7,16 +8,14 @@ services:
     command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
-    user: "${UID}:${GID}"
-    environment:
-      ANSIBLE_PRIVATE_KEY_FILE: /home/runner/.ssh/id_rsa
     volumes:
       - ./../ansible:/ansible
       - ./../kubernetes:/kubernetes
       - ./../terraform:/terraform
       - ./../metal/x86/pxe-files:/metal/x86/pxe-files
       - ${HOME}/.secrets:/home/runner/.secrets
-      - ${HOME}/.ssh:/home/runner/.ssh:ro
+      - ${HOME}/.ssh/id_rsa:/home/runner/.ssh/id_rsa:ro
+      - ${HOME}/.ssh/id_rsa.pub:/home/runner/.ssh/id_rsa.pub:ro
       - ${HOME}/.kube:/home/runner/.kube
       - ${HOME}/.certbot/log:/home/runner/.certbot/log
       - ${HOME}/.certbot/config:/home/runner/.certbot/config
