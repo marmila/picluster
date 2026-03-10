@@ -60,6 +60,17 @@
         fail_msg: |
           Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
+    - name: Open SSH tunnel to Vault
+      ansible.builtin.shell: |
+        ssh -f -N -L 18200:127.0.0.1:8200 marmila@{{ vault_host }} \
+          -o StrictHostKeyChecking=no \
+          -o ExitOnForwardFailure=yes
+      delegate_to: localhost
+
+    - name: Override Vault address to use SSH tunnel
+      ansible.builtin.set_fact:
+        vault_addr: "https://127.0.0.1:18200"
+
     - name: Display Vault configuration (self-signed certificates)
       ansible.builtin.debug:
         msg: |
@@ -233,3 +244,8 @@
         vault_external_services_addr: "{{ vault_addr }}"
         vault_external_services_token: "{{ vault_token }}"
         vault_external_services_cacert: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+
+    - name: Close SSH tunnel to Vault
+      ansible.builtin.shell: |
+        pkill -f "ssh -f -N -L 18200" || true
+      delegate_to: localhost

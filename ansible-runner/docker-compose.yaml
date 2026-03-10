@@ -4,9 +4,6 @@ services:
     build:
       context: ..
       dockerfile: ansible-runner/Dockerfile
-    network_mode: host
-    extra_hosts:
-      - "vault.homelab.marmilan.com:10.0.0.11"
     command: >
       bash -c "sudo cp /tmp/ssh/id_rsa /home/runner/.ssh/id_rsa &&
                sudo cp /tmp/ssh/id_rsa.pub /home/runner/.ssh/id_rsa.pub &&
