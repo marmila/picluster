@@ -62,7 +62,7 @@
 
     - name: Open SSH tunnel to Vault
       ansible.builtin.shell: |
-        ssh -f -N -L 18200:127.0.0.1:8200 marmila@{{ vault_host }} \
+        ssh -f -N -L 18200:127.0.0.1:8200 marmila@{{ hostvars[vault_host]['ansible_host'] }} \
           -o StrictHostKeyChecking=no \
           -o ExitOnForwardFailure=yes
       delegate_to: localhost
