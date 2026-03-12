@@ -216,7 +216,7 @@
 
     - name: Kill any existing SSH tunnel on port 18200
       ansible.builtin.shell: |
-        fuser -k 18200/tcp || true
+        fuser -k 18201/tcp || true
       delegate_to: localhost
       become: false
 
