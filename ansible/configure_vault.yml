@@ -62,7 +62,11 @@
 
     - name: Kill any existing SSH tunnel on port 18200
       ansible.builtin.shell: |
-        pkill -f "ssh -f -N -L 18200" || true
+        PIDS=$(ss -tlnp sport = :18200 | grep -oP 'pid=\K[0-9]+')
+        if [ -n "$PIDS" ]; then
+          kill -9 $PIDS
+        fi
+        sleep 1
       delegate_to: localhost
 
     - name: Open SSH tunnel to Vault
@@ -258,5 +262,8 @@
 
     - name: Close SSH tunnel to Vault
       ansible.builtin.shell: |
-        pkill -f "ssh -f -N -L 18200" || true
+        PIDS=$(ss -tlnp sport = :18200 | grep -oP 'pid=\K[0-9]+')
+        if [ -n "$PIDS" ]; then
+          kill -9 $PIDS
+        fi
       delegate_to: localhost
