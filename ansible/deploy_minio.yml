@@ -134,18 +134,15 @@
     - name: Create customCA-signed TLS certificate for MinIO
       when: not enable_letsencrypt
       block:
-        # Generate self-signed certificates directory
         - name: Create certificates directory
           ansible.builtin.file:
             path: "{{ selfsigned_certificates_path }}"
             state: directory
             mode: "0750"
 
-        # Include selfsigned certificates variables
         - name: Include selfsigned certificates variables
           ansible.builtin.include_vars: "vars/selfsigned-certificates.yml"
 
-        # Generate custom CA (if needed)
         - name: Generate custom CA
           ansible.builtin.include_tasks: tasks/generate_custom_ca.yml
           args:
@@ -153,7 +150,6 @@
               delegate_to: localhost
               become: false
 
-        # Generate customCA-signed TLS certificate for MinIO
         - name: Generate customCA-signed SSL certificate for MinIO
           ansible.builtin.include_tasks: tasks/generate_ca_signed_cert.yml
           args:
@@ -218,6 +214,25 @@
 
           Please configure Vault access before running this playbook.
 
+    - name: Kill any existing SSH tunnel on port 18200
+      ansible.builtin.shell: |
+        pkill -f "ssh -f -N -L 18200" || true
+      delegate_to: localhost
+      become: false
+
+    - name: Open SSH tunnel to Vault
+      ansible.builtin.shell: |
+        ssh -f -N -L 18200:127.0.0.1:8200 marmila@{{ hostvars[groups['vault'][0]]['ansible_host'] }} \
+          -o StrictHostKeyChecking=no \
+          -o ExitOnForwardFailure=yes
+      delegate_to: localhost
+      become: false
+
+    - name: Override Vault address to use SSH tunnel
+      ansible.builtin.set_fact:
+        vault_addr: "https://127.0.0.1:18200"
+        vault_cacert: ""
+
     - name: Display Vault configuration (self-signed certificates)
       ansible.builtin.debug:
         msg: |
@@ -274,13 +289,11 @@
             minio_key: "{{ lookup('file', cert_key_path[0]) }}"
             minio_cert: "{{ lookup('file', cert_path[0]) }}"
 
-    # ON-DEMAND VAULT LOOKUP: Fetch MinIO secrets only when needed
     - name: Fetch MinIO credentials from Vault (on-demand lookup)
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-        ca_cert: "{{ vault_cacert | default(omit) }}"
+        validate_certs: false
         mount_point: "secret"
         path: "minio/root"
       register: minio_vault_secret
@@ -327,6 +340,12 @@
     - role: ricsanfre.minio
 
   post_tasks:
+    - name: Close SSH tunnel to Vault
+      ansible.builtin.shell: |
+        pkill -f "ssh -f -N -L 18200" || true
+      delegate_to: localhost
+      become: false
+
     - name: Display MinIO installation information
       ansible.builtin.debug:
         msg: |
