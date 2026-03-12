@@ -60,6 +60,11 @@
         fail_msg: |
           Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
+    - name: Kill any existing SSH tunnel on port 18200
+      ansible.builtin.shell: |
+        pkill -f "ssh -f -N -L 18200" || true
+      delegate_to: localhost
+
     - name: Open SSH tunnel to Vault
       ansible.builtin.shell: |
         ssh -f -N -L 18200:127.0.0.1:8200 marmila@{{ hostvars[vault_host]['ansible_host'] }} \
@@ -70,6 +75,7 @@
     - name: Override Vault address to use SSH tunnel
       ansible.builtin.set_fact:
         vault_addr: "https://127.0.0.1:18200"
+        vault_cacert: ""
 
     - name: Display Vault configuration (self-signed certificates)
       ansible.builtin.debug:
@@ -122,7 +128,8 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: true
@@ -135,7 +142,8 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: false
@@ -160,7 +168,8 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
         TF_VAR_enable_kubernetes_auth: "false"
@@ -182,7 +191,8 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
         TF_VAR_enable_kubernetes_auth: "false"
@@ -200,7 +210,8 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: false
