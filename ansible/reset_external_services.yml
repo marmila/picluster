@@ -38,24 +38,26 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_addr: "https://127.0.0.1:18200"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+        vault_cacert: ""
+
+    - name: Override MinIO endpoint to use SSH tunnel
+      ansible.builtin.set_fact:
+        minio_endpoint: "127.0.0.1:9091"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
-          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_TOKEN in {{ vault_secret_file }}
 
     - name: Fetch MinIO credentials from Vault
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-        ca_cert: "{{ vault_cacert | default(omit) }}"
+        validate_certs: false
         mount_point: "secret"
         path: "minio/root"
       register: minio_vault_secret
@@ -115,14 +117,17 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
-        TF_VAR_minio_ssl_verify: "true"
+        TF_VAR_minio_ssl_verify: "false"
+        TF_VAR_minio_insecure: "true"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
+        TF_VAR_vault_skip_tls_verify: "true"
       register: terraform_minio_destroy
       changed_when: "'Destroy complete!' in terraform_minio_destroy.stdout"
       no_log: false
@@ -146,6 +151,7 @@
         state: stopped
         enabled: false
       become: true
+
     - name: Delete directories and files
       become: true
       ansible.builtin.file:
@@ -158,6 +164,7 @@
         - /usr/local/bin/mc
         - /etc/systemd/system/minio.service
         - ~/.mc
+
     - name: Reload systemd daemon
       ansible.builtin.systemd:
         daemon_reload: true
@@ -193,25 +200,18 @@
         fail_msg: |
           Vault secret file not found: {{ vault_secret_file }}
 
-          Run external services stage 1 first to generate it, or create it with:
-
-            VAULT_ADDR=https://vault.example.com:8200
-            VAULT_TOKEN=s.xxxxxxxxxxxxx
-            VAULT_CACERT=/path/to/certificates/CA.pem
-
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_addr: "https://127.0.0.1:18200"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+        vault_cacert: ""
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
-          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_TOKEN in {{ vault_secret_file }}
 
   tasks:
     - name: Check Vault Terraform state directory
@@ -241,9 +241,11 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
+        TF_VAR_vault_skip_tls_verify: "true"
       changed_when: false
       when:
         - vault_tf_state_dir.stat.exists
@@ -263,9 +265,11 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
+        TF_VAR_vault_skip_tls_verify: "true"
       register: terraform_vault_destroy
       changed_when: "'Destroy complete!' in terraform_vault_destroy.stdout"
       when:
@@ -291,6 +295,7 @@
       with_items:
         - vault
         - vault-unseal
+
     - name: Delete directories and files
       become: true
       ansible.builtin.file:
@@ -303,6 +308,7 @@
         - /usr/local/bin/vault
         - /etc/systemd/system/vault.service
         - /etc/systemd/system/vault-unseal.service
+
     - name: Reload systemd daemon
       ansible.builtin.systemd:
         daemon_reload: true
