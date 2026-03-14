@@ -200,42 +200,18 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_addr: "https://127.0.0.1:18200"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+        vault_cacert: ""
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
-          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_TOKEN in {{ vault_secret_file }}
 
           Please configure Vault access before running this playbook.
-
-    - name: Kill any existing SSH tunnel on port 18201
-      ansible.builtin.shell: |
-        PIDS=$(ss -tlnp sport = :18201 | grep -oP 'pid=\K[0-9]+')
-        if [ -n "$PIDS" ]; then
-          kill -9 $PIDS
-        fi
-        sleep 1
-      delegate_to: localhost
-      become: false
-
-    - name: Open SSH tunnel to Vault
-      ansible.builtin.shell: |
-        ssh -f -N -L 18201:127.0.0.1:8200 marmila@{{ hostvars[groups['vault'][0]]['ansible_host'] }} \
-          -o StrictHostKeyChecking=no \
-          -o ExitOnForwardFailure=yes
-      delegate_to: localhost
-      become: false
-
-    - name: Override Vault address to use SSH tunnel
-      ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18201"
-        vault_cacert: ""
 
     - name: Display Vault configuration (self-signed certificates)
       ansible.builtin.debug:
@@ -344,15 +320,6 @@
     - role: ricsanfre.minio
 
   post_tasks:
-    - name: Close SSH tunnel to Vault
-      ansible.builtin.shell: |
-        PIDS=$(ss -tlnp sport = :18201 | grep -oP 'pid=\K[0-9]+')
-        if [ -n "$PIDS" ]; then
-          kill -9 $PIDS
-        fi
-      delegate_to: localhost
-      become: false
-
     - name: Display MinIO installation information
       ansible.builtin.debug:
         msg: |
