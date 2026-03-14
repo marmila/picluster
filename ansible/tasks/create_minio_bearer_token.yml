@@ -16,8 +16,7 @@
   community.hashi_vault.vault_write:
     url: "{{ vault_addr }}"
     token: "{{ vault_token }}"
-    validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-    ca_cert: "{{ vault_cacert | default(omit) }}"
+    validate_certs: false
     path: "secret/data/minio/prometheus"
     data:
       data:
