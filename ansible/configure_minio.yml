@@ -65,12 +65,32 @@
         fail_msg: |
           Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
+    - name: Kill any existing SSH tunnel on port 18202
+      ansible.builtin.shell: |
+        PIDS=$(ss -tlnp sport = :18202 | grep -oP 'pid=\K[0-9]+')
+        if [ -n "$PIDS" ]; then
+          kill -9 $PIDS
+        fi
+        sleep 1
+      delegate_to: localhost
+
+    - name: Open SSH tunnel to Vault
+      ansible.builtin.shell: |
+        ssh -f -N -L 18202:127.0.0.1:8200 marmila@{{ hostvars[groups['vault'][0]]['ansible_host'] }} \
+          -o StrictHostKeyChecking=no \
+          -o ExitOnForwardFailure=yes
+      delegate_to: localhost
+
+    - name: Override Vault address to use SSH tunnel
+      ansible.builtin.set_fact:
+        vault_addr: "https://127.0.0.1:18202"
+        vault_cacert: ""
+
     - name: Fetch MinIO credentials from Vault
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-        ca_cert: "{{ vault_cacert | default(omit) }}"
+        validate_certs: false
         mount_point: "secret"
         path: "minio/root"
       register: minio_vault_secret
@@ -129,7 +149,8 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
         TF_VAR_minio_ssl_verify: "true"
@@ -151,7 +172,8 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
+        VAULT_CACERT: ""
+        VAULT_SKIP_VERIFY: "true"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
         TF_VAR_minio_ssl_verify: "true"
@@ -169,6 +191,14 @@
         chdir: "{{ terraform_project_dir }}"
       register: terraform_outputs
       changed_when: false
+
+    - name: Close SSH tunnel to Vault
+      ansible.builtin.shell: |
+        PIDS=$(ss -tlnp sport = :18202 | grep -oP 'pid=\K[0-9]+')
+        if [ -n "$PIDS" ]; then
+          kill -9 $PIDS
+        fi
+      delegate_to: localhost
 
     - name: Display MinIO configuration information
       ansible.builtin.debug:
