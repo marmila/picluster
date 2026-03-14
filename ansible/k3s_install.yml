@@ -51,19 +51,18 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_addr: "https://127.0.0.1:18200"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+        vault_cacert: ""
       delegate_to: localhost
       become: false
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
-          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_TOKEN in {{ vault_secret_file }}
         success_msg: "Vault environment loaded and validated"
       delegate_to: localhost
       become: false
@@ -72,8 +71,7 @@
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-        ca_cert: "{{ vault_cacert | default(omit) }}"
+        validate_certs: false
         mount_point: secret
         path: cluster/k3s
       register: k3s_vault_secret
@@ -131,19 +129,18 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
+        vault_addr: "https://127.0.0.1:18200"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
+        vault_cacert: ""
       delegate_to: localhost
       become: false
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
-          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_TOKEN in {{ vault_secret_file }}
         success_msg: "Vault environment loaded and validated"
       delegate_to: localhost
       become: false
@@ -152,8 +149,7 @@
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
-        ca_cert: "{{ vault_cacert | default(omit) }}"
+        validate_certs: false
         mount_point: secret
         path: cluster/k3s
       register: k3s_vault_secret
@@ -163,6 +159,7 @@
     - name: Set k3s_token fact from Vault
       ansible.builtin.set_fact:
         k3s_token: "{{ (k3s_vault_secret.secret | default({})).token | default('', true) }}"
+
     - name: Validate k3s cluster token
       ansible.builtin.assert:
         that:
@@ -174,6 +171,7 @@
           You can create it with:
             vault kv put secret/cluster/k3s token='your-k3s-cluster-token'
         success_msg: "k3s cluster token retrieved and validated"
+
   roles:
     - role: k3s/worker
 
@@ -184,16 +182,6 @@
     - name: Include picluster variables
       ansible.builtin.include_vars: "vars/picluster.yml"
   tasks:
-    # - name: "Wait for worker nodes to be ready"
-    #   command:
-    #     cmd: "kubectl get nodes {{ item }}"
-    #   register: nodes
-    #   until:
-    #     - '" Ready "  in nodes.stdout'
-    #   retries: 10
-    #   delay: 5
-    #   with_items: "{{ groups['k3s_worker'] }}"
-
     - name: Label k3s worker nodes
       ansible.builtin.command:
         cmd: "kubectl label nodes {{ item }} kubernetes.io/role=worker"
