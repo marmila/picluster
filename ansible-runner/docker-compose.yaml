@@ -10,9 +10,17 @@ services:
                sudo chown runner:runner /home/runner/.ssh/id_rsa /home/runner/.ssh/id_rsa.pub &&
                chmod 600 /home/runner/.ssh/id_rsa &&
                chmod 644 /home/runner/.ssh/id_rsa.pub &&
+               ssh -f -N -L 18200:127.0.0.1:8200 marmila@10.0.0.11
+                 -o StrictHostKeyChecking=no
+                 -o ExitOnForwardFailure=yes
+                 -o ServerAliveInterval=30
+                 -o ServerAliveCountMax=3 &&
                tail -f /dev/null"
     container_name: ansible-runner
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - ./../ansible:/ansible
       - ./../kubernetes:/kubernetes
