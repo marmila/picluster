@@ -136,10 +136,12 @@
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
         TF_VAR_minio_ssl_verify: "false"
+        TF_VAR_minio_insecure: "true"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
+        TF_VAR_vault_skip_tls_verify: "true"
       changed_when: false
       register: terraform_plan
 
@@ -159,10 +161,12 @@
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
         TF_VAR_minio_ssl_verify: "false"
+        TF_VAR_minio_insecure: "true"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
+        TF_VAR_vault_skip_tls_verify: "true"
       register: terraform_apply
       changed_when: "'Apply complete!' in terraform_apply.stdout"
       no_log: false
