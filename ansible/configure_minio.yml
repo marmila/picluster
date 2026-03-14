@@ -57,6 +57,10 @@
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
         vault_cacert: ""
 
+    - name: Override MinIO endpoint to use SSH tunnel
+      ansible.builtin.set_fact:
+        minio_endpoint: "127.0.0.1:9091"
+
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
@@ -131,7 +135,7 @@
         VAULT_SKIP_VERIFY: "true"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
-        TF_VAR_minio_ssl_verify: "true"
+        TF_VAR_minio_ssl_verify: "false"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
@@ -154,7 +158,7 @@
         VAULT_SKIP_VERIFY: "true"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
-        TF_VAR_minio_ssl_verify: "true"
+        TF_VAR_minio_ssl_verify: "false"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
@@ -184,11 +188,11 @@
          Access Information:
 
          API Server:
-           URL: https://{{ minio_hostname }}:9000
-           Access via: mc alias set minio https://{{ minio_hostname }}:9000 $USERNAME $PASSWORD
+           URL: https://{{ minio_hostname }}:9091
+           Access via: mc alias set minio https://{{ minio_hostname }}:9091 $USERNAME $PASSWORD
 
          Console (Web UI):
-           URL: https://{{ minio_hostname }}:9001
+           URL: https://{{ minio_hostname }}:9092
            Open in browser and login with credentials from Vault
 
          Credentials:

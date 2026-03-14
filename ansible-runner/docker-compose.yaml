@@ -12,6 +12,7 @@ services:
                chmod 644 /home/runner/.ssh/id_rsa.pub &&
                ssh-keyscan -H 10.0.0.11 >> /home/runner/.ssh/known_hosts &&
                ssh -f -N -L 18200:127.0.0.1:8200 marmila@10.0.0.11 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 &&
+               ssh -f -N -L 9091:127.0.0.1:9091 marmila@10.0.0.11 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 &&
                tail -f /dev/null"
     container_name: ansible-runner
     restart: unless-stopped
