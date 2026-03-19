@@ -4,6 +4,9 @@ services:
     build:
       context: ..
       dockerfile: ansible-runner/Dockerfile
+      args:
+        USER_UID: 1001
+        USER_GID: 1002
     command: >
       bash -c "sudo cp /tmp/ssh/id_rsa /home/runner/.ssh/id_rsa &&
                sudo cp /tmp/ssh/id_rsa.pub /home/runner/.ssh/id_rsa.pub &&
