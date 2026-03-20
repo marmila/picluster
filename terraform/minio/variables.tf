@@ -3,7 +3,7 @@
 variable "minio_endpoint" {
   type        = string
   description = "Minio server endpoint (hostname:port)"
-  default     = "minio.picluster.ricsanfre.com:9000"
+  default     = "minio.picluster.marmilan.com:9000"
 }
 
 variable "minio_region" {
