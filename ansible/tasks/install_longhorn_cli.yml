@@ -1,10 +1,12 @@
 ---
 
 - name: Gather architecture facts
+  become: true
   ansible.builtin.setup:
     gather_subset:
       - min
   when: ansible_facts.architecture is not defined
+
 
 - name: Set Longhorn CLI architecture
   ansible.builtin.set_fact:

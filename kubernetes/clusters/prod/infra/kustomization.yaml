@@ -31,4 +31,4 @@ resources:
   - velero-app.yaml
  # - apexforge-db.yaml
  # - apexforge-app.yaml
-
+  - kube-vip-app.yaml

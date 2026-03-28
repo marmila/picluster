@@ -28,7 +28,7 @@
 /ansible/.uv-cache
 
 # Metal
-/metal/openwrt
+/metal/openwrt/config
 
 # IDE
 .vscode/
