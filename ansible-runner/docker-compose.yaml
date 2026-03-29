@@ -11,12 +11,7 @@ services:
     command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
-    extra_hosts:
-      - "vault.homelab.marmilan.com:10.0.0.11"
-      - "object-store.homelab.marmilan.com:10.0.0.11"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
+    network_mode: host
     volumes:
       - ./../ansible:/ansible
       - ./../kubernetes:/kubernetes
