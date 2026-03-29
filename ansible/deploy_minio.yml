@@ -134,15 +134,18 @@
     - name: Create customCA-signed TLS certificate for MinIO
       when: not enable_letsencrypt
       block:
+        # Generate self-signed certificates directory
         - name: Create certificates directory
           ansible.builtin.file:
             path: "{{ selfsigned_certificates_path }}"
             state: directory
             mode: "0750"
 
+        # Include selfsigned certificates variables
         - name: Include selfsigned certificates variables
           ansible.builtin.include_vars: "vars/selfsigned-certificates.yml"
 
+        # Generate custom CA (if needed)
         - name: Generate custom CA
           ansible.builtin.include_tasks: tasks/generate_custom_ca.yml
           args:
@@ -150,6 +153,7 @@
               delegate_to: localhost
               become: false
 
+        # Generate customCA-signed TLS certificate for MinIO
         - name: Generate customCA-signed SSL certificate for MinIO
           ansible.builtin.include_tasks: tasks/generate_ca_signed_cert.yml
           args:
@@ -200,16 +204,17 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18200"
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: ""
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
+          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
           Please configure Vault access before running this playbook.
 
@@ -269,11 +274,13 @@
             minio_key: "{{ lookup('file', cert_key_path[0]) }}"
             minio_cert: "{{ lookup('file', cert_path[0]) }}"
 
+    # ON-DEMAND VAULT LOOKUP: Fetch MinIO secrets only when needed
     - name: Fetch MinIO credentials from Vault (on-demand lookup)
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: false
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
         mount_point: "secret"
         path: "minio/root"
       register: minio_vault_secret

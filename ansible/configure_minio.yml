@@ -53,26 +53,24 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18200"
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: ""
-
-    - name: Override MinIO endpoint to use SSH tunnel
-      ansible.builtin.set_fact:
-        minio_endpoint: "127.0.0.1:9091"
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
+          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
     - name: Fetch MinIO credentials from Vault
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: false
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
         mount_point: "secret"
         path: "minio/root"
       register: minio_vault_secret
@@ -131,17 +129,14 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
-        TF_VAR_minio_ssl_verify: "false"
-        TF_VAR_minio_insecure: "true"
+        TF_VAR_minio_ssl_verify: "true"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
-        TF_VAR_vault_skip_tls_verify: "true"
       changed_when: false
       register: terraform_plan
 
@@ -156,17 +151,14 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if (not enable_letsencrypt | default(false)) else '' }}"
         TF_VAR_minio_endpoint: "{{ minio_endpoint }}"
         TF_VAR_minio_use_ssl: "true"
-        TF_VAR_minio_ssl_verify: "false"
-        TF_VAR_minio_insecure: "true"
+        TF_VAR_minio_ssl_verify: "true"
         TF_VAR_minio_admin_user: "{{ minio_root_user }}"
         TF_VAR_minio_admin_password: "{{ minio_root_password }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
-        TF_VAR_vault_skip_tls_verify: "true"
       register: terraform_apply
       changed_when: "'Apply complete!' in terraform_apply.stdout"
       no_log: false
@@ -192,11 +184,11 @@
          Access Information:
 
          API Server:
-           URL: https://{{ minio_hostname }}:9091
-           Access via: mc alias set minio https://{{ minio_hostname }}:9091 $USERNAME $PASSWORD
+           URL: https://{{ minio_hostname }}:9000
+           Access via: mc alias set minio https://{{ minio_hostname }}:9000 $USERNAME $PASSWORD
 
          Console (Web UI):
-           URL: https://{{ minio_hostname }}:9092
+           URL: https://{{ minio_hostname }}:9001
            Open in browser and login with credentials from Vault
 
          Credentials:

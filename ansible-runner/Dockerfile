@@ -13,8 +13,6 @@ FROM ghcr.io/astral-sh/uv:0.10.12 AS uv
 FROM python:3.14-slim
 ARG ANSIBLE_GALAXY_CLI_COLLECTION_OPTS=--ignore-certs
 ARG ANSIBLE_GALAXY_CLI_ROLE_OPTS=--ignore-certs
-ARG USER_UID=1001
-ARG USER_GID=1002
 ENV UV_LINK_MODE=copy
 ENV UV_PROJECT_ENVIRONMENT=/home/runner/.venv
 RUN apt-get update -qq && \
@@ -41,8 +39,8 @@ COPY --from=helmfile /usr/local/bin/helmfile /usr/local/bin/helmfile
 
 ENV USER=runner
 ENV FOLDER=/home/runner
-RUN /usr/sbin/groupadd -g $USER_GID $USER && \
-    /usr/sbin/useradd $USER -m -d $FOLDER -g $USER -u $USER_UID -s /bin/bash && \
+RUN /usr/sbin/groupadd $USER && \
+    /usr/sbin/useradd $USER -m -d $FOLDER -g $USER -s /bin/bash && \
     echo $USER 'ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     echo 'case ":$PATH:" in *:/home/runner/.venv/bin:*) ;; *) export PATH="/home/runner/.venv/bin:$PATH" ;; esac' >> /home/runner/.bashrc && \
     echo 'case ":$PATH:" in *:/home/runner/.venv/bin:*) ;; *) export PATH="/home/runner/.venv/bin:$PATH" ;; esac' >> /home/runner/.profile && \

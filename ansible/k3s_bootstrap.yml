@@ -63,16 +63,17 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18200"
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: ""
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
+          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
   tasks:
 

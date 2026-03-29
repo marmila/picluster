@@ -48,16 +48,17 @@
 
     - name: Set Vault environment variables
       ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18200"
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: ""
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
+          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
 
     - name: Display Vault configuration (self-signed certificates)
       ansible.builtin.debug:
@@ -110,8 +111,7 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: true
@@ -124,8 +124,7 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: false
@@ -150,8 +149,7 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
         TF_VAR_enable_kubernetes_auth: "false"
@@ -173,8 +171,7 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
         TF_VAR_enable_kubernetes_auth: "false"
@@ -192,8 +189,7 @@
         VAULT_ADDR: "{{ vault_addr }}"
         VAULT_ADDRESS: "{{ vault_addr }}"
         VAULT_TOKEN: "{{ vault_token }}"
-        VAULT_CACERT: ""
-        VAULT_SKIP_VERIFY: "true"
+        VAULT_CACERT: "{{ vault_cacert if not enable_letsencrypt else '' }}"
         TF_VAR_vault_address: "{{ vault_addr }}"
         TF_VAR_vault_token: "{{ vault_token }}"
       changed_when: false
@@ -236,4 +232,4 @@
         cacheable: true
         vault_external_services_addr: "{{ vault_addr }}"
         vault_external_services_token: "{{ vault_token }}"
-        vault_external_services_cacert: ""
+        vault_external_services_cacert: "{{ vault_cacert if not enable_letsencrypt else '' }}"

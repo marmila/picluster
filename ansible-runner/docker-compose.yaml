@@ -1,4 +1,5 @@
 services:
+  # Ansible-runner
   ansible-runner:
     image: ansible-runner
     build:
@@ -7,29 +8,17 @@ services:
       args:
         USER_UID: 1001
         USER_GID: 1002
-    command: >
-      bash -c "sudo cp /tmp/ssh/id_rsa /home/runner/.ssh/id_rsa &&
-               sudo cp /tmp/ssh/id_rsa.pub /home/runner/.ssh/id_rsa.pub &&
-               sudo chown runner:runner /home/runner/.ssh/id_rsa /home/runner/.ssh/id_rsa.pub &&
-               chmod 600 /home/runner/.ssh/id_rsa &&
-               chmod 644 /home/runner/.ssh/id_rsa.pub &&
-               ssh-keyscan -H 10.0.0.11 >> /home/runner/.ssh/known_hosts &&
-               ssh -f -N -L 18200:127.0.0.1:8200 marmila@10.0.0.11 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 &&
-               ssh -f -N -L 9091:127.0.0.1:9091 marmila@10.0.0.11 -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 &&
-               tail -f /dev/null"
+    command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     volumes:
       - ./../ansible:/ansible
       - ./../kubernetes:/kubernetes
       - ./../terraform:/terraform
       - ./../metal/x86/pxe-files:/metal/x86/pxe-files
       - ${HOME}/.secrets:/home/runner/.secrets
-      - ${HOME}/.ssh/id_rsa:/tmp/ssh/id_rsa:ro
-      - ${HOME}/.ssh/id_rsa.pub:/tmp/ssh/id_rsa.pub:ro
+      - ${HOME}/.ssh/id_rsa:/home/runner/.ssh/id_rsa:ro
+      - ${HOME}/.ssh/id_rsa.pub:/home/runner/.ssh/id_rsa.pub:ro
       - ${HOME}/.kube:/home/runner/.kube
       - ${HOME}/.certbot/log:/home/runner/.certbot/log
       - ${HOME}/.certbot/config:/home/runner/.certbot/config

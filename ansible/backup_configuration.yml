@@ -8,6 +8,7 @@
   vars:
     vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
   pre_tasks:
+    # Include picluster variables
     - name: Include picluster variables
       include_vars: "vars/picluster.yml"
 
@@ -34,16 +35,17 @@
 
     - name: Get Vault environment from secret file
       ansible.builtin.set_fact:
-        vault_addr: "https://127.0.0.1:18200"
+        vault_addr: "{{ lookup('ansible.builtin.ini', 'VAULT_ADDR type=properties file=' ~ vault_secret_file) }}"
         vault_token: "{{ lookup('ansible.builtin.ini', 'VAULT_TOKEN type=properties file=' ~ vault_secret_file) }}"
-        vault_cacert: ""
+        vault_cacert: "{{ lookup('ansible.builtin.ini', 'VAULT_CACERT type=properties file=' ~ vault_secret_file, errors='ignore') | default('', true) }}"
 
     - name: Validate Vault variables loaded from secret file
       ansible.builtin.assert:
         that:
+          - vault_addr is defined and vault_addr != ""
           - vault_token is defined and vault_token != ""
         fail_msg: |
-          Missing VAULT_TOKEN in {{ vault_secret_file }}
+          Missing VAULT_ADDR or VAULT_TOKEN in {{ vault_secret_file }}
         success_msg: "Vault environment loaded and validated"
       tags: ["always"]
 
@@ -51,13 +53,13 @@
       community.hashi_vault.vault_kv2_get:
         url: "{{ vault_addr }}"
         token: "{{ vault_token }}"
-        validate_certs: false
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
         mount_point: secret
         path: minio/restic
       register: restic_vault_secret
       delegate_to: localhost
       tags: ["always"]
-
     - name: Set restic environment variables from Vault
       ansible.builtin.set_fact:
         restic_environment:
@@ -67,7 +69,6 @@
             value: "{{ (restic_vault_secret.secret | default({})).key | default('', true) }}"
       tags: ["always"]
       no_log: true
-
     - name: Validate restic S3 credentials
       ansible.builtin.assert:
         that:
@@ -82,17 +83,14 @@
           Please ensure the secret exists and contains 'username' and 'key' fields.
         success_msg: "Restic S3 credentials retrieved and validated"
       tags: ["always"]
-
     - name: Load CA certificate for restic
       set_fact:
         restic_ca_cert: "{{ lookup('file','certificates/CA.pem') }}"
       when: not enable_letsencrypt
-
     - name: Do not use CA certificate
       set_fact:
         restic_use_ca_cert: false
       when: enable_letsencrypt
-
   roles:
     - role: ricsanfre.backup
       tags: [backup]
