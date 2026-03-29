@@ -5,9 +5,6 @@ services:
     build:
       context: ..
       dockerfile: ansible-runner/Dockerfile
-      args:
-        USER_UID: 1001
-        USER_GID: 1002
     command: tail -f /dev/null
     container_name: ansible-runner
     restart: unless-stopped
