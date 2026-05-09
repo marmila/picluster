@@ -2,7 +2,7 @@
 title: Cluster Gateway (OpenWrt)
 permalink: /docs/openwrt/
 description: How to configure a router/firewall for our homelab Cluster, running OpenWRT OS and providing connectivity and basic networking services (DNS, DHCP, NTP). 
-last_modified_at: "16-08-2025"
+last_modified_at: "03-04-2026"
 ---
 
 To isolate my kubernetes cluster from my home network, a Router/Firewall running OpenWRT will be used, **gateway** node.
@@ -57,7 +57,7 @@ This is the process to flash OpenWRT into SD-Card that can be used to boot Raspb
 - Step 4. Connect laptop directly to Raspberry PI ethernet port or via LAN switch
   OpenWRT will assign the laptop a IP via DHCP
 
-- Step 5: Open Luci interface at [http://192.168.1.1](http://192.168.1.1)
+- Step 5: Open Luci interface at `http://192.168.1.1`
   
   Login as `root` user, no password is needed the first time.
 
@@ -320,7 +320,7 @@ Enabling SSH traffic (tcp port:22) to cluster nodes from WAN interface
 
 ##### Enabling HTTPs traffic to Kube API
 
-Enabling HTTPS traffic to Kube API (TCP 6443) running in 10.0.0.11 (HA Proxy load balancer)
+Enabling HTTPS traffic to Kube API (TCP 6443) running in 10.0.0.10 (Kube API VIP exposed by Kube-VIP load balancer)
 
 ![openwrt-firewall-kube-api-from-wan](/assets/img/openwrt-firewall-kube-api-from-wan.png)
 
@@ -342,6 +342,27 @@ Enable DNS traffic to OpenWRT router from WAN interface. Use Homelab DNS from my
 
 ![openwrt-allow-dns-traffic-to-device](/assets/img/openwrt-allow-dns-traffic-to-device.png)
 
+##### Enabling HTTPS Traffic to Vault Server
+Enable HTTPS traffic to Vault server (TCP 8200) running in node1 (10.0.0.11)
+
+![openwrt-firewall-vault-from-wan](/assets/img/openwrt-firewall-vault-from-wan.png)
+
+##### Enabling HTTPS Traffic to Minio Server
+
+Enable HTTPS traffic to Minio API (TCP 9091) and console (TCP 9092)running in node1 (10.0.0.11)
+
+![openwrt-firewall-minio-api-from-wan](/assets/img/openwrt-firewall-minio-api-from-wan.png)
+
+![openwrt-firewall-minio-console-from-wan](/assets/img/openwrt-firewall-minio-console-from-wan.png)
+
+
+##### Enabling Kafka traffic to Kafka cluster
+
+Enable Kafka traffic (TCP 9093) to Kafka cluster exposed through Envoy-gateway load balancer (10.0.0.69)
+
+![openwrt-firewall-kafka-from-wan](/assets/img/openwrt-firewall-kafka-from-wan.png)
+
+
 ##### Summary of firewall rules added
 
 ![openwrt-firewall-added-rules](/assets/img/openwrt-firewall-added-rules.png)
@@ -349,7 +370,7 @@ Enable DNS traffic to OpenWRT router from WAN interface. Use Homelab DNS from my
 ### DNS/DHCP service
 
 {{site.data.alerts.note}}
-OpenWRT DNS/DHCP service is based on [[Dnsmasq]], same DNS/DHCP solution used before when `gateway` node was running in Ubuntu OS (["PiCluster: Cluster Gateway (Ubuntu)"](/docs/gateway/))
+OpenWRT DNS/DHCP service is based on Dnsmasq, same DNS/DHCP solution used before when `gateway` node was running in Ubuntu OS (["PiCluster: Cluster Gateway (Ubuntu)"](/docs/gateway/))
 {{site.data.alerts.end}}
 
 Configuration is stored in `/etc/config/dhcp`/
@@ -598,6 +619,27 @@ OpenWRT metrics can be exported deploying Prometheus node exporter packages
     prometheus-node-exporter-lua-wifi \
     prometheus-node-exporter-lua-wifi_stations
     ```
+    
+    {{ site.data.alerts.note }}
+    Note: In newer versions of OpenWRT, opkg package manager has been replaced by apk package manager. In this case, apk command has to be used instead of opkg to install prometheus node exporter packages.
+
+    ```shell
+
+    apk update
+
+    apk add prometheus-node-exporter-lua \
+    prometheus-node-exporter-lua-nat_traffic \
+    prometheus-node-exporter-lua-netstat \
+    prometheus-node-exporter-lua-openwrt \
+    prometheus-node-exporter-lua-wifi \
+    prometheus-node-exporter-lua-wifi_stations
+    ```
+    {{ site.data.alerts.end }}
+
+    {{site.data.alerts.important}}
+    Every time OpenWRT firmware is updated, packages need to be re-installed. This is because OpenWRT firmware upgrade process reset all changes done in the system, including installed packages.
+    
+    {{site.data.alerts.end }}
 
 -   Step 4: Check metrics are exposed
 
@@ -670,39 +712,29 @@ In case Prometheus server is deployed in Kubernetes cluster using kube-prometheu
 
 #### Grafana Dashboard
 
+See [Grafana Operator - Provisioning Dashboards](/docs/grafana-operator/#provisioning-dashboards) for the general `GrafanaDashboard` onboarding patterns.
+
 OpenWRTr dashboard can be donwloaded from [grafana.com](https://grafana.com): [dashboard id: 18153](https://grafana.com/grafana/dashboards/18153).
 
-Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dashboards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
-
-Add following configuration to Grafana's helm chart values file:
+The dashboard can be onboarded with a `GrafanaDashboard` resource:
 
 ```yaml
-# Configure default Dashboard Provider
-# https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - name: infrastructure
-        orgId: 1
-        folder: "Infrastructure"
-        type: file
-        disableDeletion: false
-        editable: true
-        options:
-          path: /var/lib/grafana/dashboards/infrastructure-folder
-
-# Add dashboard
-# Dashboards
-dashboards:
-  infrastructure:
-    openWRT:
-      # https://grafana.com/grafana/dashboards/18153-asus-openwrt-router/
-      # renovate: depName="OpenWRT Exporter Dashboard"
-      gnetId: 18153
-      revision: 4
-      datasource:
-        - { name: DS_PROMETHEUS, value: Prometheus }
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: openwrt
+spec:
+  allowCrossNamespaceImport: true
+  folder: Infrastructure
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  grafanaCom:
+    id: 18153
+    revision: 4
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: Prometheus
 ```
 
 ### Logs

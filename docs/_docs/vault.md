@@ -9,7 +9,7 @@ last_modified_at: "01-03-2026"
 
 Vault will be deployed as an external service, not running as a Kubernetes service, so it can be used by GitOps solution, ArgoCD/FluxCD, to deploy automatically all cluster services.
 
-Vault could be installed as Kubernetes service, deploying it using an official Helm Chart or a community operator like [Banzai Bank-Vault](https://banzaicloud.com/products/bank-vaults/).
+Vault could be installed as Kubernetes service, deploying it using an official Helm Chart or a community operator like [Bank-Vaults - Vault Operator](https://github.com/bank-vaults/vault-operator).
 
 Installing Vault as Kubernetes service will drive us to a chicken/egg situation if we want to use Vault as only source of secrets/credentials for all Kubernetes services deployed. Vault requires to have Block storage solution (Longhorn) deployed first since its POD needs Persistent Volumes, and to install Longhorn, a few secrets need to be provided to configure its backup (Minio credentials).
 
@@ -934,35 +934,24 @@ export VAULT_TOKEN=$(jq -r '.root_token' /etc/vault/unseal.json)
 
 ##### Grafana Dashboards
 
+See [Grafana Operator - Provisioning Dashboards](/docs/grafana-operator/#provisioning-dashboards) for the general `GrafanaDashboard` onboarding patterns.
+
 Vault dashboard sample can be downloaded from [Grafana jsonnet libraries repo: vault-mixin](https://github.com/grafana/jsonnet-libs/blob/master/vault-mixin/dashboards/vault.json).
 
-Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dashboards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
-
-Add following configuration to Grafana's helm chart values file:
+The dashboard can be onboarded with a `GrafanaDashboard` resource:
 
 ```yaml
-# Configure default Dashboard Provider
-# https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - name: infrastructure
-        orgId: 1
-        folder: "Infrastructure"
-        type: file
-        disableDeletion: false
-        editable: true
-        options:
-          path: /var/lib/grafana/dashboards/infrastructure-folder
-
-# Add dashboard
-# Dashboards
-dashboards:
-  infrastructure:
-    vault:
-      url: https://raw.githubusercontent.com/grafana/jsonnet-libs/refs/heads/master/vault-mixin/dashboards/vault.json
-      datasource: Prometheus
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: vault
+spec:
+  allowCrossNamespaceImport: true
+  folder: Infrastructure
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  url: https://raw.githubusercontent.com/grafana/jsonnet-libs/refs/heads/master/vault-mixin/dashboards/vault.json
 ```
 
 ## External Secrets Operator installation

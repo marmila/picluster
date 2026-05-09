@@ -2,7 +2,7 @@
 title: Monitoring (Prometheus)
 permalink: /docs/prometheus/
 description: How to deploy kubernetes cluster monitoring solution based on Prometheus. Installation based on Prometheus Operator using kube-prometheus-stack project.
-last_modified_at: "15-08-2025"
+last_modified_at: "27-03-2026"
 ---
 
 Prometheus stack installation for kubernetes using Prometheus Operator can be streamlined using [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus) project maintained by the community.
@@ -272,9 +272,8 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
     alertmanager:
       alertmanagerSpec:
         ##
-        ## Configure access to AlertManager via sub-path
-        externalUrl: http://monitoring.${DOMAIN}/alertmanager/
-        routePrefix: /alertmanager
+        ## Configure access to AlertManager via dedicated hostname
+        externalUrl: https://alertmanager.${CLUSTER_DOMAIN}
         ##
         ## HA configuration: Replicas
         ## Number of Alertmanager POD replicas
@@ -290,22 +289,15 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
                 requests:
                   storage: 5Gi
         ##
-      ## Configure Ingress
-      ingress:
-        enabled: true
-        ingressClassName: nginx
-        annotations:
-          # Enable cert-manager to create automatically the SSL certificate and store in Secret
-          cert-manager.io/cluster-issuer: ca-issuer
-          cert-manager.io/common-name: monitoring.${DOMAIN}
-        path: /alertmanager
-        pathType: Prefix
-        hosts:
-          - monitoring.${DOMAIN}
-        tls:
-          - hosts:
-            - monitoring.${DOMAIN}
-            secretName: monitoring-tls
+      ## Configure HTTPRoute via Gateway API
+      route:
+        main:
+          enabled: true
+          hostnames:
+            - alertmanager.${CLUSTER_DOMAIN}
+          parentRefs:
+            - name: public-gateway
+              namespace: envoy-gateway-system
 
     # Prometheus configuration
     prometheus:
@@ -327,10 +319,9 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
         ## ref: https://prometheus.io/docs/prometheus/latest/querying/api/#tsdb-admin-apis
         enableAdminAPI: true
         ##
-        ## Configure access to Prometheus via sub-path
-        ## --web.external-url and --web.route-prefix Prometheus command line parameters
-        externalUrl: http://monitoring.${DOMAIN}/prometheus/
-        routePrefix: /prometheus
+        ## Configure access to Prometheus via dedicated hostname
+        ## --web.external-url Prometheus command line parameter
+        externalUrl: https://prometheus.${CLUSTER_DOMAIN}
         ##
         ## HA configuration: Replicas & Shards
         ## Number of replicas of each shard to deploy for a Prometheus deployment.
@@ -367,23 +358,19 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
               resources:
                 requests:
                   storage: 5Gi
+        # Additional external labels to be added to all metrics
+        externalLabels:
+          cluster: ${CLUSTER_NAME:-pi-cluster}
         ##
-      ## Configuring Ingress
-      ingress:
-        enabled: true
-        ingressClassName: nginx
-        annotations:
-          # Enable cert-manager to create automatically the SSL certificate and store in Secret
-          cert-manager.io/cluster-issuer: ca-issuer
-          cert-manager.io/common-name: monitoring.${DOMAIN}
-        path: /prometheus
-        pathType: Prefix
-        hosts:
-          - monitoring.${DOMAIN}
-        tls:
-          - hosts:
-            - monitoring.${DOMAIN}
-            secretName: monitoring-tls
+      ## Configure HTTPRoute via Gateway API
+      route:
+        main:
+          enabled: true
+          hostnames:
+            - prometheus.${CLUSTER_DOMAIN}
+          parentRefs:
+            - name: public-gateway
+              namespace: envoy-gateway-system
 
     # Prometheus Node Exporter Configuration
     prometheus-node-exporter:
@@ -401,13 +388,8 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
       # grafana configuration
       grafana.ini:
         server:
-          domain: monitoring.local.test
-          root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
-          # When serve_from_subpath is enabled, internal requests from e.g. prometheus get redirected to the defined root_url.
-          # This is causing prometheus to not be able to scrape metrics because it accesses grafana via the kubernetes service name and is then redirected to the public url
-          # To make Prometheus work, disable server_from_sub_path and add rewrite rule in NGINX proxy
-          # ref: https://github.com/grafana/grafana/issues/72577#issuecomment-1682277779
-          serve_from_sub_path: false
+          domain: grafana.${CLUSTER_DOMAIN}
+          root_url: "https://%(domain)s/"
       ##
       ## Provisioning sidecars
       ##
@@ -434,25 +416,21 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
           # Search for ConfigMaps containing `grafana_datasource` label
           label: grafana_datasource
           labelValue: "1"
-          ## Grafana Ingress configuration
-      ingress:
-        enabled: true
-        ingressClassName: nginx
-        # Values can be templated
-        annotations:
-          # Enable cert-manager to create automatically the SSL certificate and store in Secret
-          cert-manager.io/cluster-issuer: ca-issuer
-          cert-manager.io/common-name: monitoring.${DOMAIN}
-          # Nginx rewrite rule
-          nginx.ingress.kubernetes.io/rewrite-target: /$1
-        path: /grafana/?(.*)
-        pathType: ImplementationSpecific
-        hosts:
-          - monitoring.${DOMAIN}
-        tls:
-          - hosts:
-            - monitoring.${DOMAIN}
-            secretName: monitoring-tls
+      ## Grafana HTTPRoute configuration
+      route:
+        main:
+          enabled: true
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: HTTPRoute
+          hostnames:
+            - grafana.${CLUSTER_DOMAIN}
+          parentRefs:
+            - name: public-gateway
+              namespace: envoy-gateway-system
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
 
     # Kubernetes Monitoring
     ## Kubelet
@@ -568,9 +546,10 @@ Kube-prometheus stack can be installed using helm [kube-prometheus-stack](https:
     {{site.data.alerts.note}}
 
     Substitute variables (`${var}`) in the above yaml file before deploying helm chart.
-    -   Replace `${DOMAIN}` by  the domain name used in the cluster. For example: `homelab.ricsanfre.com`
-        FQDN must be mapped, in cluster DNS server configuration, to NGINX Ingress Controller's Load Balancer service external IP.
-        External-DNS can be configured to automatically add that entry in your DNS service.
+    -   Replace `${CLUSTER_DOMAIN}` by  the domain name used in the cluster. For example: `homelab.ricsanfre.com`
+      `prometheus.${CLUSTER_DOMAIN}`, `alertmanager.${CLUSTER_DOMAIN}` and `grafana.${CLUSTER_DOMAIN}` must resolve to Envoy Gateway's Load Balancer service external IP.
+      External-DNS can be configured to publish those records automatically from `HTTPRoute` hostnames.
+    -   Replace `${CLUSTER_NAME}` by the cluster name to be used as an external label in Prometheus metrics. This is useful when multiple clusters are federated or scraped from a central Prometheus instance, allowing to identify the source cluster of each metric.
     -   Replace `${STORAGE_CLASS}` by storage class name used (i.e. `longhorn`, `local-path`, etc.)
     -   Replace `${K8S_CP_NODE_x}` by cluster's control node IP addresses.
     -   Replace `${K8S_WK_NODE_x}` by cluster's worker node IP addresses.
@@ -631,10 +610,9 @@ prometheus:
     ## ref: https://prometheus.io/docs/prometheus/latest/querying/api/#tsdb-admin-apis
     enableAdminAPI: true
     ##
-    ## Configure access to Prometheus via sub-path
-    ## --web.external-url and --web.route-prefix Prometheus command line parameters
-    externalUrl: http://monitoring.${DOMAIN}/prometheus/
-    routePrefix: /prometheus
+    ## Configure access to Prometheus via dedicated hostname
+    ## --web.external-url Prometheus command line parameter
+    externalUrl: https://prometheus.${CLUSTER_DOMAIN}
     ##
     ## HA configuration: Replicas & Shards
     ## Number of replicas of each shard to deploy for a Prometheus deployment.
@@ -654,19 +632,23 @@ prometheus:
     enableFeatures:
       # Enable Memory snapshot on shutdown.
       - memory-snapshot-on-shutdown
+    # Additional external labels to be added to all metrics
+    externalLabels:
+      cluster: ${CLUSTER_NAME:-pi-cluster}
 ```
 
 {% endraw  %}
 
 The following options are used to configure Prometheus Server
 -   Admin API is enabled  (`prometheus.prometheusSpec.enableAdminAPI)
--   Prometheus server configured to run behind a proxy under a subpath: `prometheus.prometheusSpec.externalUrl` and `prometheus.prometheusSpec.routePrefix`
+-   Prometheus server configured to be exposed through Envoy Gateway using a dedicated hostname: `prometheus.prometheusSpec.externalUrl`
 -   HA configuration: Prometheus number of replicas and shards set to 1. Prometheus Operator is not deploying Prometheus replicas.
 -   Prometheus TSDB configuration:
     -  Enable WAL compression (`prometheus.prometheusSpec.walCompression`)
     -  Data retention configuration:  set by `prometheus.prometheusSpec.retention` and `prometheus.prometheusSpec.retentionSize`
 -   Experimental features enabled
     - Enable "Memory-snapshot-on-shutdown".
+-   Additional external labels to be added to all metrics, in this case, a `cluster` label with the cluster name is added to all metrics. This is useful when multiple clusters are federated or scraped from a central Prometheus instance, allowing to identify the source cluster of each metric.
 
 #### Grafana configuration
 
@@ -678,9 +660,8 @@ grafana:
   # grafana configuration
   grafana.ini:
     server:
-      domain: monitoring.local.test
-      root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
-      serve_from_sub_path: true
+      domain: grafana.${CLUSTER_DOMAIN}
+      root_url: "https://%(domain)s/"
   ##
   ## Provisioning sidecars
   sidecar:
@@ -710,101 +691,79 @@ grafana:
 
 The following options are used to configure Grafana
 -   Admin user password  is set: `grafana.adminPassword`
--   Grafana server configured to run behind a proxy under a subpath: `server` configuration under  `grafana.grafana.ini`
+-   Grafana server configured with a dedicated public hostname: `server` configuration under `grafana.grafana.ini`
 -   Dynamic provisioning of dashboard: Configure Grafana's dashboard sidecar to discover ConfigMaps containing dashboards definitions from all namespaces (`grafana.sidecar.dashboards.searchNamespaces`) containing label `grafana_dashboard`. Annoration `grafana_folder` can be used to select the folder where the dashboard is placed.
 -   Dynamic provisioning of datasources: Configure Grafana's datasources sidecar to discover ConfigMaps containing dashboards definitions from all namespaces (`grafana.sidecar.datasources.searchNamespaces`)  containing label `grafana_datasource`
 
-#### Ingress Configuration
+#### Gateway API Configuration
 
-To make endpoints available under same FQDN in different paths as specified in the following table
+Pi Cluster exposes monitoring UIs through Envoy Gateway using Kubernetes Gateway API `HTTPRoute` resources. This is used as an alternative to Ingress resources, which are not used in this cluster, and allows to have a more flexible routing configuration and TLS management.
 
-| UI           | endpoint               | Prefix          |
-|:------------ |:---------------------- |:--------------- |
-| Grafana      | `monitoring.${DOMAIN}` | `/grafana`      |
-| Prometheus   |                        | `/prometheus`   |
-| AlertManager |                        | `/alertmanager` |
+Each UI is published on its own hostname, attached to the shared `public-gateway` `Gateway`:
+
+| UI           | Endpoint                       |
+|:------------ |:------------------------------ |
+| Grafana      | `grafana.${CLUSTER_DOMAIN}`    |
+| Prometheus   | `prometheus.${CLUSTER_DOMAIN}` |
+| AlertManager | `alertmanager.${CLUSTER_DOMAIN}` |
 {: .table .border-dark }
 
-The following `values.yaml` need to be specified to generate Ingress resources and configure Prometheus, AlertManager and Grafana servers to run behind a HTTP Proxy under a subpath.
+The following `values.yaml` settings generate `HTTPRoute` resources for Prometheus and Alertmanager, and configure each application with its public URL. The same pattern can be used for Grafana when it is deployed as part of `kube-prometheus-stack`.
 
 ```yaml
 alertmanager:
   alertmanagerSpec:
-    externalUrl: http://monitoring.${DOMAIN}/alertmanager/
-    routePrefix: /alertmanager
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      cert-manager.io/cluster-issuer: ca-issuer
-      cert-manager.io/common-name: monitoring.${DOMAIN}
-    path: /alertmanager
-    pathType: Prefix
-    hosts:
-      - monitoring.${DOMAIN}
-    tls:
-      - hosts:
-        - monitoring.${DOMAIN}
-        secretName: monitoring-tls
+    externalUrl: https://alertmanager.${CLUSTER_DOMAIN}
+  route:
+    main:
+      enabled: true
+      hostnames:
+        - alertmanager.${CLUSTER_DOMAIN}
+      parentRefs:
+        - name: public-gateway
+          namespace: envoy-gateway-system
 prometheus:
   prometheusSpec:
     name: prometheus
-    externalUrl: http://monitoring.${DOMAIN}/prometheus/
-    routePrefix: /prometheus
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      cert-manager.io/cluster-issuer: ca-issuer
-      cert-manager.io/common-name: monitoring.${DOMAIN}
-    path: /prometheus
-    pathType: Prefix
-    hosts:
-      - monitoring.${DOMAIN}
-    tls:
-      - hosts:
-        - monitoring.${DOMAIN}
-        secretName: monitoring-tls
+    externalUrl: https://prometheus.${CLUSTER_DOMAIN}
+  route:
+    main:
+      enabled: true
+      hostnames:
+        - prometheus.${CLUSTER_DOMAIN}
+      parentRefs:
+        - name: public-gateway
+          namespace: envoy-gateway-system
 grafana:
-  # Configure
   grafana.ini:
     server:
-      # Run Grafana behind HTTP reverse proxy using a subpath
-      domain: monitoring.local.test
-      root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
-      # When serve_from_subpath is enabled, internal requests from e.g. prometheus get redirected to the defined root_url.
-      # This is causing prometheus to not be able to scrape metrics because it accesses grafana via the kubernetes service name and is then redirected to the public url
-      # To make Prometheus work, disable server_from_sub_path and add rewrite rule in NGINX proxy
-      # ref: https://github.com/grafana/grafana/issues/72577#issuecomment-1682277779
-      serve_from_sub_path: false
-  # Grafana Ingress configuration
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    # Values can be templated
-    annotations:
-      # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      cert-manager.io/cluster-issuer: ca-issuer
-      cert-manager.io/common-name: monitoring.${DOMAIN}
-      # Nginx rewrite rule. Needed since serve_from_sub_path has been disabled
-      nginx.ingress.kubernetes.io/rewrite-target: /$1
-    path: /grafana/?(.*)
-    pathType: ImplementationSpecific
-    hosts:
-      - monitoring.${DOMAIN}
-    tls:
-      - hosts:
-        - monitoring.${DOMAIN}
-            secretName: monitoring-tls
+      domain: grafana.${CLUSTER_DOMAIN}
+      root_url: "https://%(domain)s/"
+  route:
+    main:
+      enabled: true
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      hostnames:
+        - grafana.${CLUSTER_DOMAIN}
+      parentRefs:
+        - name: public-gateway
+          namespace: envoy-gateway-system
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
 ```
 {{site.data.alerts.note}}
 
-For Ingress resources, TLS certificates are generated automatically using Cert-Manager, through annotations `cert-manager.io/cluster-issuer` and `cert-manager.io/common-name`
-In the sample above, it is assumed that a `ClusterIssuer` resources has been configured, [Cert-Manager Documentation: Private PKI](/docs/certmanager/#private-pki)
- or [Cert-Manager Documentation: Public PKI with Let's Encript](/docs/certmanager/#public-pki-with-lets-encrypt) has been configured.
-See [Cert-Manager Documentation: Cert Manager Usage](/docs/certmanager/#certmanager-usage)
+Gateway TLS is terminated by the shared Envoy Gateway listener, using a certificate managed by Cert-Manager for the `Gateway` resource instead of per-application Ingress annotations.
+
+Before using this pattern:
+-   Install Gateway API CRDs and Envoy Gateway. See [Envoy Gateway - Installation](/docs/envoy-gateway/#installation).
+-   Enable Gateway API support in Cert-Manager. See [Envoy Gateway - Gateway and TLS termination](/docs/envoy-gateway/#gateway-and-tls-termination).
+-   Configure External-DNS with Gateway API route sources if DNS records should be published automatically from `HTTPRoute` hostnames. See [DNS (CoreDNS and External-DNS) - Gateway API support](/docs/kube-dns/#gateway-api-support).
+
+In this repository's production overlay, `kube-prometheus-stack` deploys Prometheus and Alertmanager, while Grafana is installed as a separate Helm release with its own `HTTPRoute`. See [Grafana Kubernetes Installation](/docs/grafana/#gateway-api-configuration).
 
 {{site.data.alerts.end}}
 
@@ -1069,13 +1028,12 @@ spec:
     - apiVersion: v2
       name: kube-prometheus-stack-alertmanager
       namespace: kube-proms-stack
-      pathPrefix: /alertmanager
       port: http-web
   enableAdminAPI: true
   enableFeatures:
   - memory-snapshot-on-shutdown
   evaluationInterval: 30s
-  externalUrl: http://monitoring.${DOMAIN}/prometheus/
+  externalUrl: https://prometheus.${CLUSTER_DOMAIN}
   image: quay.io/prometheus/prometheus:v{$PROM_VERSION}
   listenLocal: false
   logFormat: logfmt
@@ -1094,7 +1052,6 @@ spec:
       cpu: 100m
   retention: 14d
   retentionSize: 50GB
-  routePrefix: /prometheus
   ruleNamespaceSelector: {}
   ruleSelector: {}
   scrapeConfigNamespaceSelector: {}
@@ -1150,7 +1107,9 @@ This `Prometheus` object specifies the following Prometheus configuration:
 
 -   Rules evaluation period, how often Prometheus evaluates rules (`evaluationInterval: 30s`)
 
--   Data retention policy (`retention`: 10d)
+-   Data retention policy (`retention`: 14d)
+
+-   Public endpoint published through Envoy Gateway using the dedicated hostname configured in `spec.externalUrl`.
 
 -   Persistent volume specification (`storage`):   `volumeClaimTemplate` used by the Statefulset objects deployed. In my case volume claim from Longhorn.
 
@@ -1226,7 +1185,7 @@ metadata:
 spec:
   alertmanagerConfigNamespaceSelector: {}
   alertmanagerConfigSelector: {}
-  externalUrl: http://monitoring.${DOMAIN}/alertmanager/
+  externalUrl: https://alertmanager.${CLUSTER_DOMAIN}
   image: quay.io/prometheus/alertmanager:${ALERTMANAGER_VERSION}
   listenLocal: false
   logFormat: logfmt
@@ -1235,7 +1194,6 @@ spec:
   portName: http-web
   replicas: 1
   retention: 120h
-  routePrefix: /alertManager
   securityContext:
     fsGroup: 2000
     runAsGroup: 2000
@@ -1263,6 +1221,8 @@ This `AlartManager` object specifies the following Alert Manager configuration:
 -   HA Configuration. Number of replicas (`spec.replicas`).
 
 -   Data retention policy (`retention`: 120h)
+
+-   Public endpoint published through Envoy Gateway using the dedicated hostname configured in `spec.externalUrl`.
 
 -   Persistent volume specification (`storage: volumeClaimTemplate:`) used by the Statefulset objects deployed. In my case volume claim from Longhorn.
 
@@ -1820,6 +1780,8 @@ kube-prometheus-stack-workload-total                      1      8m15s
 
 Grafana can be installed outside Kube-Prom-Stack to have better control of the installation (version and configuration).
 
+This is the deployment model used in this repository's production overlay: the Grafana sub-chart is disabled in `kube-prometheus-stack`, and Grafana is installed separately with its own Envoy Gateway `HTTPRoute` at `grafana.${CLUSTER_DOMAIN}`.
+
 The following kube-prom-stack helm chart  `values.yaml` disables Grafana subchart Helm chart installation (`grafana.enabled: false`). The creation of kube-prometheus-stack dashboards can be forced (`grafana.forceDeployDashboards`), so configMaps containing kube-prom-stack's dashboards can be deployed.
 
 Also annotation to all Grafana dashboards (ConfigMaps) can be added, so Grafana can deploy them into a specific folder (`grafana_folder` annotation)
@@ -1910,74 +1872,6 @@ dashboards:
       url: https://raw.githubusercontent.com/spegel-org/spegel/refs/heads/main/charts/spegel/monitoring/grafana-dashboard.json
       datasource: Prometheus
 ```
-
-
-#### HAProxy Metrics
-
-HAProxy exposes its metrics in `/metrics` endpoint, which is not enabled by default. To enable it, the following configuration needs to be added to the `haprox.cfg` file:
-
-```
-#---------------------------------------------------------------------
-# Enable Prometheus metrics endpoint
-#---------------------------------------------------------------------
-frontend prometheus
-  bind *:8405
-  mode http
-  http-request use-service prometheus-exporter if { path /metrics }
-  no log
-```
-
-Check out further details in [HAProxy Prometheus Metrics](https://www.haproxy.com/documentation/haproxy-configuration-tutorials/alerts-and-monitoring/prometheus/) documentation.
-
-Kube-prometheus-stack can be configured to scrape HAproxy endpoint creating the following `ScrapeConfig` resource:
-
-```yaml
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: haproxy-exporter
-spec:
-  staticConfigs:
-    - targets:
-        - node1.${CLUSTER_DOMAIN}:8405
-  metricsPath: /metrics
-```
-
-A Grafana dashboard can be donwloaded from [grafana.com](https://grafana.com): [dashboard id: 12693](https://grafana.com/grafana/dashboards/12693-haproxy/).
-
-Dashboard can be automatically added using Grafana's dashboard providers configuration. See further details in ["PiCluster - Observability Visualization (Grafana): Automating installation of community dashboards](/docs/grafana/#automating-installation-of-grafana-community-dashboards)
-
-Add following configuration to Grafana's helm chart values file:
-
-```yaml
-# Configure default Dashboard Provider
-# https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - name: infrastructure
-        orgId: 1
-        folder: "Infrastructure"
-        type: file
-        disableDeletion: false
-        editable: true
-        options:
-          path: /var/lib/grafana/dashboards/infrastructure-folder
-
-# Add dashboard
-# Dashboards
-dashboards:
-  infrastructure:
-    haproxy:
-      # https://grafana.com/grafana/dashboards/12693-haproxy/
-      # renovate: depName="HAProxy Dashboard"
-      gnetId: 12693
-      revision: 11
-      datasource:
-        - { name: DS_PROMETHEUS, value: Prometheus }
-```
-
 
 ### K3S duplicate metrics issue
 

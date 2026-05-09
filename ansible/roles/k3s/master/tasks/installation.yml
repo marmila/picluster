@@ -35,15 +35,83 @@
         - name: Install prometheus-crd Helm chart
           kubernetes.core.helm:
             name: prometheus-operator-crd
-            chart_ref: prometheus-operator-crds
-            chart_repo_url: https://prometheus-community.github.io/helm-charts
-            chart_version: 27.0.1
+            chart_ref: oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds
+            chart_version: 28.0.1
             release_namespace: kube-system
             create_namespace: true
           environment:
             KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
           retries: 5
           delay: 15
+          tags:
+            - monitoring
+
+        # Install Grafana Operator CRDs from the main chart bundle
+        - name: Render grafana-operator chart templates
+          kubernetes.core.helm_template:
+            binary_path: /usr/local/bin/helm
+            chart_ref: oci://ghcr.io/grafana/helm-charts/grafana-operator
+            chart_version: 5.22.2
+            release_name: grafana-operator
+            release_namespace: grafana
+            include_crds: true
+          environment:
+            KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+          register: grafana_operator_template
+          changed_when: false
+          tags:
+            - monitoring
+
+        - name: Create temporary file for grafana-operator CRDs
+          ansible.builtin.tempfile:
+            state: file
+            suffix: -grafana-operator-crds.yaml
+          register: grafana_operator_crds_file
+          tags:
+            - monitoring
+
+        - name: Write grafana-operator CRDs manifest
+          ansible.builtin.copy:
+            content: |
+              {% set grafana_operator_crds = (
+                grafana_operator_template.stdout
+                | from_yaml_all
+                | reject('equalto', None)
+                | selectattr('kind', 'defined')
+                | selectattr('kind', 'equalto', 'CustomResourceDefinition')
+                | list
+              ) %}
+              {% for crd in grafana_operator_crds %}
+              ---
+              {{ crd | to_nice_yaml(indent=2) | trim }}
+              {% endfor %}
+            dest: "{{ grafana_operator_crds_file.path }}"
+            mode: "0600"
+          tags:
+            - monitoring
+
+        - name: Install grafana-operator CRDs
+          ansible.builtin.command:
+            cmd: >-
+              kubectl apply
+              --server-side
+              --field-manager=ansible-grafana-operator-crds
+              -f {{ grafana_operator_crds_file.path }}
+          environment:
+            KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+          register: grafana_operator_crds
+          changed_when: >-
+            'created' in grafana_operator_crds.stdout
+            or 'configured' in grafana_operator_crds.stdout
+          retries: 5
+          delay: 15
+          tags:
+            - monitoring
+
+        - name: Remove temporary file for grafana-operator CRDs
+          ansible.builtin.file:
+            path: "{{ grafana_operator_crds_file.path }}"
+            state: absent
           tags:
             - monitoring
 
@@ -88,9 +156,8 @@
         - name: Install Cilium CNI Helm chart
           kubernetes.core.helm:
             name: cilium
-            chart_ref: cilium
-            chart_repo_url: https://helm.cilium.io
-            chart_version: 1.19.1
+            chart_ref: oci://quay.io/cilium/charts/cilium
+            chart_version: 1.19.3
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ cilium_merged_values }}"
@@ -130,14 +197,15 @@
         - name: Install CoreDNS Helm chart
           kubernetes.core.helm:
             name: coredns
-            chart_ref: coredns
-            chart_repo_url: https://coredns.github.io/helm
+            chart_ref: oci://ghcr.io/coredns/charts/coredns
             chart_version: 1.45.2
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ coredns_merged_values }}"
           environment:
             KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+          retries: 5
+          delay: 15
           tags:
             - cni
 
@@ -172,7 +240,7 @@
             name: kube-vip
             chart_ref: kube-vip
             chart_repo_url: https://kube-vip.github.io/helm-charts
-            chart_version: 0.9.7
+            chart_version: 0.9.8
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ kubevip_merged_values }}"

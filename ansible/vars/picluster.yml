@@ -7,7 +7,7 @@
 
 # k3s version
 # renovate: datasource=github-releases depName=k3s-io/k3s
-k3s_version: v1.35.2+k3s1
+k3s_version: v1.35.4+k3s1
 
 # k3s master node VIP (loadbalancer)
 k3s_api_vip: 10.0.0.10
@@ -174,7 +174,7 @@ restic_use_ca_cert: true
 
 vault_hostname: "vault.{{ dns_domain }}"
 # renovate: datasource=github-releases depName=hashicorp/vault
-vault_version: 1.21.4
+vault_version: 2.0.0
 
 vault_dns: "{{ vault_hostname }}"
 vault_enable_tls: true
@@ -198,7 +198,7 @@ vault_custom_configuration: |
 #########################
 
 # renovate: datasource=github-releases depName=fluxcd/flux2
-fluxcd_version: v2.8.3
+fluxcd_version: v2.8.6
 
 # renovate: datasource=github-releases depName=vmware-tanzu/velero
 velero_version: v1.18.0
@@ -207,10 +207,10 @@ velero_version: v1.18.0
 longhorn_version: v1.11.1
 
 # renovate: datasource=github-releases depName=istio/istio
-istio_version: 1.29.1
+istio_version: 1.29.2
 
 # renovate: datasource=github-releases depName=helm/helm
-helm_version: v3.20.1
+helm_version: v4.1.4
 
 
 #######################
