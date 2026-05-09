@@ -74,7 +74,7 @@ config:
       endpoint: ${env:MY_POD_IP}:13133
 
   processors:
-    # Add service instance id from k8s.pod.uid
+    # Add stable service resource attributes derived from Kubernetes metadata.
     resource:
       attributes:
       - key: service.instance.id
@@ -87,19 +87,9 @@ config:
   # The spanmetrics connector replaces spanmetrics processor with multiple improvements
   connectors:
     spanmetrics: {}
-  # Default pipelines just with debug exporter
   service:
-    pipelines:
-      traces:
-        processors: [memory_limiter, resource, batch]
-        exporters: [debug, spanmetrics]
-      metrics:
-        receivers: [otlp, spanmetrics]
-        processors: [memory_limiter, resource, batch]
-        exporters: [debug]
-      logs:
-        processors: [memory_limiter, resource, batch]
-        exporters: [debug]
+    # Remove default debug exporter pipelines
+    pipelines: {}
     # Export OTEL collector internal telemetry via OLTP
     # https://opentelemetry.io/docs/collector/internal-telemetry/
     telemetry:

@@ -1,13 +1,11 @@
-FROM ghcr.io/helmfile/helmfile:v1.4.2 AS helmfile
+FROM alpine/kubectl:1.35.3 AS kubectl
 
-FROM alpine/kubectl:1.35.2 AS kubectl
-
-FROM alpine/helm:3.20.1 AS helm
+FROM alpine/helm:4.1.4 AS helm
 
 FROM alpine:3.23 AS tofu
-COPY --from=ghcr.io/opentofu/opentofu:1.11.5 /usr/local/bin/tofu /usr/local/bin/tofu
+COPY --from=ghcr.io/opentofu/opentofu:1.11.6 /usr/local/bin/tofu /usr/local/bin/tofu
 
-FROM ghcr.io/astral-sh/uv:0.10.12 AS uv
+FROM ghcr.io/astral-sh/uv:0.11.8 AS uv
 
 
 FROM python:3.14-slim
@@ -35,9 +33,6 @@ COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/tofu
 # Install kubectl and Helm from dedicated images
 COPY --from=kubectl /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=helm /usr/bin/helm /usr/local/bin/helm
-
-# Copy helmfile
-COPY --from=helmfile /usr/local/bin/helmfile /usr/local/bin/helmfile
 
 ENV USER=runner
 ENV FOLDER=/home/runner
@@ -77,8 +72,7 @@ RUN set -eux; \
             sleep 10; \
         done
 
-# Install helmfile required plugins
-RUN helm plugin install https://github.com/aslafy-z/helm-git
-RUN helm plugin install https://github.com/databus23/helm-diff
+# Install helm required plugins
+RUN helm plugin install --verify=false https://github.com/databus23/helm-diff
 
 WORKDIR /ansible

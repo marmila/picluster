@@ -63,14 +63,13 @@ The following picture shows the set of opensource solutions used for building th
 | ![coredns-icon](/assets/img/logos/coredns.svg){:width="32"}      | [CoreDNS](https://coredns.io/)               | Kubernetes DNS                                 |
 | ![external-dns-icon](/assets/img/logos/external-dns.png){:width="32"} | [External-DNS](https://kubernetes-sigs.github.io/external-dns/) | External DNS synchronization   |
 | ![kube-vip-icon](/assets/img/logos/kube-vip-icon.png){:width="32"} | [Kube-VIP](https://kube-vip.io/)   | Kubernetes API Load-balancer                                       |
-| ![nginx-icon](/assets/img/logos/nginx.svg){:width="32"}     | [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)  | Kubernetes Ingress Controller   |
+| ![envoy-icon](/assets/img/logos/envoy.svg){:width="32"}     | [Envoy Gateway](https://gateway.envoyproxy.io/)  | Kubernetes Gateway API Controller   |
 | ![longhorn-icon](/assets/img/logos/longhorn.svg){:width="32"} | [Longhorn](https://longhorn.io/)    | Kubernetes distributed block storage |
 | ![minio-icon](/assets/img/logos/minio.svg){:width="20"}     | [Minio](https://min.io/)              | S3 Object Storage solutio            |
 | ![cert-manager-icon](/assets/img/logos/cert-manager.svg){:width="32"} | [Cert-Manager](https://cert-manager.io) | TLS Certificates management  |
 | ![vault-icon](/assets/img/logos/vault.svg){:width="32"} | [Hashicorp Vault](https://www.vaultproject.io/) | Secrets Management solution |
 | ![external-secrets-icon](/assets/img/logos/external-secrets.svg){:width="32"} | [External Secrets Operator](https://external-secrets.io/) | Sync Kubernetes Secrets from Hashicorp |
 | ![keycloak-icon](/assets/img/logos/keycloak.svg){:width="32"}         | [Keycloak](https://www.keycloak.org/)   | Identity Access Managemen     |
-| ![OAuth2-proxy-icon](/assets/img/logos/OAuth2-proxy.svg){:width="32"}     | [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/)  | OAuth2.0 Proxy |
 | ![velero-icon](/assets/img/logos/velero.svg){:width="32"}           | [Velero](https://velero.io/)        | Kubernetes Backup and Restore solution   |
 | ![restic-icon](/assets/img/logos/restic.png){:width="32"}           | [Restic](https://restic.net/)       | OS Backup and Restore solution           |
 | ![prometheus-icon](/assets/img/logos/prometheus.svg){:width="32"}   | [Prometheus](https://prometheus.io/)  | Metrics monitoring and alerting        |
@@ -100,6 +99,8 @@ The following technologies have been used in previous releases of PiCluster but 
 | ![argocd-icon](/assets/img/logos/argocd.svg){:width="32"}  | [ArgoCD](https://argo-cd.readthedocs.io/en/stable/)  | GitOps tool. Replaced by FluxCD |
 | ![flannel-icon](/assets/img/logos/flannel.svg){:width="20"}  | [Flannel](https://github.com/flannel-io/flannel/) | Kubernetes CNI plugin. Embedded into K3s. Replaced by Cilium CNI |
 | ![haproxy-icon](/assets/img/logos/haproxy.svg){:width="32"} | [HAProxy](https://www.haproxy.org/)   | Kubernetes API Load-balancer. Replaced by Kube-VIP |
+| ![nginx-icon](/assets/img/logos/nginx.svg){:width="32"}     | [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)  | Kubernetes Ingress Controller. Replaced by Envoy Gateway |
+| ![OAuth2-proxy-icon](/assets/img/logos/OAuth2-proxy.svg){:width="32"}     | [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/)  | OAuth2.0 Proxy. Replaced by Envoy Gateway with OIDC integration with Keycloak |
 {: .table .border-dark }
 
 
@@ -143,11 +144,7 @@ There is another list of services that I have decided to run outside the kuberne
 | ![vault-icon](/assets/img/logos/vault.svg){:width="32"} |[Hashicorp Vault](https://www.vaultproject.io/) | Secrets Management | Cluster secrets management |
 {: .table .border-dark .align-middle }
 
-
-Minio backup servive is hosted in a VM running in Public Cloud, using [Oracle Cloud Infrastructure (OCI) free tier](https://www.oracle.com/es/cloud/free/).
-
-Vault service is running in one of the cluster nodes, `node1`, since Vault kubernetes authentication method needs access to Kubernetes API, I won't host Vault service in Public Cloud.
-
+Vault and Minio services are running in one of the cluster nodes, `node1`, to keep them locally accessible to the cluster and to avoid exposing them to the public internet.
 
 ## What I have built so far
 

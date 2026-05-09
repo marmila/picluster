@@ -10,10 +10,23 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": ["Process Grafana dashboards"],
+      "description": ["Process legacy Grafana Helm dashboards"],
       "fileMatch": ["(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$"],
       "matchStrings": ["depName=\"(?<depName>.*)\"\\n(?<indentation>\\s+)gnetId: (?<packageName>\\d+)\\n.+revision: (?<currentValue>\\d+)"],
       "autoReplaceStringTemplate": "depName=\"{{{depName}}}\"\n{{{indentation}}}gnetId: {{{packageName}}}\n{{{indentation}}}revision: {{{newValue}}}",
+      "datasourceTemplate": "custom.grafana-dashboards",
+      "versioningTemplate": "regex:^(?<major>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": ["Process Grafana Operator dashboards from Grafana.com"],
+      "fileMatch": ["(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$"],
+      "matchStrings": [
+        "kind:\\s+GrafanaDashboard\\nmetadata:\\n\\s+name:\\s+(?<depName>[^\\n]+)\\nspec:[\\s\\S]*?\\s+grafanaCom:\\n\\s+id:\\s+(?<packageName>\\d+)\\n\\s+revision:\\s+(?<currentValue>\\d+)"
+      ],
+      // Usamos el ID de Grafana para que la rama sea única y no colisione
+      "depNameTemplate": "grafana-dashboard-{{{packageName}}}",
+      "autoReplaceStringTemplate": "kind: GrafanaDashboard\nmetadata:\n  name: {{{depName}}}\nspec:\n[... manteniendo estructura ...]\n    id: {{{packageName}}}\n    revision: {{{newValue}}}",
       "datasourceTemplate": "custom.grafana-dashboards",
       "versioningTemplate": "regex:^(?<major>\\d+)$"
     }

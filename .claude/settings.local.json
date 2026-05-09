@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/marco/bin/picluster/kubernetes/platform/kube-prometheus-stack -name \"*.yaml\" -type f -exec grep -l \"remoteWrite\\\\|remote_write\\\\|retention\\\\|retentionSize\" {} \\\\;)",
+      "Bash(xargs cat *)",
+      "Bash(find /c/Users/marco/bin/picluster/kubernetes/platform -name \"*monitor*.yaml\" -type f -exec grep -l \"interval\\\\|scrape\" {} \\\\;)",
+      "Bash(xargs ls *)",
+      "Bash(grep -E \"\\\\.sh$|\\\\.yml$\")"
+    ]
+  }
+}

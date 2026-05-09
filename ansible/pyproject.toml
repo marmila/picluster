@@ -5,13 +5,13 @@ description = "Ansible runtime environment for pi-cluster"
 readme = "../README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    "ansible-core==2.20.3",
+    "ansible-core==2.20.5",
     "ansible-lint>=26,<27",
     "pathspec<2",
     "yamllint==1.38.0",
     "kubernetes==35.0.0",
     "hvac==2.4.0",
-    "certbot==5.4.0",
+    "certbot==5.5.0",
     "certbot-dns-ionos==2024.11.9",
 ]
 
