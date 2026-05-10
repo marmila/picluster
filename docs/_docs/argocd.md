@@ -95,14 +95,9 @@ ArgoCD can be installed through helm chart
 
       ## Ingress annotations
       annotations:
-<<<<<<< HEAD
-        # Linkerd configuration. Configure Service as Upstream
-        nginx.ingress.kubernetes.io/service-upstream: "true"
-=======
->>>>>>> release-1.10.0
         # Enable cert-manager to create automatically the SSL certificate and store in Secret
-        # Possible Cluster-Issuer values: 
-        #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
+        # Possible Cluster-Issuer values:
+        #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
         #   * 'ca-issuer' (CA-signed certificate, not valid)
         cert-manager.io/cluster-issuer: letsencrypt-issuer
         cert-manager.io/common-name: argocd.picluster.ricsanfre.com
@@ -138,7 +133,7 @@ ArgoCD can be installed through helm chart
 Igress NGINX will be used as ingress controller, terminating TLS traffic, so ArgoCD does not need to expose its API using HTTPS.
 
 - Configure ArgoCD to run its API server with TLS disabled
-   
+
   The following helm chart values need to be provided:
   ```yml
   configs:
@@ -172,8 +167,8 @@ Igress NGINX will be used as ingress controller, terminating TLS traffic, so Arg
     ## Ingress annotations
     annotations:
       # Enable cert-manager to create automatically the SSL certificate and store in Secret
-      # Possible Cluster-Issuer values: 
-      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API) 
+      # Possible Cluster-Issuer values:
+      #   * 'letsencrypt-issuer' (valid TLS certificate using IONOS API)
       #   * 'ca-issuer' (CA-signed certificate, not valid)
       cert-manager.io/cluster-issuer: letsencrypt-issuer
       cert-manager.io/common-name: argocd.picluster.ricsanfre.com
@@ -259,7 +254,7 @@ Different types of applications will be needed for the Pi Cluster
   - `source.targetRevision` is the Git tag, branch or commit to track
   - `syncPolicy.automated` are [ArgoCD auto-sync policies](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/), to automatically keep in synch application manifest files in the cluster, delete old resources (`prune` option) and launch sych when changes are made to the cluster (`selfHeal` option)
 
-- Helm Chart Applications in ArgoCD 
+- Helm Chart Applications in ArgoCD
 
   [Helm chart applications](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/) can be installed in a declarative GitOps way using ArgoCD's Application CRD.
 
@@ -340,7 +335,7 @@ Different types of applications will be needed for the Pi Cluster
     {{site.data.alerts.end}}
 
     kustomize `--enable-helm` build option need to be added to support helm chart inflation.
-  
+
   - Enable local kustomizations to load files from outside their root folder.
 
     Kustomize `--load-restrictor=LoadRestrictionsNone` build option need to be added to support it.
@@ -348,10 +343,10 @@ Different types of applications will be needed for the Pi Cluster
     This build option is needed, when using helm chart inflation capability, to overwrite `values.yaml` file defined in `base` directory with contents of `value.yaml` file defined in the `overlays` folder.
 
     Kustomize's `HelmChart.additionalFiles` field  can be used jointly with `HelmChart.valuesFile` for this purpose.
-  
+
     See [kustomize's issue 4658 comment](https://github.com/kubernetes-sigs/kustomize/issues/4658#issuecomment-1815675157)
 
-  
+
   Chek out further details in [Argo CD Kustomize applications documentation](https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/).
 
 
@@ -410,7 +405,7 @@ If you wanted to deploy helm charts belonging to third party repositories, it wa
 
 To enable this scenario Helm Umbrella design pattern had to be used.
 
-Helm Umbrella chart is sort of a "meta" (empty) Helm Chart that lists other Helm Charts as a dependency ([subcharts](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/)). 
+Helm Umbrella chart is sort of a "meta" (empty) Helm Chart that lists other Helm Charts as a dependency ([subcharts](https://helm.sh/docs/chart_template_guide/subcharts_and_globals/)).
 It consists of a empty helm chart in a repo directory containing only chart definition file (`Chart.yaml`), listing all subcharts, and its corresponding `values.yaml` file.
 
 - `<repo-path>/Chart.yaml`

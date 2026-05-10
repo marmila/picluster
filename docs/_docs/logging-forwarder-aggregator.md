@@ -129,31 +129,19 @@ COPY ./conf/fluent.conf /fluentd/etc/
 COPY ./conf/forwarder.conf /fluentd/etc/
 COPY ./conf/prometheus.conf /fluentd/etc/
 
-<<<<<<< HEAD
-# COPY entry
-=======
 ## 3) Modify entrypoint.sh to configure sniffer class
->>>>>>> release-1.10.0
 COPY entrypoint.sh /fluentd/entrypoint.sh
 
 # Environment variables
 ENV FLUENTD_OPT=""
 
-<<<<<<< HEAD
-=======
 ## 4) Change to fluent user to run fluentd
->>>>>>> release-1.10.0
 # Run as fluent user. Do not need to have privileges to access /var/log directory
 USER fluent
 ENTRYPOINT ["tini",  "--", "/fluentd/entrypoint.sh"]
 CMD ["fluentd"]
 ```
 
-<<<<<<< HEAD
-See further details in [issue #107](https://github.com/ricsanfre/pi-cluster/issues/107)
-
-=======
->>>>>>> release-1.10.0
 
 ### Deploying fluentd in K3S
 
@@ -350,8 +338,6 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
   rbac:
     create: false
 
-<<<<<<< HEAD
-=======
   # Setting security context. Fluentd is running as non root user
   securityContext:
     capabilities:
@@ -361,7 +347,6 @@ The above Kubernetes resources, except TLS certificate and shared secret, are cr
     runAsNonRoot: true
     runAsUser: 1000
 
->>>>>>> release-1.10.0
   ## Additional environment variables to set for fluentd pods
   env:
     # Elastic operator creates elastic service name with format cluster_name-es-http
@@ -720,8 +705,6 @@ serviceAccount:
   create: false
 rbac:
   create: false
-<<<<<<< HEAD
-=======
 
 # Setting security context. Fluentd is running as non root user
 securityContext:
@@ -731,18 +714,14 @@ securityContext:
    readOnlyRootFilesystem: false
    runAsNonRoot: true
    runAsUser: 1000
->>>>>>> release-1.10.0
 ```
 
 Fluentd is deployed as Deployment (`kind: "Deployment"`) with 1 replica (`replicaCount: 1`, using custom fluentd image (`image.repository: "ricsanfre/fluentd-aggregator` and `image.tag`).
 
 Service account (`serviceAccount.create: false`) and corresponding RoleBinding (`rbac.create: false`) are not created since fluentd aggregator does not need to access to Kubernetes API.
 
-<<<<<<< HEAD
-=======
 Security context for the pod (`securityContext`), since it is running using a non-root user.
 
->>>>>>> release-1.10.0
 HPA autoscaling is also configured (`autoscaling.enabling: true`).
 
 #### Fluentd container environment variables.
@@ -2032,11 +2011,7 @@ For deploying fluent-bit in forwarder-only architecture, without aggregation lay
           Retry_Limit False
   ```
 
-<<<<<<< HEAD
-  `tls` option is disabled (set to False/Off). TLS communications are enabled by linkerd service mesh.
-=======
   `tls` option is disabled (set to False/Off). TLS communications are enabled by cluster service mesh.
->>>>>>> release-1.10.0
 
   `Suppress_Type_Name` option must be enabled (set to On/True). When enabled, mapping types is removed and Type option is ignored. Types are deprecated in APIs in v7.0. This option need to be disabled to avoid errors when injecting logs into elasticsearch:
 

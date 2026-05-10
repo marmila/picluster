@@ -5,10 +5,5 @@ metadata:
   name: cluster-settings
   namespace: flux-system
 data:
-<<<<<<< HEAD
   CLUSTER_DOMAIN: dev.homelab.marmilan.com
-  NGINX_LOAD_BALANCER_IP: 172.30.200.1
-=======
-  CLUSTER_DOMAIN: dev.homelab.ricsanfre.com
   HTTP_GATEWAY_LOAD_BALANCER_IP: 172.30.200.1
->>>>>>> upstream/master
