@@ -1,6 +1,0 @@
-{
-  "name": "k3s-barman",
-  "versioning": false,
-  "object_lock": false,
-  "description": "Barman PostgreSQL backup storage"
-}
