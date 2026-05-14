@@ -33,3 +33,4 @@
 # IDE
 .vscode/
 .idea/
+.claude/
