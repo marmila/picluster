@@ -38,6 +38,7 @@ data:
           tag: kube.*
           db: /var/log/fluentbit/flb_kube.db
           storage.type: filesystem
+          mem_buf_limit: 50MB
           skip_long_lines: true
         - name: tail
           alias: input.host
@@ -47,6 +48,7 @@ data:
           tag: host.*
           db: /var/log/fluentbit/flb_host.db
           storage.type: filesystem
+          mem_buf_limit: 10MB
       filters:
         - name: multiline
           match: '*'
