@@ -1,4 +1,7 @@
 {
   "enabled": true,
-  "realm": "picluster"
+  "realm": "picluster",
+  "sso_session_idle_timeout": "8h",
+  "sso_session_max_lifespan": "10h",
+  "access_token_lifespan": "1h"
 }

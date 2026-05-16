@@ -36,4 +36,8 @@ locals {
 resource "keycloak_realm" "realm" {
   realm   = local.realm.realm
   enabled = try(local.realm.enabled, true)
+
+  sso_session_idle_timeout = try(local.realm.sso_session_idle_timeout, null)
+  sso_session_max_lifespan = try(local.realm.sso_session_max_lifespan, null)
+  access_token_lifespan    = try(local.realm.access_token_lifespan, null)
 }
