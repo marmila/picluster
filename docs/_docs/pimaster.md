@@ -22,7 +22,7 @@ Ansible source code is structured following [typical directory layout](https://d
 ├── 📁 vars
 ├── 📁 tasks
 ├── 📁 templates
-├── 📁 roles
+├── 📁 roles 
 ├── ansible.cfg
 ├── inventory.yml
 ├── requirements.yml
@@ -213,7 +213,7 @@ all:
           ansible_host: 10.0.0.12
     vaul:
       hosts:
-        node1:
+        node1:  
 ```
 
 `ansible_host` variable is used to specify the IP address or hostname to connect to for each host in the inventory, which can be different from the inventory hostname (e.g., `node1`, `node2`, etc.) used as an identifier in playbooks.
@@ -244,7 +244,7 @@ In directory `$HOME/.ssh/` public and private key files can be found for the use
 Content of the id_rsa.pub file has to be used as `ssh_authorized_keys` of UNIX user created in cloud-init `user-data`
 
 ```shell
-cat id_rsa.pub
+cat id_rsa.pub 
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDsVSvxBitgaOiqeX4foCfhIe4yZj+OOaWP+wFuoUOBCZMWQ3cW188nSyXhXKfwYK50oo44O6UVEb2GZiU9bLOoy1fjfiGMOnmp3AUVG+e6Vh5aXOeLCEKKxV3I8LjMXr4ack6vtOqOVFBGFSN0ThaRTZwKpoxQ+pEzh+Q4cMJTXBHXYH0eP7WEuQlPIM/hmhGa4kIw/A92Rm0ZlF2H6L2QzxdLV/2LmnLAkt9C+6tH62hepcMCIQFPvHVUqj93hpmNm9MQI4hM7uK5qyH8wGi3nmPuX311km3hkd5O6XT5KNZq9Nk1HTC2GHqYzwha/cAka5pRUfZmWkJrEuV3sNAl ansible@pimaster
 ```
 
@@ -271,7 +271,7 @@ Example of such tools used in Pi Cluster automation are:
 | OpenTofu | Automate Terraform workflows in Ansible playbooks. |
 | kubectl | Automate Kubernetes CLI operations in Ansible playbooks. |
 | Helm | Automate Helm chart operations in Ansible playbooks. |
-{: .table .border-dark }
+{: .table .border-dark } 
 
 
 
@@ -305,22 +305,16 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
   gnupg \
   lsb-release
   ```
-
-
+  
 - Step 3. Add Docker's official GPG key
-
 
   ```shell
   sudo install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.asc
   sudo chmod a+r /etc/apt/keyrings/docker.asc
   ```
-
-
-- Step 4: Add x86_64 repository
-=======
-
-
+  
+- Step 4: Add x86_64 repository 
 
   ```shell
   echo \
@@ -341,13 +335,13 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
     ```shell
     sudo groupadd docker
     ```
-
+    
   - Add user to docker group
 
     ```shell
     sudo usermod -aG docker $USER
     ```
-
+    
 - Step 7: Configure Docker to start on boot
 
   ```shell
@@ -358,13 +352,11 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
 - Step 8: Configure docker daemon.
 
   - Edit file `/etc/docker/daemon.json`
-
-
+  
     Set storage driver to overlay2 and to use systemd for the management of the container’s cgroups.
     Optionally default directory for storing images/containers can be changed to a different disk partition (example /data).
     Documentation about the possible options can be found [here](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file)
-
-
+    
     ```json
     {
         "exec-opts": ["native.cgroupdriver=systemd"],
@@ -373,13 +365,9 @@ Follow official [installation guide](https://docs.docker.com/engine/install/ubun
         "max-size": "100m"
         },
         "storage-driver": "overlay2",
-        "data-root": "/data/docker"
+        "data-root": "/data/docker"  
     }
-
-    ```
-=======
-    ```
-
+    ``` 
   - Restart docker
 
     ```shell

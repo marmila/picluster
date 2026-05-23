@@ -2,31 +2,9 @@
 
 # Produce cleaner resources names
 cleanPrometheusOperatorObjectNames: true
-# Run Prometheus Operator on amd64 to reduce load on ARM nodes (e.g. node5)
-prometheusOperator:
-  nodeSelector:
-    kubernetes.io/arch: amd64
 # AlertManager configuration
 alertmanager:
   alertmanagerSpec:
-    ##
-    ## Run on amd64 and prefer not to share a node with Prometheus
-    nodeSelector:
-      kubernetes.io/arch: amd64
-    # Disable chart default podAntiAffinity so only our affinity is rendered (avoids duplicate key)
-    podAntiAffinity: ""
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - prometheus
-              topologyKey: kubernetes.io/hostname
     ##
     ## Configure access to AlertManager via sub-path
     # externalUrl: http://monitoring.${CLUSTER_DOMAIN}/alertmanager/
@@ -75,24 +53,6 @@ prometheus:
     ## Configure access to Prometheus via subdomain
     externalUrl: http://prometheus.${CLUSTER_DOMAIN}
     ##
-    ## Run on amd64 and prefer not to share a node with Alertmanager
-    nodeSelector:
-      kubernetes.io/arch: amd64
-    # Disable chart default podAntiAffinity so only our affinity is rendered (avoids duplicate key)
-    podAntiAffinity: ""
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - alertmanager
-              topologyKey: kubernetes.io/hostname
-    ##
     ## HA configuration: Replicas & Shards
     ## Number of replicas of each shard to deploy for a Prometheus deployment.
     ## Number of replicas multiplied by shards is the total number of Pods created.
@@ -104,21 +64,19 @@ prometheus:
     # Enable WAL compression
     walCompression: true
     # Retention data configuration
-    retention: 7d
-    retentionSize: 25GB
+    retention: 14d
+    retentionSize: 50GB
     ## Enable Experimental Features
     # ref: https://prometheus.io/docs/prometheus/latest/feature_flags/
     enableFeatures:
       # Enable Memory snapshot on shutdown.
       - memory-snapshot-on-shutdown
     ##
-    ## Limit POD Resources (requests aligned to observed ~260m CPU / ~1.8Gi RAM)
+    ## Limit POD Resources
     resources:
       requests:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 100m
       limits:
-        cpu: 2000m
         memory: 2000Mi
     ##
     ## POD Storage Spec
@@ -129,7 +87,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 30Gi
+              storage: 10Gi
     ## Default cluster label configuration for all metrics.
     ## This is needed to add cluster label to all metrics, so we can distinguish metrics from different clusters in a multi-cluster setup.
     ## Without cluster label, kuberentes Dashboards do not work.
@@ -167,11 +125,9 @@ prometheus-node-exporter:
           replacement: $1
           sourceLabels: ["__meta_kubernetes_pod_node_name"]
           targetLabel: kubernetes_node
-# Kube-State-Metrics Configuration (run on amd64 to reduce load on ARM nodes e.g. node5)
+# Kube-State-Metrics Configuration
 kube-state-metrics:
   fullnameOverride: kube-state-metrics
-  nodeSelector:
-    kubernetes.io/arch: amd64
   metricLabelsAllowlist:
     - pods=[*]
     - deployments=[*]
@@ -290,6 +246,7 @@ kubeProxy:
     - 10.0.0.16
     - 10.0.0.20
     - 10.0.0.21
+    - 10.0.0.22
   serviceMonitor:
     enabled: true
 
