@@ -1,3 +1,0 @@
-# Example My Assets configuration. Copy to overlays or mount as ConfigMap for your targets.
-# TARGETS_PATH env can point to this file or a mounted path.
-my_assets: []
