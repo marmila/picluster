@@ -65,7 +65,7 @@ prometheus:
     walCompression: true
     # Retention data configuration
     retention: 14d
-    retentionSize: 50GB
+    retentionSize: 40GB
     ## Enable Experimental Features
     # ref: https://prometheus.io/docs/prometheus/latest/feature_flags/
     enableFeatures:
@@ -87,7 +87,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 50Gi
     ## Default cluster label configuration for all metrics.
     ## This is needed to add cluster label to all metrics, so we can distinguish metrics from different clusters in a multi-cluster setup.
     ## Without cluster label, kuberentes Dashboards do not work.
