@@ -10,8 +10,8 @@ resources:
 livenessProbe:
   initialDelaySeconds: 60
   periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 5
+  timeoutSeconds: 15
+  failureThreshold: 10
 
 readinessProbe:
   initialDelaySeconds: 30

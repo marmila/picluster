@@ -9,7 +9,7 @@ data:
   fluent-bit.yaml: |-
     service:
       daemon: false
-      flush: 1
+      flush: 5
       log_level: info
       http_server: true
       http_listen: 0.0.0.0
@@ -57,7 +57,7 @@ data:
           mem_buf_limit: 10MB
       filters:
         - name: multiline
-          match: '*'
+          match: 'kube.*'
           multiline.key_content: log
           multiline.parser: go, java, python
         - name: kubernetes
