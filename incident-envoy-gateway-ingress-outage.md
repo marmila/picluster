@@ -124,6 +124,34 @@ Cilium/Loki/Tempo HelmReleases stalled (MissingRollbackTarget)
 
 ---
 
+### 7. Fluent Bit CrashLoopBackOff on node5 and node6
+
+**Symptom**: `fluent-bit` pods on node5 and node6 in `CrashLoopBackOff` with 100-400+ restarts. Liveness probe repeatedly failing with `context deadline exceeded` on `http://:2020/`.
+
+**Cause**: A chain of three compounding issues:
+
+1. **Wrong syslog parser**: `input.host` was configured with `parser: syslog-rfc3164-nopri` which expects `May 23 06:01:38` format. All nodes write ISO 8601 format (`2026-05-23T06:01:38+00:00`). Every host log line generated two internal error/warn messages. This did not crash other nodes because their event loop could absorb it, but it contributed to CPU pressure.
+
+2. **Storage backlog spiral**: node5 and node6 had accumulated a massive filesystem backlog in `/var/log/fluentbit/storage/` from a prior OOMKill event (before memory limits were set). On every restart, Fluent Bit replayed the entire backlog, saturating the event loop. The HTTP health server at `:2020` became unresponsive, the liveness probe timed out, the pod was killed, and the cycle repeated — each crash adding more backlog.
+
+3. **Wrong file edited**: All parser fix attempts were applied to `components/forwarding/fluent-bit-config.yaml`. The prod overlay (`overlays/prod/kustomization.yaml`) uses `components/aggregator`, not `components/forwarding`. None of the fixes landed in the cluster until the correct file was identified.
+
+**Why other nodes were unaffected**: They never had the initial OOMKill that seeded the backlog, so the parse error CPU pressure never pushed them into the liveness probe failure spiral.
+
+**Fix**:
+1. Added `syslog-iso8601` parser to `kubernetes/platform/fluent/fluent-bit/components/aggregator/fluent-bit-config.yaml` and updated `input.host` to use it
+2. Added `mem_buf_limit: 50MB` (kube input) and `mem_buf_limit: 10MB` (host input) to the same file
+3. Manually cleared storage backlog on node5 and node6:
+```bash
+kubectl debug node/node5 -it --image=busybox -- sh -c "rm -rf /host/var/log/fluentbit/storage/* /host/var/log/fluentbit/flb_kube.db /host/var/log/fluentbit/flb_host.db"
+kubectl debug node/node6 -it --image=busybox -- sh -c "rm -rf /host/var/log/fluentbit/storage/* /host/var/log/fluentbit/flb_kube.db /host/var/log/fluentbit/flb_host.db"
+```
+4. Deleted pods to force clean restart
+
+Also fixed a pre-existing bad merge in `kubernetes/platform/fluent/fluent-bit/base/values.yaml` that had introduced a duplicate `config:` key and an erroneous active `env:` block. Restored to match upstream.
+
+---
+
 ## Open Issues at Time of Writing
 
 - **Kafka certificate** (`kafka/kafka-cert`): DNS-01 challenge for `kafka-broker-*.homelab.marmilan.com` failing propagation check. Likely caused by NS delegation for `homelab.marmilan.com` in IONOS pointing to internal Bind9 at `10.0.0.11`, which does not have the `_acme-challenge` TXT records created by the IONOS webhook. Needs investigation of IONOS DNS delegation vs cert-manager webhook behavior.
