@@ -82,6 +82,9 @@ env:
   # Required so gem installs use /home/fluent instead of /
   - name: HOME
     value: "/home/fluent"
+  # Redirect gem install cache to /tmp where all UIDs can write
+  - name: GEM_HOME
+    value: "/tmp/gems"
   # Kafka SCRAM credentials for cowrie → attack-events route
   - name: KAFKA_USERNAME
     valueFrom:
@@ -106,17 +109,7 @@ extraFilesConfigMapNameOverride: fluentd-extra-files
 ##
 configMapConfigs: []
 
-# Volumes and VolumeMounts (only template and and certificates)
-initContainers:
-  - name: gem-cache-init
-    image: busybox:stable
-    command: ['mkdir', '-p', '/gem-cache/share/gem/ruby/3.2.0/cache']
-    securityContext:
-      runAsUser: 1000
-    volumeMounts:
-      - name: gem-cache
-        mountPath: /gem-cache
-
+# Volumes and VolumeMounts (only template and certificates)
 volumes:
   - name: fluentd-tls
     secret:
@@ -125,8 +118,6 @@ volumes:
     configMap:
       name: fluentd-template
       defaultMode: 0777
-  - name: gem-cache
-    emptyDir: {}
 
 volumeMounts:
   - name: etcfluentd-template
@@ -134,8 +125,6 @@ volumeMounts:
   - mountPath: /etc/fluent/certs
     name: fluentd-tls
     readOnly: true
-  - name: gem-cache
-    mountPath: /home/fluent/.local
 
 # Service. Exporting forwarder port (Metric already exposed by chart)
 service:
