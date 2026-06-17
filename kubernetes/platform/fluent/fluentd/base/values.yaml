@@ -115,6 +115,8 @@ volumes:
     configMap:
       name: fluentd-template
       defaultMode: 0777
+  - name: gem-cache
+    emptyDir: {}
 
 volumeMounts:
   - name: etcfluentd-template
@@ -122,6 +124,8 @@ volumeMounts:
   - mountPath: /etc/fluent/certs
     name: fluentd-tls
     readOnly: true
+  - name: gem-cache
+    mountPath: /home/fluent/.local
 
 # Service. Exporting forwarder port (Metric already exposed by chart)
 service:
