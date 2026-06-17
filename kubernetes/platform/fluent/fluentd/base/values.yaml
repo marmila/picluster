@@ -140,4 +140,4 @@ service:
 command:
   - /bin/sh
   - -c
-  - "fluent-gem install fluent-plugin-kafka --no-document && exec /fluentd/entrypoint.sh fluentd"
+  - "fluent-gem install fluent-plugin-kafka --no-document --conservative && exec /fluentd/entrypoint.sh fluentd"
