@@ -4,6 +4,7 @@ namespace: threatmap
 resources:
   - ns.yaml
   - externalsecret.yaml
+  - mongodb-rbac.yaml
   - mongodb.yaml
   - backend.yaml
   - frontend.yaml
