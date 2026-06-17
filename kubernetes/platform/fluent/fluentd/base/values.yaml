@@ -79,12 +79,11 @@ env:
   # Loki password
   - name: LOKI_PASSWORD
     value: ""
-  # Required so gem installs use /home/fluent instead of /
-  - name: HOME
-    value: "/home/fluent"
-  # Redirect gem install cache to /tmp where all UIDs can write
+  # Install kafka plugin to /tmp (writable); preserve pre-installed plugins in /usr/local/bundle
   - name: GEM_HOME
     value: "/tmp/gems"
+  - name: GEM_PATH
+    value: "/tmp/gems:/usr/local/bundle:/usr/local/lib/ruby/gems/3.2.0"
   # Kafka SCRAM credentials for cowrie → attack-events route
   - name: KAFKA_USERNAME
     valueFrom:
