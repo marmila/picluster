@@ -126,6 +126,10 @@ data:
             @type kafka2
             brokers cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
             default_topic attack-events
+            username "#{ENV['KAFKA_USERNAME']}"
+            password "#{ENV['KAFKA_PASSWORD']}"
+            scram_mechanism sha512
+            sasl_over_ssl false
             <format>
                 @type json
             </format>

@@ -1,0 +1,44 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: threatmap-backend
+  labels:
+    strimzi.io/cluster: cluster
+spec:
+  authentication:
+    type: scram-sha-512
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: threatmap-backend-kafka-secret
+          key: password
+  authorization:
+    type: simple
+    acls:
+      # Backend consumer: read attack-events
+      - resource:
+          type: topic
+          name: attack-events
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      # Backend consumer group
+      - resource:
+          type: group
+          name: threatmap-backend
+          patternType: literal
+        operations:
+          - Read
+        host: "*"
+      # Fluentd producer: write attack-events
+      - resource:
+          type: topic
+          name: attack-events
+          patternType: literal
+        operations:
+          - Write
+          - Create
+          - Describe
+        host: "*"

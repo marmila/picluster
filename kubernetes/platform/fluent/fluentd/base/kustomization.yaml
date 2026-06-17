@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - fluentd-certificate.yaml
   - fluentd-externalsecret.yaml
+  - kafka-externalsecret.yaml
   - fluentd-extservice.yaml
   - fluentd-config.yaml
   - fluentd-elastic-templates-cm.yaml

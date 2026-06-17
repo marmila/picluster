@@ -3,3 +3,5 @@ kind: Kustomization
 namespace: kafka
 resources:
   - kafka-topic.yaml
+  - kafka-externalsecret.yaml
+  - kafka-user.yaml

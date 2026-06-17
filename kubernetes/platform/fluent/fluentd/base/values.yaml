@@ -79,6 +79,20 @@ env:
   # Loki password
   - name: LOKI_PASSWORD
     value: ""
+  # Required so gem installs use /home/fluent instead of /
+  - name: HOME
+    value: "/home/fluent"
+  # Kafka SCRAM credentials for cowrie → attack-events route
+  - name: KAFKA_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: fluentd-kafka-secret
+        key: username
+  - name: KAFKA_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: fluentd-kafka-secret
+        key: password
 
 # Providing fluentd external configuration
 # Overriding Default FluentD configuration
