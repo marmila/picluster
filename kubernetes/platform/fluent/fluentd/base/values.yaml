@@ -1,10 +1,10 @@
 # fluentd helm values (base)
 
-# Fluentd image
+# Fluentd image — custom build with fluent-plugin-kafka pre-installed
 image:
-  repository: "ricsanfre/fluentd-aggregator"
-  pullPolicy: "IfNotPresent"
-  tag: "v1.18-debian-1"
+  repository: "ghcr.io/marmila/fluentd-aggregator"
+  pullPolicy: "Always"
+  tag: "v1.18-kafka"
 
 # Deploy fluentd as deployment
 kind: "Deployment"
@@ -79,11 +79,6 @@ env:
   # Loki password
   - name: LOKI_PASSWORD
     value: ""
-  # Install kafka plugin to /tmp (writable); preserve pre-installed plugins in /usr/local/bundle
-  - name: GEM_HOME
-    value: "/tmp/gems"
-  - name: GEM_PATH
-    value: "/tmp/gems:/usr/local/bundle:/usr/local/lib/ruby/gems/3.2.0"
   # Kafka SCRAM credentials for cowrie → attack-events route
   - name: KAFKA_USERNAME
     valueFrom:
@@ -133,11 +128,3 @@ service:
   - name: forwarder
     protocol: TCP
     containerPort: 24224
-
-## Override command to install kafka plugin then start fluentd correctly.
-## The chart's generated command from plugins: omits the "fluentd" arg to entrypoint.sh,
-## causing exec "$@" to run empty → exit 0. We pass it explicitly here.
-command:
-  - /bin/sh
-  - -c
-  - "fluent-gem install fluent-plugin-kafka --no-document --conservative && exec /fluentd/entrypoint.sh fluentd"
