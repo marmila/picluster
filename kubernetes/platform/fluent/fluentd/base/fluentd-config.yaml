@@ -121,6 +121,19 @@ data:
                 </labels>
             </metric>
         </filter>
+        # Route cowrie honeypot events to Kafka
+        <match cowrie>
+            @type kafka2
+            brokers cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+            default_topic attack-events
+            <format>
+                @type json
+            </format>
+            <buffer>
+                flush_interval 5s
+                retry_forever true
+            </buffer>
+        </match>
         # Copy log stream to different outputs
         <match **>
             @type copy

@@ -120,5 +120,5 @@ service:
 
 ## Fluentd list of plugins to install
 ##
-plugins: []
-# - fluent-plugin-out-http
+plugins:
+  - fluent-plugin-kafka

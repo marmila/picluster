@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: threatmap-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: threatmap-backend
+  template:
+    metadata:
+      labels:
+        app: threatmap-backend
+    spec:
+      initContainers:
+        - name: download-geoip
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              curl -sL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o /tmp/geoip.tar.gz
+              tar -xzf /tmp/geoip.tar.gz --strip-components=1 -C /data --wildcards "*.mmdb"
+          env:
+            - name: MAXMIND_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: MAXMIND_LICENSE_KEY
+          volumeMounts:
+            - name: geoip-data
+              mountPath: /data
+      containers:
+        - name: backend
+          image: ghcr.io/marmila/threatmap-backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: "cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "attack-events"
+            - name: MONGO_DB
+              value: "threatmap"
+            - name: GEOIP_DB_PATH
+              value: "/data/GeoLite2-City.mmdb"
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: password
+            - name: MONGO_URI
+              value: "mongodb://threatmap:$(MONGO_PASSWORD)@mongodb-svc.threatmap.svc.cluster.local:27017/threatmap?authSource=threatmap&directConnection=true"
+            - name: OTX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: OTX_API_KEY
+          volumeMounts:
+            - name: geoip-data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: geoip-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: threatmap-backend
+spec:
+  selector:
+    app: threatmap-backend
+  ports:
+    - port: 8000
+      targetPort: 8000

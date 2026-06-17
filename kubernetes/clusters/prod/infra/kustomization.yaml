@@ -30,4 +30,6 @@ resources:
  # - apexforge-db.yaml
  # - apexforge-app.yaml
   - kube-vip-app.yaml
+  - threatmap-kafka.yaml
+  - threatmap-app.yaml
 
