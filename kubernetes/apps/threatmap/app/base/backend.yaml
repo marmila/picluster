@@ -20,7 +20,7 @@ spec:
             - -c
             - |
               set -e
-              curl -fSL -u "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
+              curl -fSL -u "$${MAXMIND_ACCOUNT_ID}:$${MAXMIND_LICENSE_KEY}" \
                 "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz" \
                 -o /tmp/geoip.tar.gz
               mkdir -p /tmp/geoip
