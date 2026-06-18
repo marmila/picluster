@@ -19,7 +19,10 @@ spec:
             - sh
             - -c
             - |
-              curl -fSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o /tmp/geoip.tar.gz
+              set -e
+              curl -fSL -u "${MAXMIND_ACCOUNT_ID}:${MAXMIND_LICENSE_KEY}" \
+                "https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz" \
+                -o /tmp/geoip.tar.gz
               mkdir -p /tmp/geoip
               tar -xzf /tmp/geoip.tar.gz -C /tmp/geoip
               find /tmp/geoip -name "*.mmdb" -exec cp {} /data/GeoLite2-City.mmdb \;
@@ -29,6 +32,11 @@ spec:
                 secretKeyRef:
                   name: threatmap-secrets
                   key: MAXMIND_LICENSE_KEY
+            - name: MAXMIND_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: MAXMIND_ACCOUNT_ID
           volumeMounts:
             - name: geoip-data
               mountPath: /data
