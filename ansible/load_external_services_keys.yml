@@ -9,7 +9,6 @@
     vault_host: "{{ groups['vault'][0] }}"
     ionos_credentials_file: "~/.secrets/ionos-credentials.ini"
     github_pat_file: "~/.secrets/github-pat.ini"
-    threatmap_credentials_file: "~/.secrets/threatmap-credentials.ini"
     vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
 
   tasks:
@@ -26,7 +25,9 @@
           • Bind9 DDNS key (from filesystem)
           • MinIO Prometheus bearer token (from filesystem)
           • HTTP Basic Auth credentials
-          • ThreatMap credentials (OTX, MaxMind, MongoDB — from filesystem)
+          • ThreatMap credentials:
+              - OTX API key and MaxMind credentials → prompted if not in Vault
+              - MongoDB and Kafka passwords → auto-generated if not in Vault
           • General Ansible variables
 
     - name: Include picluster variables
