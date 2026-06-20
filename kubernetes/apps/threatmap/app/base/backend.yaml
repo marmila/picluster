@@ -66,11 +66,6 @@ spec:
                 secretKeyRef:
                   name: threatmap-secrets
                   key: OTX_API_KEY
-            - name: THREATFOX_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: threatmap-secrets
-                  key: THREATFOX_API_KEY
             - name: KAFKA_SECURITY_PROTOCOL
               value: "SASL_PLAINTEXT"
             - name: KAFKA_SASL_MECHANISM
