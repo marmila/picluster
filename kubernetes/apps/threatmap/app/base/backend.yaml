@@ -71,6 +71,16 @@ spec:
                 secretKeyRef:
                   name: threatmap-secrets
                   key: ABUSEIPDB_API_KEY
+            - name: SHODAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: SHODAN_API_KEY
+            - name: GREYNOISE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: threatmap-secrets
+                  key: GREYNOISE_API_KEY
             - name: KAFKA_SECURITY_PROTOCOL
               value: "SASL_PLAINTEXT"
             - name: KAFKA_SASL_MECHANISM
