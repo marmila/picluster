@@ -138,6 +138,23 @@ data:
                 retry_forever true
             </buffer>
         </match>
+        # Route opencanary honeypot events to Kafka
+        <match opencanary>
+            @type kafka2
+            brokers cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+            default_topic attack-events
+            username "#{ENV['KAFKA_USERNAME']}"
+            password "#{ENV['KAFKA_PASSWORD']}"
+            scram_mechanism sha512
+            sasl_over_ssl false
+            <format>
+                @type json
+            </format>
+            <buffer>
+                flush_interval 5s
+                retry_forever true
+            </buffer>
+        </match>
         # Copy log stream to different outputs
         <match **>
             @type copy
