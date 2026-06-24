@@ -16,6 +16,15 @@ spec:
         - path:
             type: PathPrefix
             value: /ws
+        - path:
+            type: PathPrefix
+            value: /docs
+        - path:
+            type: PathPrefix
+            value: /redoc
+        - path:
+            type: PathPrefix
+            value: /openapi.json
       backendRefs:
         - name: threatmap-backend
           port: 8000
