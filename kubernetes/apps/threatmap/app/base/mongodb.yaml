@@ -31,15 +31,6 @@ spec:
                 requests:
                   cpu: 100m
                   memory: 256Mi
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                - matchExpressions:
-                  - key: kubernetes.io/arch
-                    operator: In
-                    values:
-                    - amd64
       volumeClaimTemplates:
         - metadata:
             name: data-volume
