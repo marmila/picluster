@@ -26,7 +26,8 @@
           • S3 Prometheus metrics token (from filesystem)
           • HTTP Basic Auth credentials
           • ThreatMap credentials:
-              - OTX API key and MaxMind credentials → prompted if not in Vault
+              - Shodan, AbuseIPDB, OTX API keys → prompted if not in Vault
+              - MaxMind license key and account ID → prompted if not in Vault
               - MongoDB and Kafka passwords → auto-generated if not in Vault
           • General Ansible variables
 
