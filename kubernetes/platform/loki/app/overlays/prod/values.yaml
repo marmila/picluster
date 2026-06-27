@@ -11,10 +11,10 @@ write:
   resources:
     requests:
       cpu: 25m
-      memory: 64Mi
+      memory: 128Mi
     limits:
       cpu: 200m
-      memory: 256Mi
+      memory: 512Mi
 
 # Reduce memcached cache sizes from massive defaults (8GB/1GB) to homelab-appropriate values
 # Defaults: chunksCache.allocatedMemory=8192, resultsCache.allocatedMemory=1024
@@ -46,7 +46,7 @@ read:
       memory: 64Mi
     limits:
       cpu: 200m
-      memory: 256Mi
+      memory: 512Mi
 
 gateway:
   resources:
