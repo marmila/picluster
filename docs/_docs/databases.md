@@ -246,7 +246,7 @@ S3, storage server, like Minio need to be configured.
 
 - A bucket, `cloudnative-pg` and an specific user with read-write access need to be configured
 
-  See details on how to configure external Minio server for perfoming backups in ["S3 Backup Backend (Minio)"](/docs/s3-backup/)
+  See details on how to configure the external S3 server for performing backups in ["S3 Backup Backend (RustFS)"](/docs/rustfs/)
 
 - Step 1. Create secret containing Minio credentials
 
@@ -254,7 +254,7 @@ S3, storage server, like Minio need to be configured.
   apiVersion: v1
   kind: Secret
   metadata:
-    name: cnpg-minio-secret
+    name: cnpg-s3-secret
     namespace: database
   stringData:
     AWS_ACCESS_KEY_ID: "myuser"
@@ -295,10 +295,10 @@ S3, storage server, like Minio need to be configured.
         endpointURL: https://s3.ricsanfre.com:9091
         s3Credentials:
           accessKeyId:
-            name: cnpg-minio-secret
+            name: cnpg-s3-secret
             key: AWS_ACCESS_KEY_ID
           secretAccessKey:
-            name: cnpg-minio-secret
+            name: cnpg-s3-secret
             key: AWS_SECRET_ACCESS_KEY
       retentionPolicy: "30d"
   ```

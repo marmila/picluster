@@ -2,7 +2,7 @@
 title: What is this project about?
 permalink: /docs/home/
 description: The scope of this project is to create a kubernetes cluster at home using Raspberry Pis and low cost mini PCs, and to automate its deployment and configuration applying IaC (infrastructure as a code) and GitOps methodologies with tools like Ansible, Terraform and FluxCD. How to automatically deploy K3s baesed kubernetes cluster, Longhorn as distributed block storage for PODs' persistent volumes, Prometheus as monitoring solution, EFK+Loki stack as centralized log management solution, Velero and Restic as backup solution and Istio as service mesh architecture.
-last_modified_at: "15-03-2026"
+last_modified_at: "20-06-2026"
 ---
 
 
@@ -12,7 +12,7 @@ The main goal of  this project is to create a kubernetes cluster at home using A
 
 The project scope includes the automatic installation and configuration of a lightweight Kubernetes flavor based on [K3S](https://k3s.io/), and deployment of cluster basic services such as:
 - Distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/).
-- S3 Object storage, [Minio](https://min.io/).
+- S3 Object storage, [RustFS](https://github.com/rustfs/rustfs).
 - Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/).
 - Certificate management, [Cert-Manager](https://cert-manager.io).
 - Secrets Management solution with [Vault](https://www.vaultproject.io/) and [External Secrets](https://external-secrets.io/)
@@ -65,7 +65,7 @@ The following picture shows the set of opensource solutions used for building th
 | ![kube-vip-icon](/assets/img/logos/kube-vip-icon.png){:width="32"} | [Kube-VIP](https://kube-vip.io/)   | Kubernetes API Load-balancer                                       |
 | ![envoy-icon](/assets/img/logos/envoy.svg){:width="32"}     | [Envoy Gateway](https://gateway.envoyproxy.io/)  | Kubernetes Gateway API Controller   |
 | ![longhorn-icon](/assets/img/logos/longhorn.svg){:width="32"} | [Longhorn](https://longhorn.io/)    | Kubernetes distributed block storage |
-| ![minio-icon](/assets/img/logos/minio.svg){:width="20"}     | [Minio](https://min.io/)              | S3 Object Storage solutio            |
+| ![rustfs-icon](/assets/img/logos/rustfs.svg){:width="20"}     | [RustFS](https://github.com/rustfs/rustfs)              | S3 Object Storage solution            |
 | ![cert-manager-icon](/assets/img/logos/cert-manager.svg){:width="32"} | [Cert-Manager](https://cert-manager.io) | TLS Certificates management  |
 | ![vault-icon](/assets/img/logos/vault.svg){:width="32"} | [Hashicorp Vault](https://www.vaultproject.io/) | Secrets Management solution |
 | ![external-secrets-icon](/assets/img/logos/external-secrets.svg){:width="32"} | [External Secrets Operator](https://external-secrets.io/) | Sync Kubernetes Secrets from Hashicorp |
@@ -101,6 +101,7 @@ The following technologies have been used in previous releases of PiCluster but 
 | ![haproxy-icon](/assets/img/logos/haproxy.svg){:width="32"} | [HAProxy](https://www.haproxy.org/)   | Kubernetes API Load-balancer. Replaced by Kube-VIP |
 | ![nginx-icon](/assets/img/logos/nginx.svg){:width="32"}     | [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)  | Kubernetes Ingress Controller. Replaced by Envoy Gateway |
 | ![OAuth2-proxy-icon](/assets/img/logos/OAuth2-proxy.svg){:width="32"}     | [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/)  | OAuth2.0 Proxy. Replaced by Envoy Gateway with OIDC integration with Keycloak |
+| ![minio-icon](/assets/img/logos/minio.svg){:width="20"} | [MinIO](https://min.io) | S3 Object Storage. Replaced by RustFS after progressive degradation of open-source community edition (Admin UI removal Feb 2025, binary discontinuation Oct 2025, repository archival Apr 2026) |
 {: .table .border-dark }
 
 
@@ -140,11 +141,11 @@ There is another list of services that I have decided to run outside the kuberne
 
 |  |External Service | Resource | Purpose |
 | --- | --- | --- | --- |
-| ![minio-icon](/assets/img/logos/minio.svg){:width="20"} |[Minio](https://min.io) | S3 Object Store | Cluster Backup  |
+| ![rustfs-icon](/assets/img/logos/rustfs.svg){:width="20"} |[RustFS](https://github.com/rustfs/rustfs) | S3 Object Store | Cluster Backup  |
 | ![vault-icon](/assets/img/logos/vault.svg){:width="32"} |[Hashicorp Vault](https://www.vaultproject.io/) | Secrets Management | Cluster secrets management |
 {: .table .border-dark .align-middle }
 
-Vault and Minio services are running in one of the cluster nodes, `node1`, to keep them locally accessible to the cluster and to avoid exposing them to the public internet.
+Vault and RustFS services are running in one of the cluster nodes, `node1`, to keep them locally accessible to the cluster and to avoid exposing them to the public internet.
 
 ## What I have built so far
 
@@ -199,7 +200,8 @@ From software perspective, I have developed the following:
    | [ricsanfre.iscsi_initiator](https://galaxy.ansible.com/ricsanfre/iscsi_initiator)| Configure iSCSI Initiator | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-iscsi_initiator) |
    | [ricsanfre.k8s_cli](https://galaxy.ansible.com/ricsanfre/k8s_cli)| Install kubectl and Helm utilities | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-k8s_cli) |
    | [ricsanfre.fluentbit](https://galaxy.ansible.com/ricsanfre/fluentbit)| Configure fluentbit | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-fluentbit) |
-   | [ricsanfre.minio](https://galaxy.ansible.com/ricsanfre/minio)| Configure Minio S3 server | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-minio) |
+   | [ricsanfre.rustfs](https://galaxy.ansible.com/ricsanfre/rustfs)| Configure RustFS S3 server | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-rustfs) |
+   | [ricsanfre.minio](https://galaxy.ansible.com/ricsanfre/minio)| Configure MinIO S3 server (legacy) | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-minio) |
    | [ricsanfre.backup](https://galaxy.ansible.com/ricsanfre/backup)| Configure Restic | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-backup) |
    | [ricsanfre.vault](https://galaxy.ansible.com/ricsanfre/vault)| Configure Hashicorp Vault | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-vault) |
    {: .table .border-dark }
@@ -221,45 +223,47 @@ The software used and the latest version tested of each component
 
 | Type | Software | Latest Version tested | Notes |
 |-----------| ------- |-------|----|
-| OS | Ubuntu | 24.04.3 | |
-| Control | Ansible | 2.20.3  | |
-| Control | cloud-init | 23.1.2 | version pre-integrated into Ubuntu 22.04.2 |
-| Kubernetes | K3S | v1.35.2+k3s1 | K3S version|
-| Kubernetes | Helm | v3.20.0 ||
-| Kubernetes | etcd | v3.6.7-k3s1 | version pre-integrated into K3S |
-| Computing | containerd | v2.1.5-k3s1 | version pre-integrated into K3S |
-| Networking | Kube-VIP | v0.4.0 | Kubernetes API Load-balancer |
-| Networking | Cilium | 1.19.1 | |
-| Networking | CoreDNS | v1.13.1 | Helm chart version: 1.45.2 |
-| Networking | External-DNS | 0.20.0 | Helm chart version: 1.20.0 |
-| Metric Server | Kubernetes Metrics Server | v0.8.0 | Helm chart version: 3.13.0|
-| Service Mesh | Istio | v1.29.0 | Helm chart version: 1.29.0 |
-| Service Proxy | Ingress NGINX | v1.14.3 | Helm chart version: 4.14.3 |
-| Storage | Longhorn | v1.11.0 | Helm chart version: 1.11.0 |
-| Storage | Minio | RELEASE.2024-12-18T13-15-44Z | Helm chart version: 5.4.0 |
-| TLS Certificates | Certmanager | v1.19.4 | Helm chart version: v1.19.4  |
-| Logging | ECK Operator |  3.3.1 | Helm chart version: 3.3.1 |
-| Logging | Elastic Search | 8.19.12 | Deployed with ECK Operator |
-| Logging | Kibana | 8.19.12 | Deployed with ECK Operator |
-| Logging | Fluentbit | 4.2.3 | Helm chart version: 0.56.0 |
+| OS | Ubuntu | 24.04.4 LTS | |
+| Control | Ansible | 2.21.1 | ansible-core version |
+| Control | cloud-init | 23.1.2 | version pre-integrated into Ubuntu 24.04 |
+| Kubernetes | K3S | v1.36.1+k3s1 | |
+| Kubernetes | Helm | v4.2.2 | |
+| Kubernetes | etcd | v3.6.7-k3s1 | version embedded into K3S |
+| Computing | containerd | v2.2.3-k3s1 | version embedded into K3S |
+| Networking | Kube-VIP | v1.0.4 | Helm chart version: 0.9.9 |
+| Networking | Cilium | 1.19.5 | |
+| Networking | CoreDNS | 1.13.1 | Helm chart version: 1.46.0 |
+| Networking | External-DNS | 0.21.0 | Helm chart version: 1.21.1 |
+| Metric Server | Kubernetes Metrics Server | v0.8.1 | Helm chart version: 3.13.1 |
+| Service Mesh | Istio | 1.30.1 | |
+| Service Proxy | Envoy Gateway | 1.8.1 | Replaces Ingress NGINX and OAuth2 Proxy |
+| Storage | Longhorn | 1.12.0 | |
+| TLS Certificates | Cert-Manager | v1.20.2 | |
+| Logging | ECK Operator | 3.4.0 | |
+| Logging | ElasticSearch | 8.19.16 | Deployed with ECK Operator |
+| Logging | Kibana | 8.19.16 | Deployed with ECK Operator |
+| Logging | Fluentbit | 5.0.7 | Helm chart version: 0.57.7 |
 | Logging | Fluentd | 1.18.0 | Helm chart version: 0.5.3 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.18 |
-| Logging | Loki | 3.6.5 | Helm chart grafana/loki version: 6.53.0  |
-| Monitoring | Kube Prometheus Stack | v82.10.1 | Helm chart version: 82.10.1 |
-| Monitoring | Prometheus Operator | v0.89.0 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
-| Monitoring | Prometheus | v3.10.0 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
-| Monitoring | AlertManager | v0.31.1 | Installed by Kube Prometheus Stack. Helm chart version: 82.10.1 |
-| Monitoring | Prometheus Node Exporter | v1.10.2 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 82.10.1 |
-| Monitoring | Kube State Metrics | v2.8.2 | Installed as dependency of Kube Prometheus Stack chart. Helm chart version: 82.10.1 |
-| Monitoring | Prometheus Elasticsearch Exporter | v1.10.0 | Helm chart version: prometheus-elasticsearch-exporter-7.2.1 |
-| Monitoring | Grafana | 12.3.1 | Helm chart version: 10.5.15 |
-| Tracing | Grafana Tempo | 2.9.0 | Helm chart: tempo-distributed (v1.61.3) |
-| Backup | Minio External (self-hosted) | RELEASE.2025-09-07T16-13-09Z | |
-| Backup | Restic | 0.18.1 | |
-| Backup | Velero | 1.17.1 | Helm chart version: 11.4.0 |
-| Secrets Management | Hashicorp Vault | 1.21.4 | |
-| Secrets Management | External Secret Operator | 2.0.1 | Helm chart version: 2.0.1 |
-| Identity Access Management | Keycloak | 26.5.5 | Keycloak Operator |
-| Identity Access Management | Oauth2.0 Proxy | 7.14.2 | Helm chart version: 10.1.4 |
-| GitOps | Flux CD | v2.8.1 |  |
-| GitOps | Flux Tofu Controller | 0.16.1 | |
+| Logging | Loki | 3.6.7 | Helm chart version: 7.0.0 |
+| Monitoring | Kube Prometheus Stack | 86.3.1 | |
+| Monitoring | Prometheus Operator | v0.91.0 | Installed with Kube Prometheus Stack |
+| Monitoring | Prometheus | v3.12.0 | Installed with Kube Prometheus Stack |
+| Monitoring | AlertManager | v0.33.0 | Installed with Kube Prometheus Stack |
+| Monitoring | Prometheus Node Exporter | v1.11.1 | Installed with Kube Prometheus Stack |
+| Monitoring | Kube State Metrics | v2.19.1 | Installed with Kube Prometheus Stack |
+| Monitoring | Prometheus Elasticsearch Exporter | v1.10.0 | Helm chart version: 7.2.1 |
+| Monitoring | Grafana | 13.0.1 | Deployed with Grafana Operator. Helm chart version: 5.24.0 |
+| Tracing | Grafana Tempo | 2.9.0 | Helm chart version: 1.61.3 |
+| Backup | RustFS External (self-hosted) | 1.0.0-beta.7 | |
+| Backup | Restic | 0.19.0 | |
+| Backup | Velero | 1.18.1 | Helm chart version: 12.0.3 |
+| Secrets Management | Hashicorp Vault | 2.0.3 | |
+| Secrets Management | External Secret Operator | 2.6.0 | |
+| Identity Access Management | Keycloak | 26.6.3 | Deployed with Keycloak Operator |
+| GitOps | Flux CD | v2.8.8 | |
+| GitOps | Flux Tofu Controller | 0.16.4 | |
+| Streaming | Strimzi Kafka Operator | 1.0.1 | Kafka version: 4.1.1 |
+| Database | CloudNative-PG | 1.29.1 | PostgreSQL Operator |
+| Database | MongoDB Operator | 0.13.0 | |
+| Database | Valkey Operator | 0.2.0 | |
 {: .table .border-dark }

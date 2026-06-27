@@ -1,0 +1,71 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: databases-common
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: databases
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: istio-app
+  path: ./kubernetes/platform/databases/common/overlays/prod
+  prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cloudnative-pg-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: databases
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: databases-common
+    - name: longhorn-app
+  path: ./kubernetes/platform/databases/cloudnative-pg/app/overlays/prod
+  prune: true
+  timeout: 10m
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: valkey-operator-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: databases
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: databases-common
+    - name: longhorn-app
+  path: ./kubernetes/platform/databases/valkey-operator/app/overlays/prod
+  prune: true
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: mongodb-community-operator-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: databases
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: databases-common
+    - name: longhorn-app
+  path: ./kubernetes/platform/databases/mongodb-community-operator/app/overlays/prod
+  prune: true
+  wait: true

@@ -1,0 +1,16 @@
+# Istio PeerAuthentication — databases namespace (namespace-wide default)
+# STRICT mTLS for all workloads by default — ztunnel enforces SPIFFE identity.
+# The CNPG webhook pod has its own PeerAuthentication (cnpg-webhook-permissive)
+# with a PERMISSIVE port-level exception on 9443, allowing the kube-apiserver
+# to call the admission webhook without a mesh identity.
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: databases-strict
+  namespace: databases
+spec:
+  selector:
+    matchLabels: {}
+  mtls:
+    mode: STRICT

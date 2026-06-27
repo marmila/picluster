@@ -1,0 +1,63 @@
+# CloudNativePG — Keycloak PostgreSQL Cluster
+# Namespace: databases
+# 2 instances (1 primary + 1 replica), 512Mi memory limit per pod.
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-keycloak
+  namespace: databases
+spec:
+  instances: 2
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  postgresql:
+    parameters:
+      shared_buffers: "64MB"
+      max_connections: "100"
+
+  bootstrap:
+    initdb: {}
+
+  storage:
+    size: 5Gi
+    storageClass: longhorn
+
+  monitoring:
+    enablePodMonitor: true
+
+  backup:
+    barmanObjectStore:
+      data:
+        compression: bzip2
+      wal:
+        compression: bzip2
+        maxParallel: 8
+      destinationPath: s3://k3s-barman/postgres-keycloak
+      endpointURL: https://${S3_SERVER}:9091
+      s3Credentials:
+        accessKeyId:
+          name: postgres-keycloak-s3-secret
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: postgres-keycloak-s3-secret
+          key: AWS_SECRET_ACCESS_KEY
+    retentionPolicy: "30d"
+
+  managed:
+    roles:
+      - name: keycloak_owner
+        ensure: present
+        login: true
+        inherit: true
+        passwordSecret:
+          name: keycloak-db-secret

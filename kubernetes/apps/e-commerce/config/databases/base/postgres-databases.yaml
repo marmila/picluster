@@ -1,0 +1,26 @@
+# CloudNativePG — E-commerce Database CRs
+# Each service gets its own database owned by a dedicated role.
+---
+# ── user-service database ──────────────────────────────────────────────────
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: users-db
+  namespace: databases
+spec:
+  name: users
+  owner: users_owner
+  cluster:
+    name: postgres-ecommerce
+---
+# ── order-service database ─────────────────────────────────────────────────
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: orders-db
+  namespace: databases
+spec:
+  name: orders
+  owner: orders_owner
+  cluster:
+    name: postgres-ecommerce

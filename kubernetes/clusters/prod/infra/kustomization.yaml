@@ -3,9 +3,10 @@ kind: Kustomization
 resources:
   - cert-manager-app.yaml
   - cilium-app.yaml
-  - cloudnative-pg-app.yaml
   - coredns-app.yaml
   - csi-external-snapshotter-app.yaml
+  - databases-app.yaml
+  - descheduler-app.yaml
   - elastic-stack-app.yaml
   - envoy-gateway-app.yaml
   - external-dns-app.yaml
@@ -21,7 +22,6 @@ resources:
   - loki-app.yaml
   - longhorn-app.yaml
   - metrics-server-app.yaml
-  - mongodb-operator-app.yaml
   - otel-collector-app.yaml
   - system-upgrade-app.yaml
   - tempo-app.yaml

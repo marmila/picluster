@@ -2,7 +2,7 @@
 title: Log Aggregation (Loki)
 permalink: /docs/loki/
 description: How to deploy Grafana Loki in our Raspberry Pi Kubernetes cluster.
-last_modified_at: "30-03-2026"
+last_modified_at: "19-06-2026"
 
 ---
 
@@ -21,7 +21,7 @@ All Loki components are included within a single binary (docker image) that  sup
 - Simple scalable mode
 
   In this deployment, Loki is deployed in HA, deploying replicas of write and read nodes (processes)
-  - Write nodes: supporting write path. *Distributor* and *Ingestor* components, responsible to store logs and indexes in the back-end storage (Minio S3 storage)
+  - Write nodes: supporting write path. *Distributor* and *Ingestor* components, responsible to store logs and indexes in the back-end storage (S3 storage)
   - Read nodes: supporting read path. *Ruler*, *Querier* and *Frontend Querier* components, responsible to answer to log queries.
   - Backend nodes: loki backend services *Compactor*, *Index gateways* and *Query scheduler – Ruler*
   - Gateway node: a load balancer in front of Loki (nginx based), which directs `/loki/api/v1/push` traffic to the write nodes. All other requests go to the read nodes. Traffic should be sent in a round robin fashion.
@@ -32,33 +32,33 @@ All Loki components are included within a single binary (docker image) that  sup
 
 Further details in Loki architecture documentation: [Loki components](https://grafana.com/docs/loki/latest/fundamentals/architecture/components/) and [deployment modes](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/)
 
-Loki will be installed using Simple scalable deployment mode using as S3 Object Storage Server (Minio) as backend.
+Loki will be installed using Simple scalable deployment mode using an S3 Object Storage Server as backend.
 
 
 ![K3S-LOKI-Architecture](/assets/img/loki-architecture.png)
 
-## Configure S3 Minio Server
+## Configure S3 Server
 
-Minio Storage server is used as Loki long-term data storage.
+The S3 storage server is used as Loki long-term data storage.
 
-Grafana Loki needs to store two different types of data: chunks and indexes. Both of them can be stored in S3 server.
+Grafana Loki needs to store two different types of data: chunks and indexes. Both of them can be stored in an S3-compatible server.
 
 {{site.data.alerts.note}}
 
-Loki helm chart is able to install this Minio service as a subchart, but its installation will be disabled and Minio Storage Service already deployed in the cluster will be used as Loki's backend.
+Loki helm chart is able to install an S3 service as a subchart, but its installation will be disabled and the S3 Storage Service already deployed in the cluster will be used as Loki's backend.
 
-As part of Minio Storage Service installation, loki's S3 bucket, policy and user is already configured.
-See documentation: [Minio S3 Object Storage Service](/docs/minio/).
+As part of the S3 Storage Service installation, loki's S3 bucket, policy and user is already configured.
+See documentation: ["PiCluster - S3 Backup Backend"](/docs/rustfs/).
 
 {{site.data.alerts.end}}
 
-### Create Minio user and bucket
+### Create S3 user and bucket
 
-Use Minio's `mc` command to create loki bucket and user
+Use RustFS CLI (`rc`) to create the loki bucket and user:
 
 ```shell
-mc mb <minio_alias>/k3s-loki
-mc admin user add <minio_alias> loki <user_password>
+rc mb <s3_alias>/k3s-loki
+rc admin user add <s3_alias> loki <user_password>
 ```
 {{site.data.alerts.note}}
 
@@ -76,7 +76,8 @@ Over the resources: arn:aws:s3:::<bucket_name>, arn:aws:s3:::<bucket_name>/*
 Apply policy to user `loki` so it has the proper persmissions on `k3s-loki` bucket.
 
 ```shell
-  mc admin policy add <minio_alias> loki user_policy.json
+  rc admin policy create <s3_alias> loki user_policy.json
+  rc admin policy attach <s3_alias> loki loki
 ```
 
 Where `user_policy.json`, contains the following AWS access policies definition:
@@ -152,14 +153,14 @@ Installation from helm chart. There are two alternatives:
     # S3 backend storage configuration
     storage:
       bucketNames:
-        chunks: <minio_loki_bucket>
-        ruler: <minio_loki_bucket>
+        chunks: <s3_loki_bucket>
+        ruler: <s3_loki_bucket>
       type: s3
       s3:
-        endpoint: <minio_endpoint>
-        region: <minio_site_region>
-        secretAccessKey: <minio_loki_key>
-        accessKeyId: <minio_loki_user>
+        endpoint: <s3_endpoint>
+        region: <s3_site_region>
+        secretAccessKey: <s3_loki_key>
+        accessKeyId: <s3_loki_user>
         s3ForcePathStyle: true
         insecure: false
         http_config:
@@ -214,7 +215,7 @@ Installation from helm chart. There are two alternatives:
     # -- Number of replicas for the gateway
     replicas: 1
 
-  # Disable mino installation
+  # Disable S3 server subchart
   minio:
     enabled: false
 
@@ -238,7 +239,7 @@ Installation from helm chart. There are two alternatives:
 
   - Disable multi-tenant support (`auth_enabled: false`) so it is not needed to provide org_id in HTTP headers.
 
-  - Enable S3 as storage backend, providing Minio credentials and bucket. (`loki.storage`).
+  - Enable S3 as storage backend, providing S3 credentials and bucket. (`loki.storage`).
 
   - Configure TSDB as storage schema (`loki.schemaConfig`). See [Loki Storage Schema doc](https://grafana.com/docs/loki/latest/operations/storage/schema/) and [TSDB Storage](https://grafana.com/docs/loki/latest/operations/storage/tsdb/)
 
@@ -250,7 +251,7 @@ Installation from helm chart. There are two alternatives:
 
   - Enable one replica for gateway component (`gateway`)
 
-  - Disable minio server installation (`minio.enabled`)
+  - Disable built-in S3 server subchart (`minio.enabled`)
 
   - Disable self-monitoring (`monitoring.selfmonitoring`) and helm-test validation (`test.enabled`)
 
@@ -291,11 +292,77 @@ This configuration means:
 - `delete_request_store: s3` stores retention delete markers in the same S3 backend.
 - `working_directory: /var/loki/retention` is local disk used by the compactor while processing retention operations.
 
-Even when MinIO or another S3 backend is used for long-term storage, Loki still needs local persistent storage on write and backend pods for TSDB working data and compactor processing.
+Even when an S3 backend is used for long-term storage, Loki still needs local persistent storage on write and backend pods for TSDB working data and compactor processing.
+
+### Homelab footprint optimization
+
+For a small homelab cluster where high availability is not required, Loki can be tuned down to a single replica per component. The prod overlay used in this repository applies the following resource-saving configuration:
+
+```yaml
+# loki helm values (prod overlay)
+
+loki:
+  commonConfig:
+    replication_factor: 1
+
+write:
+  replicas: 1
+  persistence:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+read:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+backend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Reduce memcached cache sizes from defaults (8GB chunks / 1GB results)
+chunksCache:
+  allocatedMemory: 256
+  allocatedCPU: 100m
+
+resultsCache:
+  allocatedMemory: 128
+  allocatedCPU: 100m
+```
+
+{{site.data.alerts.important}} **Replication factor must match write replicas**
+
+Loki's `commonConfig.replication_factor` defaults to `3` in the Helm chart. When `write.replicas` is reduced to `1`, the replication factor must be set to `1` — otherwise the write ring rejects all push requests with HTTP 500 (`at least 2 live replicas required, could only find 1`). This is set via `loki.commonConfig.replication_factor: 1`.
+{{site.data.alerts.end}}
+
+Key changes from the defaults:
+
+- **Single replica** for all components (`write`, `read`, `backend`) — sufficient for homelab workloads
+- **`replication_factor: 1`** — matches the single write replica so the ingester ring accepts writes
+- **Reduced persistence** to 1 Gi per component instead of the default 10 Gi
+- **CPU and memory limits** appropriate for ARM64 Raspberry Pi nodes
+- **Smaller memcached caches** — 256 Mi chunks cache and 128 Mi results cache vs. defaults of 8 Gi and 1 Gi
 
 ### GitOps installation
 
-As an alternative, for GitOps deployments, instead of hardcoding minio credentials within Helm chart values, a external secret can be configured leveraging [Loki's capability of using environment variables in config file](https://grafana.com/docs/loki/latest/configuration/#use-environment-variables-in-the-configuration).
+As an alternative, for GitOps deployments, instead of hardcoding S3 credentials within Helm chart values, a external secret can be configured leveraging [Loki's capability of using environment variables in config file](https://grafana.com/docs/loki/latest/configuration/#use-environment-variables-in-the-configuration).
 
 
 The following secret need to be created:
@@ -303,12 +370,12 @@ The following secret need to be created:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: loki-minio-secret
+  name: loki-s3-secret
   namespace: loki
 type: Opaque
 data:
-  MINIO_ACCESS_KEY_ID: < minio_loki_user | b64encode >
-  MINIO_SECRET_ACCESS_KEY: < minio_loki_key | b64encode >
+  S3_ACCESS_KEY_ID: < minio_loki_user | b64encode >
+  S3_SECRET_ACCESS_KEY: < minio_loki_key | b64encode >
 ```
 
 And the following Helm values has to be provided:
@@ -338,8 +405,8 @@ loki:
     s3:
       endpoint: s3.picluster.ricsanfre.com:9091
       region: eu-west-1
-      secretAccessKey: ${MINIO_SECRET_ACCESS_KEY}
-      accessKeyId: ${MINIO_ACCESS_KEY_ID}
+      secretAccessKey: ${S3_SECRET_ACCESS_KEY}
+      accessKeyId: ${S3_ACCESS_KEY_ID}
       s3ForcePathStyle: true
       insecure: false
       http_config:
@@ -373,16 +440,16 @@ write:
   extraArgs:
     - '-config.expand-env=true'
   extraEnv:
-    - name: MINIO_ACCESS_KEY_ID
+    - name: S3_ACCESS_KEY_ID
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_ACCESS_KEY_ID
-    - name: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_ACCESS_KEY_ID
+    - name: S3_SECRET_ACCESS_KEY
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_SECRET_ACCESS_KEY
 
 # Configuration for the read
 read:
@@ -399,16 +466,16 @@ read:
   extraArgs:
     - '-config.expand-env=true'
   extraEnv:
-    - name: MINIO_ACCESS_KEY_ID
+    - name: S3_ACCESS_KEY_ID
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_ACCESS_KEY_ID
-    - name: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_ACCESS_KEY_ID
+    - name: S3_SECRET_ACCESS_KEY
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_SECRET_ACCESS_KEY
 
 # Configuration for the backend
 backend:
@@ -425,16 +492,16 @@ backend:
   extraArgs:
     - '-config.expand-env=true'
   extraEnv:
-    - name: MINIO_ACCESS_KEY_ID
+    - name: S3_ACCESS_KEY_ID
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_ACCESS_KEY_ID
-    - name: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_ACCESS_KEY_ID
+    - name: S3_SECRET_ACCESS_KEY
       valueFrom:
         secretKeyRef:
-          name: loki-minio-secret
-          key: MINIO_SECRET_ACCESS_KEY
+          name: loki-s3-secret
+          key: S3_SECRET_ACCESS_KEY
 
 # Configuration for the gateway
 gateway:
@@ -443,7 +510,7 @@ gateway:
   # -- Number of replicas for the gateway
   replicas: 1
 
-# Disable mino installation
+# Disable S3 server subchart
 minio:
   enabled: false
 

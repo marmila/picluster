@@ -36,7 +36,7 @@
           kubernetes.core.helm:
             name: prometheus-operator-crd
             chart_ref: oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds
-            chart_version: 28.0.1
+            chart_version: 30.0.0
             release_namespace: kube-system
             create_namespace: true
           environment:
@@ -157,7 +157,7 @@
           kubernetes.core.helm:
             name: cilium
             chart_ref: oci://quay.io/cilium/charts/cilium
-            chart_version: 1.19.3
+            chart_version: 1.19.5
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ cilium_merged_values }}"
@@ -198,7 +198,7 @@
           kubernetes.core.helm:
             name: coredns
             chart_ref: oci://ghcr.io/coredns/charts/coredns
-            chart_version: 1.45.2
+            chart_version: 1.46.0
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ coredns_merged_values }}"
@@ -240,7 +240,7 @@
             name: kube-vip
             chart_ref: kube-vip
             chart_repo_url: https://kube-vip.github.io/helm-charts
-            chart_version: 0.9.8
+            chart_version: 0.9.9
             release_namespace: kube-system
             create_namespace: false
             release_values: "{{ kubevip_merged_values }}"

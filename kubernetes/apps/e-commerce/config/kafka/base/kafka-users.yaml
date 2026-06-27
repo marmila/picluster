@@ -1,0 +1,100 @@
+# Strimzi — KafkaUser CRs (SCRAM-SHA-512 + ACLs)
+# Namespace: kafka
+#
+# Strimzi's User Operator reconciles KafkaUser CRs in the same namespace
+# as the Kafka cluster (kafka). The password secrets referenced here are
+# created by external-secrets.yaml in this directory.
+# Spring Boot services read the same passwords from the e-commerce namespace
+# via separate *-kafka-secret ExternalSecrets.
+---
+# order-service — Kafka producer
+# Publishes: order.created.v1, order.confirmed.v1
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: order-service
+  labels:
+    strimzi.io/cluster: cluster
+spec:
+  authentication:
+    type: scram-sha-512
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: order-service-kafka-secret
+          key: password
+  authorization:
+    type: simple
+    acls:
+      # Write to order.created.v1
+      - resource:
+          type: topic
+          name: order.created.v1
+          patternType: literal
+        operations: [Write, Create, Describe]
+      # Write to order.confirmed.v1
+      - resource:
+          type: topic
+          name: order.confirmed.v1
+          patternType: literal
+        operations: [Write, Create, Describe]
+---
+# notification-service — Kafka consumer
+# Consumes: order.confirmed.v1 (consumer group: notification-group)
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: notification-service
+  labels:
+    strimzi.io/cluster: cluster
+spec:
+  authentication:
+    type: scram-sha-512
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: notification-service-kafka-secret
+          key: password
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: order.confirmed.v1
+          patternType: literal
+        operations: [Read, Describe]
+      - resource:
+          type: group
+          name: notification-group
+          patternType: literal
+        operations: [Read]
+---
+# cart-service — Kafka consumer
+# Consumes: order.confirmed.v1 (consumer group: cart-service-group)
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaUser
+metadata:
+  name: cart-service
+  labels:
+    strimzi.io/cluster: cluster
+spec:
+  authentication:
+    type: scram-sha-512
+    password:
+      valueFrom:
+        secretKeyRef:
+          name: cart-service-kafka-secret
+          key: password
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: order.confirmed.v1
+          patternType: literal
+        operations: [Read, Describe]
+      - resource:
+          type: group
+          name: cart-service-group
+          patternType: literal
+        operations: [Read]

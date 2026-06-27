@@ -6,7 +6,7 @@ metadata:
   #   "helm.sh/hook": post-install,post-upgrade
 spec:
   # renovate: datasource=github-releases depName=elastic/elasticsearch
-  version: 8.19.15
+  version: 8.19.16
   count: 1
   elasticsearchRef:
     name: efk
@@ -19,9 +19,6 @@ spec:
       - name: kibana
         resources:
           requests:
-            cpu: "200m"
-            memory: "1Gi"
+            memory: "512Mi"
           limits:
-            cpu: "500m"
-            memory: "1Gi"
-
+            memory: "1280Mi"

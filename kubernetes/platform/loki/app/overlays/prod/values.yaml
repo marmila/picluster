@@ -1,5 +1,58 @@
 # loki helm values (prod overlay)
 
+loki:
+  commonConfig:
+    replication_factor: 1
+
 write:
+  replicas: 1
   persistence:
-    size: 2Gi
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Reduce memcached cache sizes from massive defaults (8GB/1GB) to homelab-appropriate values
+# Defaults: chunksCache.allocatedMemory=8192, resultsCache.allocatedMemory=1024
+chunksCache:
+  allocatedMemory: 256
+  allocatedCPU: 100m
+
+resultsCache:
+  allocatedMemory: 128
+  allocatedCPU: 100m
+
+# Resource limits for Loki components — none previously set
+# Actual usage: backend 166-257Mi, read 131-167Mi, write 97-114Mi
+backend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+read:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+gateway:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

@@ -1,0 +1,74 @@
+# MongoDB Community Operator — MongoDBCommunity CR
+# Namespace: databases
+# Shared replica set for product-service, reviews-service, and notification-service.
+# 2 members (1 primary + 1 secondary) for data redundancy.
+---
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mongodb
+  namespace: databases
+spec:
+  members: 2
+  type: ReplicaSet
+  version: "8.0.4"
+
+  security:
+    authentication:
+      modes:
+        - SCRAM
+
+  users:
+    # ── product-service ───────────────────────────────────────────────────
+    - name: products_owner
+      db: admin
+      passwordSecretRef:
+        name: mongodb-products-secret
+      roles:
+        - name: readWrite
+          db: products
+      scramCredentialsSecretName: products-scram
+    # ── reviews-service ───────────────────────────────────────────────────
+    - name: reviews_owner
+      db: admin
+      passwordSecretRef:
+        name: mongodb-reviews-secret
+      roles:
+        - name: readWrite
+          db: reviews
+      scramCredentialsSecretName: reviews-scram
+    # ── notification-service ──────────────────────────────────────────────
+    - name: notifications_owner
+      db: admin
+      passwordSecretRef:
+        name: mongodb-notifications-secret
+      roles:
+        - name: readWrite
+          db: notifications
+      scramCredentialsSecretName: notifications-scram
+
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: mongod
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+            - name: mongodb-agent
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: snappy
+    storage.wiredTiger.engineConfig.cacheSizeGB: 0.25

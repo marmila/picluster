@@ -1,0 +1,49 @@
+# Additional NetworkPolicy — allows Istio ambient mesh infrastructure traffic
+# to reach Keycloak pods. The Keycloak Operator creates `keycloak-network-policy`
+# which restricts ingress to Keycloak-labeled pods only. When ambient mesh is
+# enabled, ztunnel intercepts and proxies traffic via HBONE tunnels, so the
+# actual TCP connections to Keycloak pods originate from ztunnel/waypoint pods
+# in istio-system, not from the peer workload.
+# This policy is additive — Kubernetes union-matches NetworkPolicies, so traffic
+# is allowed if ANY matching policy permits it.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak-istio-mesh
+  namespace: keycloak
+spec:
+  podSelector:
+    matchLabels:
+      app: keycloak
+      app.kubernetes.io/managed-by: keycloak-operator
+  policyTypes:
+    - Ingress
+  ingress:
+    # HBONE tunnel termination (ztunnel)
+    - ports:
+        - protocol: TCP
+          port: 15008
+    # Waypoint proxy (if applicable)
+    - ports:
+        - protocol: TCP
+          port: 15006
+    # Istio health checks / metrics
+    - ports:
+        - protocol: TCP
+          port: 15020
+        - protocol: TCP
+          port: 15021
+    # JGroups cluster traffic (ztunnel-proxied)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+          podSelector:
+            matchLabels:
+              app: ztunnel
+      ports:
+        - port: 7800
+          protocol: TCP
+        - port: 57800
+          protocol: TCP

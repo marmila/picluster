@@ -2,3 +2,12 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: keycloak
+  # Ambient mesh intentionally NOT enabled on this namespace by default.
+  # See the istio component (app/components/istio/) which adds the
+  # istio.io/dataplane-mode: ambient label when used with the prod overlay.
+  # Keycloak's JGroups clustering requires additional configuration to work
+  # with Istio ambient mesh:
+  # 1. cache-embedded-mtls-enabled: false (disables Keycloak's own JGroups TLS)
+  # 2. NetworkPolicy allowing ztunnel pods on JGroups ports
+  # 3. PERMISSIVE PeerAuthentication on port 8080 for non-mesh clients
+  # See: design/adr/0003-ambient-mesh-exclusions.md

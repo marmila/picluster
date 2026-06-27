@@ -1,9 +1,25 @@
 ---
-title: S3 Backup Backend (Minio)
+title: S3 Backup Backend (MinIO - Deprecated)
 permalink: /docs/s3-backup/
 description: How to deploy a Minio S3 object storage server in Bare-metal environment as backup backend for our Raspberry Pi Kubernetes Cluster.
-last_modified_at: "24-06-2025"
+last_modified_at: "20-06-2026"
 ---
+
+{{site.data.alerts.important}} **Deprecated Technology in PiCluster project**
+
+MinIO has been retired as the S3 object storage backend for the PiCluster due to a progressive degradation of its open-source community edition:
+
+- **February 2025** — Admin UI removed from the community edition. The UI console was re-purposed as a browser-only object console ([object-browser#3509](https://github.com/minio/object-browser/pull/3509)).
+- **October 2025** — Pre-compiled binary releases discontinued. The community edition became source-code only with no Docker images or binary packages ([minio/minio#21647](https://github.com/minio/minio/issues/21647)).
+- **April 2026** — MinIO archived its public repository and removed community version documentation from its website.
+
+These changes made MinIO no longer viable for self-hosted homelab environments. The S3 backend has been migrated to **RustFS**, a high-performance, S3-compatible object storage system written in Rust, fully open-source and designed for low resource consumption.
+
+MinIO has been deprecated and this documentation is not updated anymore.
+
+See the replacement solution documentation: ["S3 Backup Backend (RustFS)"](/docs/rustfs/).
+
+{{site.data.alerts.end}}
 
 Minio can be deployed as a Kubernetes service or as stand-alone in bare-metal environment. Since I want to use Minio Server for backing-up/restoring the cluster itself, I will go with a bare-metal installation, considering Minio as an external service in Kubernetes.
 
