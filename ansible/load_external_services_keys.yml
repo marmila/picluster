@@ -9,6 +9,7 @@
     vault_host: "{{ groups['vault'][0] }}"
     ionos_credentials_file: "~/.secrets/ionos-credentials.ini"
     github_pat_file: "~/.secrets/github-pat.ini"
+    threatmap_credentials_file: "~/.secrets/threatmap-credentials.ini"
     vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
 
   tasks:
@@ -26,8 +27,8 @@
           • S3 Prometheus metrics token (from filesystem)
           • HTTP Basic Auth credentials
           • ThreatMap credentials:
-              - Shodan, AbuseIPDB, OTX API keys → prompted if not in Vault
-              - MaxMind license key and account ID → prompted if not in Vault
+              - Shodan, AbuseIPDB, OTX API keys → read from ~/.secrets/threatmap-credentials.ini
+              - MaxMind license key and account ID → read from ~/.secrets/threatmap-credentials.ini
               - MongoDB and Kafka passwords → auto-generated if not in Vault
           • General Ansible variables
 
