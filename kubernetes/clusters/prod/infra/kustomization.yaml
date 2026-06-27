@@ -27,9 +27,5 @@ resources:
   - tempo-app.yaml
   - vault-app.yaml
   - velero-app.yaml
- # - apexforge-db.yaml
- # - apexforge-app.yaml
   - kube-vip-app.yaml
-  - threatmap-kafka.yaml
-  - threatmap-app.yaml
 
