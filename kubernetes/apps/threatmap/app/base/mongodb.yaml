@@ -36,10 +36,10 @@ spec:
               resources:
                 limits:
                   cpu: "500m"
-                  memory: 512Mi
+                  memory: 2Gi
                 requests:
                   cpu: 100m
-                  memory: 256Mi
+                  memory: 1Gi
       volumeClaimTemplates:
         - metadata:
             name: data-volume
