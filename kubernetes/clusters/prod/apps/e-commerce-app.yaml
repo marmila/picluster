@@ -96,30 +96,51 @@ spec:
 #       - kind: ConfigMap
 #         name: cluster-settings
 
-# ---
-# apiVersion: kustomize.toolkit.fluxcd.io/v1
-# kind: Kustomization
-# metadata:
-#   name: e-commerce-app
-#   namespace: flux-system
-# spec:
-#   interval: 30m
-#   timeout: 15m
-#   targetNamespace: e-commerce
-#   sourceRef:
-#     kind: GitRepository
-#     name: flux-system
-#   dependsOn:
-#     - name: e-commerce-common
-#     - name: e-commerce-keycloak
-#     - name: e-commerce-kafka
-#     - name: e-commerce-databases
-#     - name: envoy-gateway-config
-#     - name: opentelemetry-collector-app
-#   path: ./kubernetes/apps/e-commerce/app/overlays/prod
-#   prune: true
-#   wait: true
-#   postBuild:
-#     substituteFrom:
-#       - kind: ConfigMap
-#         name: cluster-settings
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: e-commerce-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  timeout: 15m
+  targetNamespace: e-commerce
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: e-commerce-common
+    - name: e-commerce-keycloak
+    - name: e-commerce-kafka
+    - name: e-commerce-databases
+    - name: envoy-gateway-config
+    - name: opentelemetry-collector-app
+  path: ./kubernetes/apps/e-commerce/app/overlays/prod
+  prune: true
+  wait: true
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: e-commerce-monitoring
+  namespace: flux-system
+spec:
+  interval: 30m
+  timeout: 5m
+  targetNamespace: e-commerce
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: grafana-operator-app
+    - name: opentelemetry-collector-app
+    - name: e-commerce-common
+  path: ./kubernetes/apps/e-commerce/config/monitoring
+  prune: true
+  wait: true
