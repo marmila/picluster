@@ -34,3 +34,8 @@
 .vscode/
 .idea/
 .claude/
+
+# Ansible runner runtime data (secrets, certs, kubeconfig, cache)
+/ansible-runner/runner/
+/ansible-runner/certbot/
+/ansible-runner/.env
