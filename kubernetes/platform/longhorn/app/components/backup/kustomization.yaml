@@ -4,7 +4,6 @@ kind: Component
 resources:
   - minio-externalsecret.yaml
   - volume-snapshot-class.yaml
-  - recurring-jobs.yaml
 
 # patch values.yaml
 configMapGenerator:
