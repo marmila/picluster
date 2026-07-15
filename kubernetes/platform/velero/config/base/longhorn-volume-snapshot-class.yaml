@@ -6,6 +6,6 @@ metadata:
   labels:
     velero.io/csi-volumesnapshot-class: "true"
 driver: driver.longhorn.io
-deletionPolicy: Retain
+deletionPolicy: Delete
 parameters:
   type: bak
