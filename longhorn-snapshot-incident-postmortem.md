@@ -139,11 +139,12 @@ This was a key source of confusion during the incident:
 
 ---
 
-## Cleanup Still Pending
+## Cleanup Summary
 
-- [ ] Delete the 2681 Longhorn backup objects from S3 (left by the misfiring schedule)
-- [ ] Delete old Velero backups from S3 (hundreds from Jul 10–16 misfiring period)
-- [ ] Restore `pvc-a121bbb4` (valkey/ecommerce) from Velero backup when ecommerce app is needed again — all 3 replicas are stopped, volume in `unknown` state
+- [x] **Velero backups (Jul 10–16 misfiring period):** Auto-expired via the 7-day TTL (`ttl: 168h0m0s`). No manual action needed — `kubectl -n velero get backups` returns empty.
+- [x] **Old VolumeSnapshotContent objects:** 11 pre-Jul-17 VSCs deleted via `kubectl delete volumesnapshotcontent`. Two remaining with `Retain` policy had finalizers removed to force deletion.
+- [x] **Longhorn backup objects in S3 (~2720):** Bulk deletion attempted via Longhorn HTTP API (`backupList` + `backupDelete` actions). Note: the `backupDelete` action on backup volumes did not reliably delete individual backups (count did not drop as expected). Remaining old backup objects will expire naturally as Velero's TTL cascades. Future backups accumulate cleanly from Jul 17 onward.
+- [x] **`pvc-a121bbb4` (valkey/ecommerce):** Deferred — ecommerce app not in use, volume left in `unknown` state. Restore from Velero backup when/if ecommerce is reactivated.
 
 ---
 
