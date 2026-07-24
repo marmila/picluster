@@ -79,6 +79,20 @@ ingester:
           key: S3_SECRET_ACCESS_KEY
 # Configure compactor
 compactor:
+  # Startup (ring stability wait + initial blocklist poll) can take >90s under load,
+  # which exceeds the chart default liveness budget (60s delay + 3*10s) and causes
+  # the kubelet to kill the pod mid-startup. Same failure signature as fluent-bit's
+  # rpi restarts (see incident-fluent-bit-rpi-restarts.md) — relax, don't mask.
+  livenessProbe:
+    httpGet:
+      path: /ready
+      port: http-metrics
+      scheme: HTTP
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 18
   # Enable environment variables in config file
   # https://grafana.com/docs/tempo/latest/configuration/#use-environment-variables-in-the-configuration
   extraArgs:
