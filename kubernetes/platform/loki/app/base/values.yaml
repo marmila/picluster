@@ -65,6 +65,16 @@ loki:
 write:
   # Number of replicas for the write
   replicas: 2
+  # Chart default (512Mi) OOMKilled continuously for 11h+ (91 restarts) under this
+  # cluster's real log volume, not just a post-reboot backlog spike - memory sat at
+  # ~89% of the limit right before every kill. Raising the ceiling, not band-aiding.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 1Gi
   topologySpreadConstraints:
     - maxSkew: 1
       topologyKey: kubernetes.io/hostname
