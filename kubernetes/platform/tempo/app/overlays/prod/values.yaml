@@ -16,13 +16,15 @@ ingester:
       memory: 768Mi
 
 compactor:
+  # 512Mi/200m was sized for steady-state; the first compaction pass after a long
+  # crash-loop backlog (67971 objects / 2.6GB, never compacted) needs real headroom.
   resources:
     requests:
-      cpu: 25m
-      memory: 128Mi
+      cpu: 50m
+      memory: 256Mi
     limits:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 500m
+      memory: 1Gi
 
 distributor:
   resources:

@@ -16,7 +16,7 @@ spec:
   # Default 5m wait is too tight for tempo-compactor's real startup cost (60s ring
   # stability wait + blocklist poll) under load; without this the upgrade times out
   # before the pod ever proves healthy, triggering rollback remediation instead.
-  timeout: 10m
+  timeout: 20m
   chart:
     spec:
       chart: tempo-distributed
@@ -41,6 +41,12 @@ spec:
   # compactor.livenessProbe is not honored by this chart version as a values override
   # (confirmed: Deployment stayed on rollout revision 1 across every Helm upgrade
   # attempt with that key set). Patch the rendered manifest directly instead.
+  #
+  # failureThreshold: 90 (60s delay + 90*10s = 960s budget) - the compactor's initial
+  # blocklist poll measured at 294s alone (67971 objects / 2.6GB backlog, accumulated
+  # while it was crash-looping and never completing a compaction pass), before any
+  # actual compaction work. Once it completes one pass the backlog should shrink and
+  # steady-state polls return to ~46s; this budget covers the one-time catch-up.
   postRenderers:
     - kustomize:
         patches:
@@ -50,4 +56,4 @@ spec:
             patch: |
               - op: replace
                 path: /spec/template/spec/containers/0/livenessProbe/failureThreshold
-                value: 18
+                value: 90
