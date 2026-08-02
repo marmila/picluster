@@ -38,3 +38,16 @@ spec:
   - kind: ConfigMap
     name: tempo-helm-values
     valuesKey: base-values.yaml
+  # compactor.livenessProbe is not honored by this chart version as a values override
+  # (confirmed: Deployment stayed on rollout revision 1 across every Helm upgrade
+  # attempt with that key set). Patch the rendered manifest directly instead.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: tempo-compactor
+            patch: |
+              - op: replace
+                path: /spec/template/spec/containers/0/livenessProbe/failureThreshold
+                value: 18
