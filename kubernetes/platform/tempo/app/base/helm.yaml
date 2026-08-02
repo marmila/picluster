@@ -13,6 +13,10 @@ metadata:
   name: tempo
 spec:
   interval: 30m
+  # Default 5m wait is too tight for tempo-compactor's real startup cost (60s ring
+  # stability wait + blocklist poll) under load; without this the upgrade times out
+  # before the pod ever proves healthy, triggering rollback remediation instead.
+  timeout: 10m
   chart:
     spec:
       chart: tempo-distributed
