@@ -1,11 +1,11 @@
 FROM alpine/kubectl:1.36.2 AS kubectl
 
-FROM alpine/helm:4.2.2 AS helm
+FROM alpine/helm:4.2.3 AS helm
 
 FROM alpine:3.24 AS tofu
-COPY --from=ghcr.io/opentofu/opentofu:1.12.3 /usr/local/bin/tofu /usr/local/bin/tofu
+COPY --from=ghcr.io/opentofu/opentofu:1.12.4 /usr/local/bin/tofu /usr/local/bin/tofu
 
-FROM ghcr.io/astral-sh/uv:0.11.26 AS uv
+FROM ghcr.io/astral-sh/uv:0.11.29 AS uv
 
 
 FROM python:3.14-slim
@@ -61,7 +61,7 @@ RUN uv sync --frozen --no-dev
 # Install ansible roles/collections dependencies
 RUN set -eux; \
         for attempt in 1 2 3; do \
-            uv run ansible-galaxy role install $ANSIBLE_GALAXY_CLI_ROLE_OPTS -r requirements.yml --roles-path "/home/runner/.ansible/roles" --timeout 600 && break; \
+            uv run ansible-galaxy role install $ANSIBLE_GALAXY_CLI_ROLE_OPTS --force -r requirements.yml --roles-path "/home/runner/.ansible/roles" --timeout 600 && break; \
             if [ "$attempt" -eq 3 ]; then exit 1; fi; \
             sleep 10; \
         done
