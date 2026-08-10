@@ -315,6 +315,7 @@
       ansible.builtin.command: "jq -r '.root_token' /etc/vault/unseal.json"
       register: vault_root_token_cmd
       changed_when: false
+      no_log: true
 
     - name: Ensure .secrets directory exists for ansible user
       ansible.builtin.file:
