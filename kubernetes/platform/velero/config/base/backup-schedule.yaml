@@ -15,4 +15,4 @@ spec:
       labels:
         type: 'full'
         schedule: 'daily'
-    ttl: 168h0m0s
+    ttl: 72h0m0s
