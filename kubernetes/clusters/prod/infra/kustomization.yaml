@@ -21,6 +21,7 @@ resources:
   - kube-prometheus-stack-app.yaml
   - loki-app.yaml
   - longhorn-app.yaml
+  - longhorn-config.yaml
   - metrics-server-app.yaml
   - otel-collector-app.yaml
   - system-upgrade-app.yaml
