@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-snapshot-cleanup
+  namespace: longhorn-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-snapshot-cleanup
+  namespace: longhorn-system
+spec:
+  # Run at 3:30am daily — after the Velero backup window at 2am, giving
+  # Velero time to complete before we purge old engine snapshots.
+  schedule: "30 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: longhorn-snapshot-cleanup
+          restartPolicy: OnFailure
+          containers:
+          - name: cleanup
+            image: python:3.11-slim
+            env:
+            - name: LONGHORN_URL
+              value: "http://longhorn-backend.longhorn-system.svc.cluster.local:9500/v1"
+            - name: RETAIN_DAYS
+              value: "3"
+            command:
+            - python3
+            - -u
+            - -c
+            - |
+              import urllib.request, json, os, sys
+              from datetime import datetime, timezone, timedelta
+
+              BASE = os.environ['LONGHORN_URL']
+              retain_days = int(os.environ.get('RETAIN_DAYS', '3'))
+              cutoff = (datetime.now(timezone.utc) - timedelta(days=retain_days)).strftime('%Y-%m-%d')
+              print(f"Longhorn snapshot cleanup — purging older than {cutoff} (retain {retain_days} days)")
+
+              def api(url, data=None, timeout=30):
+                  req = urllib.request.Request(url,
+                      data=json.dumps(data).encode() if data is not None else None,
+                      headers={'Content-Type': 'application/json'} if data is not None else {},
+                      method='POST' if data is not None else 'GET')
+                  try:
+                      with urllib.request.urlopen(req, timeout=timeout) as r:
+                          return json.loads(r.read())
+                  except Exception as e:
+                      print(f"  warn [{url.split('?')[-1]}]: {e}")
+                      return {}
+
+              vols = api(f"{BASE}/volumes").get('data', [])
+              if not vols:
+                  print("ERROR: could not reach Longhorn API or no volumes found", file=sys.stderr)
+                  sys.exit(1)
+
+              print(f"Found {len(vols)} volumes")
+              deleted_total = 0
+
+              for vol in vols:
+                  vid = vol['id']
+                  snaps = api(f"{BASE}/volumes/{vid}?action=snapshotList", {}).get('data', [])
+                  to_del = [s for s in snaps
+                            if s['name'] != 'volume-head'
+                            and s.get('created', '')[:10] < cutoff]
+                  if not to_del:
+                      continue
+
+                  print(f"{vid[:40]}: {len(to_del)} snapshots to delete")
+                  for s in to_del:
+                      api(f"{BASE}/volumes/{vid}?action=snapshotDelete", {"name": s['name']})
+
+                  # Trigger purge with a short timeout — fire-and-forget.
+                  # The engine continues the purge even if the HTTP connection drops.
+                  api(f"{BASE}/volumes/{vid}?action=snapshotPurge", {}, timeout=5)
+                  deleted_total += len(to_del)
+
+              print(f"Done. Marked {deleted_total} snapshots for deletion across {len(vols)} volumes.")

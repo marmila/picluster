@@ -14,3 +14,8 @@ defaultSettings:
 
   # Avoid aggressive fast-rebuild behavior; prefer lower background churn.
   fastReplicaRebuildEnabled: false
+
+  # Threshold below which a node's disk is marked unschedulable.
+  # Lowered from the 25% default to 10% to tolerate the snapshot overhead
+  # from daily Velero backups (3 snapshots × replica count per node).
+  storageMinimalAvailablePercentage: 10

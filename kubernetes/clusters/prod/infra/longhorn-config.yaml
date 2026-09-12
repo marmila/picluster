@@ -1,0 +1,17 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: longhorn-config
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: longhorn-system
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: longhorn-app
+  path: ./kubernetes/platform/longhorn/config/base
+  prune: true
+  wait: true
