@@ -24,7 +24,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: cleanup
-            image: python:3.11-slim
+            image: python:3.14-slim
             env:
             - name: LONGHORN_URL
               value: "http://longhorn-backend.longhorn-system.svc.cluster.local:9500/v1"
