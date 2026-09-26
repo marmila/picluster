@@ -19,6 +19,9 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          labels:
+            longhorn.io/job-task: snapshot-cleanup
         spec:
           serviceAccountName: longhorn-snapshot-cleanup
           restartPolicy: OnFailure
