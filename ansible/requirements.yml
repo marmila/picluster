@@ -30,14 +30,14 @@ roles:
     version: v1.0.5
 collections:
   - name: community.general
-    version: 13.3.0
+    version: 13.4.0
   - name: kubernetes.core
-    version: 6.5.0
+    version: 6.6.0
   - name: community.hashi_vault
     version: 7.1.0
   - name: ansible.posix
     version: 2.2.2
   - name: community.crypto
-    version: 3.3.0
+    version: 3.4.0
   - name: prometheus.prometheus
     version: 0.30.1
