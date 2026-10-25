@@ -1,6 +1,12 @@
 ---
 - name: Update all packages and reboot if needed
-  hosts: all
+  # Only cluster nodes. pimaster is the ansible-runner container (local
+  # connection), which is updated by rebuilding its image, not with apt.
+  hosts: picluster
+  # One node at a time, so reboots never take down several masters/workers at once.
+  serial: 1
+  # Stop the whole run if a node fails, instead of moving on to the next one.
+  max_fail_percentage: 0
   become: true
   gather_facts: false
 
