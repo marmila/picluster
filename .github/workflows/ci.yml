@@ -5,6 +5,8 @@ name: CI
   push:
     branches:
       - master
+      # Renovate branch-automerge has no PR, so lint the branch itself
+      - 'renovate/**'
 
 jobs:
 

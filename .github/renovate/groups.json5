@@ -44,6 +44,49 @@
         "commitMessageTopic": "{{{groupName}}} group"
       },
       "separateMinorPatch": true
+    },
+    // Same tool pinned in several places (mise, Dockerfiles, helmfile, ansible):
+    // one PR per version bump instead of one per file.
+    {
+      "description": ["Cilium Group"],
+      "groupName": "Cilium",
+      "matchDepNames": ["cilium", "quay.io/cilium/charts/cilium"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Helm CLI Group"],
+      "groupName": "Helm CLI",
+      "matchDepNames": ["helm", "helm/helm", "alpine/helm"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Flux CLI Group"],
+      "groupName": "Flux CLI",
+      "matchDepNames": ["flux2", "fluxcd/flux2"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["kubectl Group"],
+      "groupName": "kubectl",
+      "matchDepNames": ["kubectl", "alpine/kubectl"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Velero CLI Group"],
+      "groupName": "Velero CLI",
+      "matchDepNames": ["velero", "vmware-tanzu/velero"],
+      // Exclude the velero Helm chart, which has its own version line
+      "matchDatasources": ["!helm"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Prometheus Operator CRDs Group"],
+      "groupName": "Prometheus Operator CRDs",
+      "matchDepNames": [
+        "prometheus-operator-crd",
+        "ghcr.io/prometheus-community/charts/prometheus-operator-crds"
+      ],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
     }
   ]
 }

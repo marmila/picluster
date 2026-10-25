@@ -1,0 +1,41 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Extended BEFORE groups.json5, so the named groups there take precedence
+  // over the weekly catch-all group below.
+  packageRules: [
+    {
+      description: "Bundle all non-major updates into one weekly PR",
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      // Blocked packages (see last rule) stay out of the bundle.
+      // Keep this list in sync with the "Blocked packages" rule.
+      matchDepNames: ["!ubuntu", "!elastic/elasticsearch"],
+      groupName: "all non-major",
+      group: {
+        commitMessageTopic: "{{{groupName}}} dependencies",
+      },
+      schedule: ["before 6am on monday"],
+      minimumReleaseAge: "3 days",
+    },
+    {
+      description: "Automerge workstation tools (mise) and GitHub Actions",
+      matchManagers: ["mise", "github-actions"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      groupName: "tooling",
+      automerge: true,
+      automergeType: "branch",
+    },
+    {
+      description: "Automerge Grafana dashboard revisions",
+      matchDatasources: ["custom.grafana-dashboards"],
+      automerge: true,
+      automergeType: "branch",
+    },
+    {
+      description: "Blocked packages: own PRs, never grouped or automerged",
+      // Add a package here (and to the negated list above) to block it.
+      matchDepNames: ["ubuntu", "elastic/elasticsearch"],
+      automerge: false,
+      addLabels: ["blocked"],
+    },
+  ],
+}
