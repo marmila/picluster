@@ -1,1 +1,12 @@
 # kube-prometheus-stack helm values (prod overlay)
+prometheus:
+  prometheusSpec:
+    ## Prod runs ~750k active series. Steady state fits in ~1.7Gi, but WAL replay
+    ## after a restart needs noticeably more; 1800Mi caused an OOM crash loop
+    ## after node reboots (2026-10-25). Keep ~2x headroom over steady state.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 2Gi
+      limits:
+        memory: 4Gi
