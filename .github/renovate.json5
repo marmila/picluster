@@ -10,6 +10,8 @@
     'github>marmila/picluster//.github/renovate/labels.json5',
   ],
   dependencyDashboardTitle: 'Renovate Dashboard 🤖',
+  // Grouping keeps the PR count low; the default cap of 10 was blocking new PRs
+  prConcurrentLimit: 20,
   flux: {
     managerFilePatterns: [
       '/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/',

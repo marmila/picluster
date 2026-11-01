@@ -87,6 +87,46 @@
         "ghcr.io/prometheus-community/charts/prometheus-operator-crds"
       ],
       "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    // Critical infrastructure: kept out of the weekly "all non-major" bundle
+    // so each one is upgraded (and can be rolled back) on its own.
+    {
+      "description": ["k3s: merging upgrades Kubernetes on every node via system-upgrade-controller"],
+      "groupName": "k3s",
+      "matchDepNames": ["k3s-io/k3s"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Longhorn Group"],
+      "groupName": "Longhorn",
+      "matchDepNames": ["longhorn", "longhorn/longhorn"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Istio Group (release version)"],
+      "groupName": "Istio",
+      "matchDepNames": ["istio/istio"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Istio Group (Helm charts: base, cni, istiod, ztunnel)"],
+      "groupName": "Istio",
+      // Chart names are generic, so only match them inside the istio app
+      "matchDepNames": ["base", "cni", "istiod", "ztunnel"],
+      "matchFileNames": ["kubernetes/platform/istio/**"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["CloudNativePG Group"],
+      "groupName": "CloudNativePG",
+      "matchDepNames": ["cloudnative-pg"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
+    },
+    {
+      "description": ["Vault Group"],
+      "groupName": "Vault",
+      "matchDepNames": ["vault", "hashicorp/vault"],
+      "group": { "commitMessageTopic": "{{{groupName}}} group" }
     }
   ]
 }

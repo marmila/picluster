@@ -37,5 +37,12 @@
       automerge: false,
       addLabels: ["blocked"],
     },
+    {
+      description: "mongo client image (mongosh) must stay on the MongoDB server line",
+      // Server version is set in kubernetes/apps/e-commerce/config/databases/base/mongodb-community.yaml
+      // (8.0.x, not tracked by Renovate). Raise this cap when the server is upgraded.
+      matchDepNames: ["mongo"],
+      allowedVersions: "<8.1",
+    },
   ],
 }
