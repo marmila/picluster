@@ -43,6 +43,8 @@ Times are UTC. Entries marked "inferred" were reconstructed from object ages and
 | 2026-10-07 21:07 | Last OOM kill of the primary (11 in total); none since the WAL queue drained |
 | 2026-10-08 morning | node1 at 18% used, 180G free. WAL queue empty, archiving healthy (379 archived). Primary volume at 7% |
 | 2026-10-08 morning | Velero schedule found un-paused: Flux had reverted the manual pause. Dangling Longhorn Backup and VolumeSnapshot objects cleaned up, including any created by the 02:00 run |
+| 2026-10-08 ~06:30 | Replica found unable to rejoin (`pg_rewind`: no common ancestor). Instance-manager on node-esp-2 restarted, old replica removed (volume retained), CNPG clones a new one |
+| 2026-10-08 | Database cluster healthy: 2 of 2 instances, replication streaming |
 
 ---
 
@@ -141,22 +143,21 @@ These are leftovers from the recovery itself, separate from prevention.
 
 1. **Dangling backup objects: done 2026-10-08.** No Longhorn Backup objects or VolumeSnapshots remain. One VolumeSnapshotContent is left over and should be checked.
 
-2. **Replica `postgres-keycloak-1` is still `0/1`** twelve hours after the primary recovered. Postgres is not running in the pod and the cause has not been found yet. The cluster reports "Instance Status Extraction Error: HTTP communication issue". The primary is healthy and its WAL queue is empty, so Keycloak runs without redundancy for now.
+2. **Replica rebuilt: done 2026-10-08.** The old `postgres-keycloak-1` was a former primary and could not rejoin: `pg_rewind` failed with `could not find common ancestor of the source and target cluster's timelines`. Its history had diverged from the current primary, which suggests both instances were promoted independently around the September shutdown; that was not confirmed. Its PVC and pod were deleted and CNPG cloned a fresh replica on a new 10Gi volume. The cluster is healthy with 2 of 2 instances and streaming replication.
 
-3. **Two Longhorn volumes are still `degraded`** (11 healthy). Which two, and why they have not rebuilt, is not yet known.
+   The old volume `pvc-07851821-1030-4b24-81d7-c49a4350ac50` was kept (`Retain`, now `Released`) in case the diverged copy holds writes the primary lacks. **Delete it once Keycloak is confirmed complete:** `kubectl delete pv pvc-07851821-1030-4b24-81d7-c49a4350ac50`, then remove the volume in Longhorn.
 
-4. **Restart the instance-manager on node-esp-2** once item 3 is clean. The replica's PVC is still 5Gi with a resize stuck in a retry loop. This briefly interrupts Elasticsearch, Kafka broker 0, Alertmanager and `postgres-keycloak-1`.
+3. **Longhorn volumes are not all healthy yet.** Nine hours after the node-esp-2 restart, 8 volumes are still `degraded` (5 healthy; 1 `unknown` is the kept, detached old volume). Small volumes should rebuild in minutes, so something is holding the rebuilds back. Not yet diagnosed.
 
-   ```bash
-   kubectl -n longhorn-system get pods -l longhorn.io/component=instance-manager -o wide | grep node-esp-2
-   kubectl -n longhorn-system delete pod <instance-manager-pod-on-node-esp-2>
-   ```
+4. **Instance-manager on node-esp-2 restarted: done 2026-10-08.** The stale host PID is cleared on both x86 nodes.
 
 5. **Velero is running again, unchanged.** The manual pause was reverted by Flux, because the schedule is a plain manifest in `kubernetes/platform/velero/config/base/backup-schedule.yaml`. It backs up every namespace, including the two 50G volumes, every night at 02:00. With 180G free there is room for roughly two full generations, so action 4 has to land in git within a day or two. A pause also has to be made in git (`spec.paused: true`) to stick.
 
 6. **Restore the ext4 reserve on node1:** `sudo tune2fs -m 5 /dev/sda2`.
 
-7. **Explain node1's disk usage outside the buckets.** The visible buckets total about 6G, but the disk shows 38G used; before the incident everything outside RustFS was about 14G. Check `/storage/rustfs/.rustfs.sys` and the largest directories on `/`.
+7. **node1 disk usage: explained.** Files on disk total 20G (`/var` 12G, `/storage` 4.6G, `/usr` 3.1G). The higher `df` figure was taken while deletions were still being processed.
+
+8. **Last night's Velero run (`full-20261008020015`) ended `PartiallyFailed` with 2 errors.** Not investigated. Its Longhorn backups were removed by the cleanup in item 1.
 
 ## Changes made during the incident
 
@@ -171,6 +172,8 @@ These are leftovers from the recovery itself, separate from prevention.
 - All Longhorn Backup objects for Prometheus and Elasticsearch, all `Error` and unfinished backups, and 17 not-ready Velero VolumeSnapshots deleted.
 - Velero schedule `full` paused; Flux reverted this within hours.
 - 2026-10-08: all remaining Longhorn Backup objects and Velero VolumeSnapshots deleted.
+- 2026-10-08: Longhorn instance-manager pod on node-esp-2 deleted and recreated.
+- 2026-10-08: PV `pvc-07851821-1030-4b24-81d7-c49a4350ac50` set to `Retain`; PVC and pod `postgres-keycloak-1` deleted; CNPG created a new replica on `pvc-39a2755f-7c88-4b42-93fc-99b0b395b766`.
 
 **node1**
 
