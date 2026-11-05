@@ -136,6 +136,7 @@ data:
             <buffer>
                 flush_interval 5s
                 retry_forever true
+                retry_max_interval 300
             </buffer>
         </match>
         # Route opencanary honeypot events to Kafka
@@ -153,6 +154,7 @@ data:
             <buffer>
                 flush_interval 5s
                 retry_forever true
+                retry_max_interval 300
             </buffer>
         </match>
         # Copy log stream to different outputs
