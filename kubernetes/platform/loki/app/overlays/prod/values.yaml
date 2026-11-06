@@ -7,7 +7,9 @@ loki:
 write:
   replicas: 1
   persistence:
-    size: 1Gi
+    # 1Gi filled to 98% after the 2026-11 crashes (2026-11-06). The PVC was
+    # expanded by hand; changing this needs the StatefulSet orphan-deleted.
+    size: 5Gi
   # 200m CPU / 1Gi was 100% CPU-throttled and OOMKilled (2026-11): never became
   # Ready, so no logs were ingested. Give it real CPU and memory headroom.
   resources:
