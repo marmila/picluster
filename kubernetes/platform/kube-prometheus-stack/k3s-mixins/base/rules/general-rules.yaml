@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: general
+  namespace: monitoring
+spec:
+  groups:
+  - name: general.rules
+    rules:
+    # Always firing. Alertmanager sends it to healthchecks.io every minute;
+    # if the pings stop, the alerting pipeline itself is broken.
+    - alert: Watchdog
+      annotations:
+        summary: Alerting pipeline heartbeat. Always firing on purpose.
+        description: This alert is always firing to show the whole alerting pipeline works. It is routed to a dead-man's switch (healthchecks.io), which alerts if it stops arriving.
+      expr: vector(1)
+      labels:
+        severity: none

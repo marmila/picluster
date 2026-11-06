@@ -31,6 +31,7 @@ spec:
   dependsOn:
     - name: prometheus-operator-crds
     - name: longhorn-app
+    - name: external-secrets-config
   wait: true
   postBuild:
     substituteFrom:
