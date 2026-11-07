@@ -153,7 +153,7 @@ reloads without restarting OpenCode.
 <a id="alerts-and-the-sre-agent"></a>
 Alerts reach a phone through ntfy (see [Alerting overview](/docs/prometheus/#alerting-overview)). The agent is not started automatically by an alert: a person reads the alert and decides whether to hand it to the agent. That keeps a human in the loop for anything the agent would run against the live cluster.
 
-<pre class="mermaid">
+```mermaid
 sequenceDiagram
   participant P as Prometheus
   participant AM as Alertmanager
@@ -173,7 +173,7 @@ sequenceDiagram
   U->>A: approve the proposed change
   A->>K: change through Git and Flux, or a make target
   AM->>N: "Resolved"
-</pre>
+```
 
 How the pieces connect:
 
