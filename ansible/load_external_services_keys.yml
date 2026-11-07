@@ -10,6 +10,7 @@
     ionos_credentials_file: "~/.secrets/ionos-credentials.ini"
     github_pat_file: "~/.secrets/github-pat.ini"
     threatmap_credentials_file: "~/.secrets/threatmap-credentials.ini"
+    alertmanager_notifications_file: "~/.secrets/alertmanager-notifications.ini"
     vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
 
   tasks:
@@ -30,6 +31,7 @@
               - Shodan, AbuseIPDB, OTX API keys → read from ~/.secrets/threatmap-credentials.ini
               - MaxMind license key and account ID → read from ~/.secrets/threatmap-credentials.ini
               - MongoDB and Kafka passwords → auto-generated if not in Vault
+          • Alertmanager notification URLs (ntfy, healthchecks.io) → read from ~/.secrets/alertmanager-notifications.ini
           • General Ansible variables
 
     - name: Include picluster variables
@@ -93,3 +95,7 @@
     - name: Load ThreatMap credentials
       ansible.builtin.include_tasks:
         file: tasks/load_threatmap_credentials_into_vault.yml
+
+    - name: Load Alertmanager notification URLs
+      ansible.builtin.include_tasks:
+        file: tasks/load_alertmanager_notifications_into_vault.yml

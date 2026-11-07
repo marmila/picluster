@@ -1815,7 +1815,12 @@ Both URLs contain the secret part (the ntfy topic name and the healthchecks.io c
 4. The receivers read the URLs with `webhook_configs[].url_file`.
 
 {{site.data.alerts.important}}
-The Vault secret is created by hand, because the Vault Terraform module only generates random passwords. Automating it with Ansible is still to do. On a rebuild, create it again before Flux deploys kube-prometheus-stack:
+The Vault Terraform module only generates random passwords, so these URLs come from Ansible instead, like the IONOS and ThreatMap keys:
+
+1. `make secret-files` asks for both URLs and saves them to `~/.secrets/alertmanager-notifications.ini` (mode 0600).
+2. `make external-services` (Stage 5, `load_external_services_keys.yml`) writes them to Vault at `secret/alertmanager/notifications`.
+
+Keep a backup of `~/.secrets`: a rebuild reads the URLs from that file. To change a URL later, edit the file and run `make load-external-services-keys`, or write it to Vault directly:
 
 ```shell
 vault kv put secret/alertmanager/notifications \
