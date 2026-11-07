@@ -237,7 +237,7 @@ k3s cannot be downgraded: fix forward.
 
 ### 7.2 After a node reboot or k3s-agent restart
 
-Longhorn's instance-manager on a node keeps a host process ID from when it started. If `k3s-agent` or `iscsid` restarts **without a reboot** (k3s upgrade, manual restart), that PID goes stale. **Volume expansion then fails silently** on that node: the data grows but the filesystem doesn't, and the error is only in the instance-manager log. This blocked the Keycloak DB recovery in October 2026 (see `incident-2026-10-06-keycloak-db-outage.md`).
+Longhorn's instance-manager on a node keeps a host process ID from when it started. If `k3s-agent` or `iscsid` restarts **without a reboot** (k3s upgrade, manual restart), that PID goes stale. **Volume expansion then fails silently** on that node: the data grows but the filesystem doesn't, and the error is only in the instance-manager log. This blocked the Keycloak DB recovery in October 2026 (see `postmortems/incident-2026-10-06-keycloak-db-outage.md`).
 
 Check the age of the instance-managers:
 
@@ -342,6 +342,6 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 ## 11. Related documents
 
 - `runbook-node-os-reboot.md`: safe reboot of nodes (etcd quorum, Longhorn)
-- `incident-2026-10-06-keycloak-db-outage.md`: Longhorn stale PID, CNPG PVC resize
-- `incident-2026-09-27-cowrie-pipeline-outage.md`
+- `postmortems/incident-2026-10-06-keycloak-db-outage.md`: Longhorn stale PID, CNPG PVC resize
+- `postmortems/incident-2026-09-27-cowrie-pipeline-outage.md`
 - `docs/_docs/monitoring.md`: "Alert notifications" (ntfy and healthchecks.io setup)
