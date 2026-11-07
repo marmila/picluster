@@ -2,7 +2,7 @@
 title: Monitoring (Prometheus)
 permalink: /docs/prometheus/
 description: How to deploy kubernetes cluster monitoring solution based on Prometheus. Installation based on Prometheus Operator using kube-prometheus-stack project.
-last_modified_at: "27-03-2026"
+last_modified_at: "07-11-2026"
 ---
 
 Prometheus stack installation for kubernetes using Prometheus Operator can be streamlined using [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus) project maintained by the community.
@@ -1774,6 +1774,106 @@ kube-prometheus-stack-workload-total                      1      8m15s
 
 ```
 ## Additional Configuration
+
+### Alert notifications (ntfy and healthchecks.io)
+
+By default the kube-prometheus-stack chart ships an Alertmanager configuration that routes every alert, including `Watchdog`, to a `null` receiver. Alerts show up in the Alertmanager UI, but nobody is notified.
+
+The `alertmanager-notifications` component (prod overlay only) sends alerts to two places:
+
+| Alerts | Receiver | Purpose |
+|---|---|---|
+| `severity=warning` and `severity=critical` | [ntfy](https://ntfy.sh) webhook | Push notification to the phone, plus a second one when the alert resolves |
+| `Watchdog` | [healthchecks.io](https://healthchecks.io) webhook, every minute | Dead-man's switch. If the pings stop, healthchecks.io raises the alarm (Prometheus, Alertmanager or the network is down) |
+| `severity=info` | `null` | Dropped |
+
+A `critical` alert hides the `warning` alert with the same `alertname` and `namespace`.
+
+#### Files
+
+```
+kubernetes/platform/kube-prometheus-stack/
+├── app/components/alertmanager-notifications/
+│   ├── kustomization.yaml
+│   ├── helm-patch.yaml                       # adds the values below to the HelmRelease valuesFrom
+│   ├── values.yaml                           # alertmanager.config: routes and receivers
+│   └── notifications-externalsecret.yaml     # Vault -> Secret alertmanager-notifications
+└── k3s-mixins/base/rules/
+    ├── general-rules.yaml                    # Watchdog alert
+    └── kubeletdown-fix-patch.yaml            # KubeletDown expression fix (see below)
+```
+
+The component is listed in `app/overlays/prod/kustomization.yaml`. The `kube-prometheus-stack-app` Flux Kustomization depends on `external-secrets-config`, so the Secret exists before Alertmanager starts.
+
+#### Webhook URLs are secrets
+
+Both URLs contain the secret part (the ntfy topic name and the healthchecks.io check UUID), so they are not stored in git. They live in Vault and reach Alertmanager like this:
+
+1. Vault KV `secret/alertmanager/notifications`, keys `ntfy_url` and `healthchecks_url`.
+2. `ExternalSecret` `alertmanager-notifications-externalsecret` creates Secret `alertmanager-notifications` in `kube-prom-stack`.
+3. `alertmanager.alertmanagerSpec.secrets` mounts it at `/etc/alertmanager/secrets/alertmanager-notifications/`.
+4. The receivers read the URLs with `webhook_configs[].url_file`.
+
+{{site.data.alerts.important}}
+The Vault secret is created by hand, because the Vault Terraform module only generates random passwords. Automating it with Ansible is still to do. On a rebuild, create it again before Flux deploys kube-prometheus-stack:
+
+```shell
+vault kv put secret/alertmanager/notifications \
+  ntfy_url='https://ntfy.sh/<topic>?template=alertmanager' \
+  healthchecks_url='https://hc-ping.com/<check-uuid>'
+```
+{{site.data.alerts.end}}
+
+- **ntfy:** use a long random topic name. On ntfy.sh anyone who knows the name can read the topic. `?template=alertmanager` makes ntfy format the Alertmanager payload as a readable message.
+- **healthchecks.io:** create a check with a 1 minute period and about 5 minutes grace time. Add a notification integration (for example ntfy on the same topic, or email), or nobody hears when the pings stop.
+
+#### Watchdog rule
+
+The `k3s` component disables the chart's default rules (`defaultRules.create: false`) and the rules are generated from the mixins in `k3s-mixins/` instead. The mixins do not include `Watchdog`, so it is defined in `k3s-mixins/base/rules/general-rules.yaml`. It is always firing (`expr: vector(1)`) on purpose.
+
+#### KubeletDown fix
+
+The kubernetes-mixin `KubeletDown` rule compares `kube_node_info` and `up{job="kubelet"}` grouped by the `cluster` label. In this cluster the `cluster` label is added by the Prometheus scrape class with `metricRelabelings`, and Prometheus does not apply those to the synthetic `up` series. The rule therefore never matched, and `KubeletDown` was always firing.
+
+`kubeletdown-fix-patch.yaml` replaces the expression with:
+
+```
+absent(up{job="kubelet", metrics_path="/metrics"} == 1)
+```
+
+The patch starts with a JSON patch `test` op on the rule name. If regenerating the mixins (`make k3s-mixins`) moves the rule, the Kustomization fails to build instead of silently patching the wrong rule. Fix the index in the patch if that happens.
+
+#### Testing
+
+Send a test alert through the whole chain. It should arrive on ntfy within about 30 seconds, followed by a "resolved" message about 5 minutes later:
+
+```shell
+kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- \
+  amtool alert add TestAlert severity=warning namespace=test --alertmanager.url=http://localhost:9093
+```
+
+The healthchecks.io check should show a ping every minute.
+
+#### Troubleshooting
+
+```shell
+# Secret synced from Vault
+kubectl -n kube-prom-stack get externalsecret alertmanager-notifications-externalsecret
+kubectl -n kube-prom-stack get secret alertmanager-notifications -o jsonpath='{.data}' | jq -c 'keys'
+
+# Configuration Alertmanager actually runs (receivers and url_file paths)
+kubectl -n kube-prom-stack get secret alertmanager-kube-prometheus-stack-alertmanager-generated \
+  -o jsonpath='{.data.alertmanager\.yaml\.gz}' | base64 -d | gunzip
+
+# Notification errors
+kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager --since=1h | grep -iE 'level=(error|warn)'
+
+# Alerts currently firing and not silenced
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-alertmanager:http-web/proxy/api/v2/alerts?active=true&silenced=false&inhibited=false" \
+  | jq -r '.[] | "\(.labels.severity) \(.labels.alertname) \(.labels.namespace // "-")"' | sort | uniq -c
+```
+
+To mute a noisy alert for a while, create a silence in the Alertmanager UI (`https://alertmanager.${CLUSTER_DOMAIN}`) rather than changing the routing.
 
 ### Installing Grafana separately
 [Grafana helm chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana) by default is deployed as a sub-chart of the kube-prometheus-stack helm chart.
