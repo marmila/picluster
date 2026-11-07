@@ -1,0 +1,12 @@
+# KubeletDown from kubernetes-mixin compares kube_node_info and up{job="kubelet"}
+# grouped by "cluster". Our cluster label is added with metricRelabelings, which
+# Prometheus does not apply to the synthetic "up" series, so the alert fired
+# permanently. Fire only when no kubelet target is up, without using "cluster".
+# The "test" op makes the build fail loudly if a mixin regeneration moves the rule.
+- op: test
+  path: /spec/groups/6/rules/15/alert
+  value: KubeletDown
+- op: replace
+  path: /spec/groups/6/rules/15/expr
+  value: |
+    absent(up{job="kubelet", metrics_path="/metrics"} == 1)
