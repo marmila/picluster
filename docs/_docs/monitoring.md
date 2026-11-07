@@ -1779,7 +1779,7 @@ kube-prometheus-stack-workload-total                      1      8m15s
 
 How an alert gets from a metric to a person, and from there to a fix:
 
-<pre class="mermaid">
+```mermaid
 flowchart LR
   subgraph external["Outside the cluster"]
     vault["Vault :8200"]
@@ -1819,7 +1819,7 @@ flowchart LR
   phone -- "paste the alert" --> agent
   agent -- "reads firing alerts<br/>and metrics" --> am
   agent -- "follows" --> rb
-</pre>
+```
 
 - **Rules** live next to what they watch: `k3s-mixins` (Kubernetes, nodes, Prometheus), `general` (Watchdog), `certificates-external` (blackbox exporter), `cert-manager`, and the Flux rules in `flux-monitoring`.
 - **Routing:** `severity=warning|critical` goes to ntfy, `Watchdog` goes to healthchecks.io as a dead-man's switch, `severity=info` is dropped. See [Alert notifications](#alert-notifications-ntfy-and-healthchecksio).
