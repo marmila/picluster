@@ -2994,6 +2994,7 @@ fluentd.conf file must include configuration of this plugin. It provides '/metri
     Original script from from Adin's post has be updated to
     -   Yaml escape logic should be applied only to Prometheus Rules yaml files and not Dashboards yaml files.
         See kube-prom-stack ci/cd code generating prometheus-rules from mixins: [sync_prometheus_rules.py#L259-L260](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/hack/sync_prometheus_rules.py#L259-L260)
+    -   **Removed in this repository (2026-11):** the escaping is only correct when the rules are rendered by Helm. Here the generated rules are applied by Flux/Kustomize, so the escaped `` {% raw %}{{`{{`}}{% endraw %} `` reached Alertmanager as literal text and alert messages showed `{% raw %}{{ $labels.pod }}{% endraw %}` instead of the real values. The current `generate.sh` no longer escapes; the script below shows the original version.
 
     {{site.data.alerts.end}}
 
