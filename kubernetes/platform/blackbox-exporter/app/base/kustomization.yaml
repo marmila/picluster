@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helm.yaml
+  - certificate-rules.yaml
+
+configMapGenerator:
+  - name: prometheus-blackbox-exporter-helm-values
+    files:
+      - base-values.yaml=values.yaml
+configurations:
+  - kustomizeconfig.yaml
