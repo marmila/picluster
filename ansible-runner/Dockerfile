@@ -23,9 +23,9 @@ RUN apt-get update -qq && \
 COPY --from=uv /uv /uvx /usr/local/bin/
 
 WORKDIR /build
-COPY ansible/pyproject.toml /build/pyproject.toml
-COPY ansible/uv.lock /build/uv.lock
-COPY ansible/requirements.yml /build/requirements.yml
+COPY --chmod=644 ansible/pyproject.toml /build/pyproject.toml
+COPY --chmod=644 ansible/uv.lock /build/uv.lock
+COPY --chmod=644 ansible/requirements.yml /build/requirements.yml
 
 # Install OpenTofu from dedicated image
 COPY --from=tofu /usr/local/bin/tofu /usr/local/bin/tofu
