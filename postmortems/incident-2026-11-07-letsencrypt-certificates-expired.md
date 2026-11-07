@@ -120,7 +120,7 @@ The prod `loki-write` volume had been raised from 1Gi to 5Gi the day before (`f5
 
 ## Open questions
 
-- Did Velero and Longhorn backups to RustFS fail between 08:57 and ~12:30? Not checked. The next scheduled runs should be confirmed as `Completed`.
+- ~~Did Velero and Longhorn backups to RustFS fail between 08:57 and ~12:30?~~ **Answered: no.** Both run nightly at 02:00 and had finished before the certificates expired. Velero `full-20261107020057` completed at 03:11 with no errors or warnings, and the Longhorn volume backups completed between 02:03 and 03:06. Note that `kubectl get backups` resolves to `backups.longhorn.io`; use `kubectl -n velero get backups.velero.io` for Velero.
 - Did anything else, such as Loki or Tempo object storage, drop data while RustFS was unreachable? Loki-write buffers in its WAL, so probably not, but it was not verified.
 
 ---
