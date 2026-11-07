@@ -2,6 +2,31 @@
 
 Symptom-to-runbook index for triage. Canonical catalog: [`runbooks/README.md`](../../../runbooks/README.md).
 
+## Alerts
+
+<a id="alerts"></a>
+Alert name to runbook. Alerts defined in this repository also carry the runbook ID in a `runbook`
+annotation and at the end of their description, so it appears in the ntfy message.
+
+| Alert | Runbook | Notes |
+| --- | --- | --- |
+| `TLSCertificateExpiringSoon`, `TLSCertificateExpiringCritical`, `TLSCertificateExpired` | `NET-009` | External Let's Encrypt certificates (Vault, RustFS, gateway). Label `target` names the endpoint |
+| `ExternalEndpointDown` | `VAULT-001` (target `vault`), `MINIO-001` (`object-store`), `NET-009` | Check the certificate first: an expired one also fails the probe |
+| `CertManagerCertificateNotReady` | `NET-005` | In-cluster certificate issuance failing |
+| `CertManagerCertificateRenewalOverdue`, `CertManagerCertificateExpiringCritical` | `NET-007` | cert-manager missed its renewal time |
+| `Watchdog` missing, healthchecks.io alarm, no ntfy messages | `OBS-002` | `Watchdog` firing is normal |
+| `FluxSourceNotReady` | `GITOPS-001` | |
+| `FluxKustomizationNotReady` | `GITOPS-002` | If many are not ready, look for the one they depend on (often `external-secrets-config` → Vault) |
+| `FluxHelmReleaseNotReady` | `GITOPS-003` | |
+| `FluxResourceSuspended` | `GITOPS-004` | |
+| `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
+| `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
+| `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
+| `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |
+| `KubePodCrashLooping`, `KubePodNotReady`, `KubeDeploymentReplicasMismatch`, `KubeStatefulSetReplicasMismatch` | sweep step 6, then `GITOPS-003` if the workload belongs to a HelmRelease | |
+| `KubeVersionMismatch` | none yet | Usually a stuck k3s upgrade plan: `kubectl -n system-upgrade get plans`; a `JobFailed` plan is retried only after `kubectl -n system-upgrade rollout restart deploy/system-upgrade-controller` |
+| `KubeJobFailed` | none yet | Old failed jobs keep firing until deleted |
+
 ## Cluster-wide
 
 ### Bootstrap and recovery — `runbooks/cluster/bootstrap-recovery.md`
@@ -110,6 +135,7 @@ Symptom-to-runbook index for triage. Canonical catalog: [`runbooks/README.md`](.
 | ID | Use when |
 | --- | --- |
 | `OBS-001` | Prometheus target missing or scrape failing |
+| `OBS-002` | Alert notifications not arriving (ntfy, healthchecks.io) |
 | `OBS-004` | Loki ingestion or retention problems |
 
 ### Service mesh and ingress — `runbooks/components/networking-ingress.md`
@@ -121,6 +147,7 @@ Symptom-to-runbook index for triage. Canonical catalog: [`runbooks/README.md`](.
 | `NET-006` | Inspecting served certificates and chain |
 | `NET-007` | Renewal monitoring and forced reissuance |
 | `NET-008` | TLS secret does not match the served certificate |
+| `NET-009` | Renewing the external Let's Encrypt certificates (Vault, RustFS, gateway) |
 
 ## Backlog (no runbook yet)
 
@@ -128,5 +155,4 @@ These IDs are catalogued but not written. If a task falls into one, use the clos
 flag the gap:
 
 `CLUSTER-003`, `CLUSTER-013`, `SEC-004`, `SEC-005`, `CHANGE-003`, `CHANGE-004`, `AUDIT-001`,
-`OPS-003`, `OPS-004`, `MINIO-002` … `MINIO-005`, `ELASTIC-002` … `ELASTIC-005`, `OBS-002`,
-`OBS-003`, `OBS-005`, `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `PG-001`, `NET-001` … `NET-003`.
+`OPS-003`, `OPS-004`, `MINIO-002` … `MINIO-005`, `ELASTIC-002` … `ELASTIC-005`, `OBS-003`, `OBS-005`, `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `PG-001`, `NET-001` … `NET-003`.

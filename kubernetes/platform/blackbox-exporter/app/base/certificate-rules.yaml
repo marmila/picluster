@@ -22,7 +22,9 @@ spec:
         severity: warning
       annotations:
         summary: TLS certificate expires in less than 14 days.
-        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) expires in {{ $value | humanizeDuration }}. Renew it with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls).
+        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) expires in {{ $value | humanizeDuration }}. Renew it with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls). Runbook NET-009.
+        runbook: NET-009
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: TLSCertificateExpiringCritical
       expr: |
         (probe_ssl_earliest_cert_expiry - time()) < 3 * 86400
@@ -33,7 +35,9 @@ spec:
         severity: critical
       annotations:
         summary: TLS certificate expires in less than 3 days.
-        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) expires in {{ $value | humanizeDuration }}. Renew it now with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls).
+        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) expires in {{ $value | humanizeDuration }}. Renew it now with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls). Runbook NET-009.
+        runbook: NET-009
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: TLSCertificateExpired
       expr: |
         (probe_ssl_earliest_cert_expiry - time()) <= 0
@@ -42,7 +46,9 @@ spec:
         severity: critical
       annotations:
         summary: TLS certificate has expired.
-        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) has expired. Clients that verify certificates (External Secrets, CNPG backups, browsers) are failing. Renew it with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls).
+        description: The certificate of {{ $labels.target }} ({{ $labels.instance }}) has expired. Clients that verify certificates (External Secrets, CNPG backups, browsers) are failing. Renew it with the matching make target (deploy-vault, deploy-rustfs, openwrt-certbot-tls). Runbook NET-009.
+        runbook: NET-009
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: ExternalEndpointDown
       expr: |
         probe_success == 0
@@ -51,4 +57,6 @@ spec:
         severity: critical
       annotations:
         summary: External TLS endpoint is not reachable.
-        description: '{{ $labels.target }} ({{ $labels.instance }}) has not completed a TLS handshake for 5 minutes. Check the service on its host (systemctl status), the network, and DNS.'
+        description: '{{ $labels.target }} ({{ $labels.instance }}) has not completed a TLS handshake for 5 minutes. Check the service on its host (systemctl status), the network, and DNS. If the certificate has expired, use NET-009. Runbook {{ if eq $labels.target "vault" }}VAULT-001{{ else if eq $labels.target "object-store" }}MINIO-001{{ else }}NET-009{{ end }}.'
+        runbook: '{{ if eq $labels.target "vault" }}VAULT-001{{ else if eq $labels.target "object-store" }}MINIO-001{{ else }}NET-009{{ end }}'
+        runbook_url: '{{ if eq $labels.target "vault" }}https://github.com/marmila/picluster/blob/master/runbooks/components/vault.md#runbook-vault-001{{ else if eq $labels.target "object-store" }}https://github.com/marmila/picluster/blob/master/runbooks/components/s3-storage.md#runbook-minio-001{{ else }}https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009{{ end }}'

@@ -38,8 +38,8 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | Vault | [`components/vault.md`](components/vault.md) | `VAULT-001` … `VAULT-005` |
 | S3 Storage (RustFS) | [`components/s3-storage.md`](components/s3-storage.md) | `MINIO-001` (backlog: `MINIO-002` … `MINIO-005`) |
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
-| Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-004` (backlog: `OBS-002`, `OBS-003`, `OBS-005`) |
-| Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-008` (backlog: `NET-001` … `NET-003`) |
+| Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
+| Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-009` (backlog: `NET-001` … `NET-003`) |
 | Kafka and Data Services | — | backlog only: `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `PG-001` |
 
 ## Runbook Template
@@ -187,7 +187,7 @@ References:
 #### Monitoring and Tracing
 
 - [`OBS-001` Prometheus Target Missing Triage](components/observability.md#runbook-obs-001)
-- `OBS-002` Alertmanager Notification Failures
+- [`OBS-002` Alertmanager Notification Failures](components/observability.md#runbook-obs-002)
 - `OBS-003` Grafana Data Source and Auth Recovery
 - [`OBS-004` Loki Ingestion and Retention Issues](components/observability.md#runbook-obs-004)
 - `OBS-005` Tempo Tracing Pipeline Outage
@@ -209,3 +209,4 @@ References:
 - [`NET-006` TLS Endpoint Certificate Inspection and Chain Validation](components/networking-ingress.md#runbook-net-006)
 - [`NET-007` Certificate Renewal Monitoring and Forced Reissuance](components/networking-ingress.md#runbook-net-007)
 - [`NET-008` TLS Secret and Served Certificate Mismatch](components/networking-ingress.md#runbook-net-008)
+- [`NET-009` External Let's Encrypt Certificate Renewal (Vault, RustFS, Gateway)](components/networking-ingress.md#runbook-net-009)

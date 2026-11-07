@@ -263,3 +263,82 @@ Rollback:
 
 1. Restore the previous Secret reference if a manifest change pointed the endpoint at the wrong TLS Secret.
 2. If the Secret itself is wrong or stale, continue with `NET-007` for reissuance or `NET-005` for issuance failure triage.
+
+## NET-009 External Let's Encrypt Certificate Renewal (Vault, RustFS, Gateway)
+
+<a id="runbook-net-009"></a>
+Runbook ID: `NET-009`
+Owner: Platform Networking
+Severity: `Maintenance` (alert warning) or `SEV-1` (certificate expired)
+
+Objective: Renew the Let's Encrypt certificates of the services outside the cluster before they expire, or restore service after they have expired. These certificates are issued by certbot inside Ansible playbooks, not by cert-manager, and are **not renewed automatically**. They are valid for 90 days from the last playbook run.
+
+| Endpoint | Renew with | Used by |
+| --- | --- | --- |
+| `vault.${CLUSTER_DOMAIN}:8200` | `make deploy-vault` | External Secrets, Terraform, `vault` CLI |
+| `object-store.${CLUSTER_DOMAIN}:9091` | `make deploy-rustfs` | CNPG WAL archive/backups, Velero, Longhorn backups, Loki, Tempo |
+| `gateway.${CLUSTER_DOMAIN}:443` | `make openwrt-certbot-tls` | OpenWrt web UI only |
+
+Triggered by: `TLSCertificateExpiringSoon` (less than 14 days), `TLSCertificateExpiringCritical` (less than 3 days), `TLSCertificateExpired`, or `ExternalEndpointDown` when the cause is the certificate. The alert's `target` label names the endpoint.
+
+Preconditions:
+
+- Shell on the Ansible control node (pimaster) with the repository checked out and up to date (`git pull`).
+- Ansible runner available (`make ansible-runner-setup` done once).
+- `~/.secrets/ionos-credentials.ini` present (certbot uses the IONOS DNS-01 challenge).
+- For the gateway: SSH access from pimaster to host `gateway`.
+
+Procedure:
+
+1. Check which certificates need renewal (from any host):
+
+```bash
+for h in vault.homelab.marmilan.com:8200 object-store.homelab.marmilan.com:9091 gateway.homelab.marmilan.com:443; do
+  echo "== $h"
+  echo | openssl s_client -connect "$h" -servername "${h%:*}" 2>/dev/null | openssl x509 -noout -enddate
+done
+```
+
+   or in Prometheus: `(probe_ssl_earliest_cert_expiry - time()) / 86400` (days left per `target`).
+
+2. On pimaster, from the repository root, run the target for each endpoint that needs it. Each run waits about 5 minutes for DNS propagation; no output during that wait is normal.
+
+```bash
+make deploy-vault          # restarts Vault; the role unseals it again from /etc/vault/unseal.json
+make deploy-rustfs         # restarts RustFS; backups pause for a few seconds
+make openwrt-certbot-tls   # copies the certificate to the router and restarts uhttpd
+```
+
+3. If Vault was renewed after the certificate had expired, make External Secrets retry immediately (node2):
+
+```bash
+NOW=$(date +%s)
+kubectl annotate clustersecretstore vault-backend force-sync=$NOW --overwrite
+kubectl -n flux-system annotate kustomization --all reconcile.fluxcd.io/requestedAt=$NOW --overwrite
+```
+
+4. If RustFS was renewed after the certificate had expired, check that CNPG archiving resumed:
+
+```bash
+kubectl -n databases get cluster -o custom-columns=NAME:.metadata.name,ARCHIVING:'.status.conditions[?(@.type=="ContinuousArchiving")].status'
+```
+
+Verify:
+
+- Step 1 shows an expiry date about 90 days ahead for each renewed endpoint.
+- `vault status` on node1 shows `Sealed false`.
+- `kubectl get clustersecretstore vault-backend` is `Ready=True`; no Kustomization is blocked on `external-secrets-config`.
+- CNPG clusters show `ContinuousArchiving=True`.
+- The `TLSCertificate*` alert resolves (ntfy sends a "Resolved" message).
+
+Rollback:
+
+1. Renewal only replaces the certificate and key files and restarts the service; there is nothing to roll back.
+2. If Vault is sealed after the restart, unseal it with the keys in `/etc/vault/unseal.json` (see `VAULT-001`).
+3. If certbot fails, check the IONOS credentials and the DNS-01 challenge (same failure modes as `NET-005`), then rerun the target.
+
+References:
+
+- `ansible/deploy_vault.yml`, `ansible/deploy_rustfs.yml`, `ansible/generate_gateway_tls_certificate.yml`, `metal/openwrt/script/openwrt-deploy-tls.sh`
+- `kubernetes/platform/blackbox-exporter/` (probes and alert rules)
+- `postmortems/incident-2026-11-07-letsencrypt-certificates-expired.md`

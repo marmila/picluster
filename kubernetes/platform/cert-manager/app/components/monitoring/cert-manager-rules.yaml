@@ -23,7 +23,9 @@ spec:
         severity: warning
       annotations:
         summary: cert-manager certificate is not ready.
-        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} has not been ready for 15 minutes. Check with kubectl describe certificate -n {{ $labels.exported_namespace }} {{ $labels.name }}.
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} has not been ready for 15 minutes. Check with kubectl describe certificate -n {{ $labels.exported_namespace }} {{ $labels.name }}. Runbook NET-005.
+        runbook: NET-005
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-005
     - alert: CertManagerCertificateRenewalOverdue
       expr: |
         max by (exported_namespace, name) (time() - certmanager_certificate_renewal_timestamp_seconds) > 3600
@@ -32,7 +34,9 @@ spec:
         severity: warning
       annotations:
         summary: cert-manager did not renew a certificate on time.
-        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} should have been renewed {{ $value | humanizeDuration }} ago. Check the CertificateRequest and the issuer (kubectl get certificaterequest -n {{ $labels.exported_namespace }}).
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} should have been renewed {{ $value | humanizeDuration }} ago. Check the CertificateRequest and the issuer (kubectl get certificaterequest -n {{ $labels.exported_namespace }}). Runbook NET-007.
+        runbook: NET-007
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-007
     - alert: CertManagerCertificateExpiringCritical
       expr: |
         max by (exported_namespace, name) (certmanager_certificate_expiration_timestamp_seconds - time()) < 86400
@@ -41,4 +45,6 @@ spec:
         severity: critical
       annotations:
         summary: cert-manager certificate expires in less than 24 hours.
-        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }} and has not been renewed.
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }} and has not been renewed. Runbook NET-007.
+        runbook: NET-007
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-007
