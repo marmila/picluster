@@ -121,6 +121,7 @@
             - Bind9 DDNS: secret/bind9/ddns
             - HTTP Auth: secret/ingress/basic-auth
             - S3 monitoring: secret/s3/prometheus
+            - Alertmanager notifications: secret/alertmanager/notifications
 
           Next Steps:
             1. Store Vault credentials securely
