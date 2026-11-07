@@ -22,6 +22,26 @@ A read-only investigation procedure. Do not propose a fix until the failing laye
 
 Work top-down. Stop at the first layer that is broken; lower layers are often symptoms of it.
 
+### 0. Firing alerts
+
+Start from what Prometheus already knows. List the active, unsilenced alerts from Alertmanager:
+
+```bash
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-alertmanager:http-web/proxy/api/v2/alerts?active=true&silenced=false&inhibited=false" \
+  | jq -r '.[] | select(.labels.alertname != "Watchdog") | [.labels.severity, .labels.alertname, (.labels.namespace // .labels.target // "-"), (.annotations.runbook // "-")] | @tsv' \
+  | sort | uniq -c
+```
+
+- Every alert added in this repository carries a `runbook` annotation with a runbook ID; the
+  [alert → runbook table](references/runbook-map.md#alerts) covers the others.
+- If the user pasted an alert from ntfy, start from that alert's runbook.
+- `Watchdog` is always firing on purpose (dead-man's switch) and is filtered out above. If it is
+  **missing**, alert delivery itself is broken: go to `OBS-002`.
+- No alerts does not mean healthy: continue with the sweep below.
+
+If `jq` is not available, drop the `jq` line and read the JSON for `alertname`, `severity` and
+`runbook`.
+
 ### 1. Context
 
 Record the context, server version, and current time. A stale kubeconfig or the wrong cluster is a
@@ -133,15 +153,31 @@ If Prometheus targets are missing, use runbook `OBS-001`; for Loki ingestion use
 
 ### 10. External services
 
-Vault and RustFS run **outside** the cluster on `node1`, so they will not appear as cluster
-workloads. Check reachability from the runner, not from assumptions:
+Vault, RustFS and the OpenWrt gateway run **outside** the cluster, so they will not appear as
+cluster workloads. The blackbox exporter probes them over TLS every minute. One query shows
+reachability and certificate days left for all three:
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+kubectl get --raw "${P}probe_success" | jq -r '.data.result[] | "\(.metric.target) reachable=\(.value[1])"'
+kubectl get --raw "${P}%28probe_ssl_earliest_cert_expiry-time%28%29%29%2F86400" \
+  | jq -r '.data.result[] | "\(.metric.target) days_left=\(.value[1] | tonumber | floor)"'
+```
+
+Healthy: `reachable=1` and `days_left` above 14 for `vault`, `object-store` and `gateway`.
+
+- `days_left` below 14, or negative: certificate renewal, runbook `NET-009`.
+- `reachable=0` with a valid certificate: the service is down. Vault `VAULT-001`, RustFS `MINIO-001`.
+
+A reachable Vault can still be sealed. Check its health endpoint from the runner:
 
 ```bash
 ./ansible-runner/ansible-runner.sh bash -lc 'curl -sS -o /dev/null -w "%{http_code}\n" -k https://vault.homelab.marmilan.com:8200/v1/sys/health'
 ```
 
-For Vault, `503` usually means sealed; `200`/`429` mean it is up. For RustFS, verify the S3 endpoint
-and that backups are still landing.
+For Vault, `503` means sealed, `200`/`429` mean it is up. A sealed or unreachable Vault shows up
+in the cluster as ClusterSecretStore `vault-backend` not ready and `external-secrets-config`
+blocking most Kustomizations (`kubectl get clustersecretstore vault-backend`).
 
 ## Known failure modes in this cluster
 
@@ -155,6 +191,9 @@ and that backups are still landing.
 | HelmRelease `False`, chart or values error | Chart version, schema change, stuck release | `GITOPS-003` |
 | Pods `ContainerCreating`, PVC pending | Longhorn replica degradation or disk pressure | `CLUSTER-012` |
 | App logs `connection refused` to Vault | Vault sealed or auth backend issue | `VAULT-001`, `VAULT-004` |
+| Most Kustomizations blocked on `external-secrets-config`, store `InvalidProviderConfig` | Vault certificate expired or Vault sealed | `NET-009`, `VAULT-001` |
+| CNPG `ContinuousArchiving=False`, `barman-cloud-wal-archive` exit 4 | RustFS certificate expired or RustFS down | `NET-009`, `MINIO-001` |
+| No ntfy messages, healthchecks.io alarm | Alert delivery broken | `OBS-002` |
 | Certificate not issued, Challenge pending | IONOS credentials or DNS propagation | `NET-005` |
 | Served cert does not match secret | Stale secret / wrong gateway listener | `NET-008` |
 | Keycloak login broken, CNPG unhealthy | Database failover or config drift | `KEYCLOAK-006`, `KEYCLOAK-008` |
