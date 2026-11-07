@@ -5,6 +5,10 @@
 # Built on the gotk_resource_info metrics defined in values.yaml
 # (kube-state-metrics customResourceState). label_replace copies
 # exported_namespace to namespace so Alertmanager groups per namespace.
+# Resources only waiting on a broken dependency (reason DependencyNotReady) are
+# skipped: one failure alerts once, not once per resource that depends on it.
+# HelmRelease/Kustomization use ready!="True" (False or Unknown) over 30m: a
+# stuck reconcile flips between the two, which would keep resetting a 'False' timer.
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -21,17 +25,17 @@ spec:
           expr: |
             label_replace(
               max by (exported_namespace, name) (
-                gotk_resource_info{customresource_kind="HelmRelease", ready="False", suspended!="true"}
+                gotk_resource_info{customresource_kind="HelmRelease", ready!="True", reason!="DependencyNotReady", suspended!="true"}
               ),
               "namespace", "$1", "exported_namespace", "(.*)"
             ) == 1
-          for: 15m
+          for: 30m
           labels:
             severity: critical
           annotations:
             summary: HelmRelease {{ $labels.namespace }}/{{ $labels.name }} is not Ready
             description: >-
-              HelmRelease {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.
+              HelmRelease {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 30 minutes.
               Usually a failed install or upgrade after an update was merged.
               Check: kubectl -n {{ $labels.namespace }} describe helmrelease {{ $labels.name }}
 
@@ -39,17 +43,17 @@ spec:
           expr: |
             label_replace(
               max by (exported_namespace, name) (
-                gotk_resource_info{customresource_kind="Kustomization", ready="False", suspended!="true"}
+                gotk_resource_info{customresource_kind="Kustomization", ready!="True", reason!="DependencyNotReady", suspended!="true"}
               ),
               "namespace", "$1", "exported_namespace", "(.*)"
             ) == 1
-          for: 15m
+          for: 30m
           labels:
             severity: critical
           annotations:
             summary: Kustomization {{ $labels.namespace }}/{{ $labels.name }} is not Ready
             description: >-
-              Flux Kustomization {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 15 minutes,
+              Flux Kustomization {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 30 minutes,
               so changes in Git are not being applied (or a dependency failed).
               Check: kubectl -n {{ $labels.namespace }} describe kustomization {{ $labels.name }}
 

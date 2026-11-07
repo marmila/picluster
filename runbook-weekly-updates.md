@@ -66,7 +66,7 @@ echo "== longhorn volumes"; kubectl -n longhorn-system get volumes.longhorn.io |
 
 Each section should be empty apart from its header lines. A HelmRelease showing `Unknown` for a few minutes is normal while it upgrades.
 
-The alerts below watch the same things continuously, so you don't need to keep checking. They reach ntfy if something stays broken for 15 minutes.
+The alerts below watch the same things continuously, so you don't need to keep checking. They reach ntfy if something stays broken for 30 minutes (15 for sources).
 
 ### 4. Critical updates (one per session)
 
@@ -116,8 +116,8 @@ Tick the checklist, comment anything unusual, close the issue.
 
 | Alert | Severity | Meaning | Action |
 |---|---|---|---|
-| `FluxHelmReleaseNotReady` | critical | a chart install or upgrade failed for 15 min | `kubectl -n <ns> describe helmrelease <name>`; often bad values or a breaking chart change → revert the PR |
-| `FluxKustomizationNotReady` | critical | Flux can't apply a folder from Git, or a dependency failed | `kubectl -n flux-system describe kustomization <name>` |
+| `FluxHelmReleaseNotReady` | critical | a chart install or upgrade failed or hung for 30 min | `kubectl -n <ns> describe helmrelease <name>`; often bad values or a breaking chart change → revert the PR |
+| `FluxKustomizationNotReady` | critical | Flux can't apply a folder from Git for 30 min (resources only waiting on another one are not alerted) | `kubectl -n flux-system describe kustomization <name>` |
 | `FluxSourceNotReady` | warning | Flux can't fetch Git, a chart or an OCI artifact | version doesn't exist, registry down, or credentials |
 | `FluxResourceSuspended` | warning | something suspended for over 24h | resume it once the fix is done |
 | `KubeJobFailed` (system-upgrade) | warning | a k3s node upgrade failed | see "If it gets stuck" above |
