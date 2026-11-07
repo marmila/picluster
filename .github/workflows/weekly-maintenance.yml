@@ -1,0 +1,78 @@
+---
+# Opens a "Weekly maintenance" issue every Monday, after Renovate has created
+# the weekly bundle (scheduled before 06:00 UTC). The issue holds the checklist
+# from .github/maintenance-checklist.md plus the open Renovate PRs, sorted by
+# how to handle them. Closing it records that week's update was done.
+name: Weekly maintenance
+
+'on':
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  open-issue:
+    name: Open weekly maintenance issue
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v7
+
+      - name: Create the issue.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          week="$(date -u +%G-W%V)"
+          title="Weekly maintenance ${week}"
+
+          # Run once per week, even if triggered again by hand
+          if gh issue list --state all --label maintenance --search "\"${title}\" in:title" \
+              --json title --jq '.[].title' | grep -qx "${title}"; then
+            echo "Issue '${title}' already exists"
+            exit 0
+          fi
+
+          gh label create maintenance --color 0E8A16 \
+            --description "Weekly cluster maintenance" --force
+
+          prs="$(gh pr list --author app/renovate --state open --limit 100 \
+            --json number,title,labels)"
+
+          # One markdown line per PR matching a jq filter
+          list() {
+            jq -r "[.[] | select($1)] | if length == 0 then \"_none_\" else
+              (sort_by(.number) | .[] | \"- #\(.number) \(.title)\") end" <<<"${prs}"
+          }
+          has_label='def has(l): any(.labels[]; .name == l);'
+          critical='test("(?i)k3s|system-upgrade-controller|longhorn|istio|cloudnative-?pg|vault|cilium|flux group")'
+
+          {
+            cat .github/maintenance-checklist.md
+            echo
+            echo "## Open Renovate PRs"
+            echo
+            echo "### Weekly bundle"
+            list "${has_label} (.title | test(\"all non-major\"))"
+            echo
+            echo "### Critical: one at a time, k3s last"
+            list "${has_label} (has(\"blocked\") | not) and (has(\"type/major\") | not) and (.title | ${critical}) and (.title | test(\"all non-major\") | not)"
+            echo
+            echo "### Major versions: read release notes first, no rush"
+            list "${has_label} has(\"type/major\") and (has(\"blocked\") | not)"
+            echo
+            echo "### Other"
+            list "${has_label} (has(\"blocked\") | not) and (has(\"type/major\") | not) and (.title | ${critical} | not) and (.title | test(\"all non-major\") | not)"
+            echo
+            echo "### Blocked: do not merge"
+            list "${has_label} has(\"blocked\")"
+          } > body.md
+
+          gh issue create --title "${title}" --label maintenance --body-file body.md

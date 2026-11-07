@@ -3,6 +3,7 @@ kind: Component
 
 resources:
   - flux-controllers-pod-monitoring.yaml
+  - flux-alert-rules.yaml
 
 # patch values.yaml?
 configMapGenerator:

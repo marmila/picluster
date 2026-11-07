@@ -1,0 +1,94 @@
+# Alerts when Flux cannot apply what is in Git: a failed HelmRelease upgrade,
+# a broken Kustomization, or a source Flux cannot fetch. These are what fire
+# after a bad update is merged. Routed to ntfy by alertmanager-notifications.
+#
+# Built on the gotk_resource_info metrics defined in values.yaml
+# (kube-state-metrics customResourceState). label_replace copies
+# exported_namespace to namespace so Alertmanager groups per namespace.
+# Resources only waiting on a broken dependency (reason DependencyNotReady) are
+# skipped: one failure alerts once, not once per resource that depends on it.
+# HelmRelease/Kustomization use ready!="True" (False or Unknown) over 30m: a
+# stuck reconcile flips between the two, which would keep resetting a 'False' timer.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux
+  annotations:
+    # Rule templates use $labels: keep Flux variable substitution away from them
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  groups:
+    - name: flux.rules
+      rules:
+        - alert: FluxHelmReleaseNotReady
+          expr: |
+            label_replace(
+              max by (exported_namespace, name) (
+                gotk_resource_info{customresource_kind="HelmRelease", ready!="True", reason!="DependencyNotReady", suspended!="true"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: HelmRelease {{ $labels.namespace }}/{{ $labels.name }} is not Ready
+            description: >-
+              HelmRelease {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 30 minutes.
+              Usually a failed install or upgrade after an update was merged.
+              Check: kubectl -n {{ $labels.namespace }} describe helmrelease {{ $labels.name }}
+
+        - alert: FluxKustomizationNotReady
+          expr: |
+            label_replace(
+              max by (exported_namespace, name) (
+                gotk_resource_info{customresource_kind="Kustomization", ready!="True", reason!="DependencyNotReady", suspended!="true"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: Kustomization {{ $labels.namespace }}/{{ $labels.name }} is not Ready
+            description: >-
+              Flux Kustomization {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 30 minutes,
+              so changes in Git are not being applied (or a dependency failed).
+              Check: kubectl -n {{ $labels.namespace }} describe kustomization {{ $labels.name }}
+
+        - alert: FluxSourceNotReady
+          expr: |
+            label_replace(
+              max by (exported_namespace, name, customresource_kind) (
+                gotk_resource_info{customresource_kind=~"GitRepository|OCIRepository|HelmRepository|HelmChart|Bucket", ready="False", suspended!="true"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Flux {{ $labels.customresource_kind }} {{ $labels.namespace }}/{{ $labels.name }} cannot be fetched
+            description: >-
+              Flux {{ $labels.customresource_kind }} {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.
+              Flux cannot fetch the Git repo, chart or image it points to (wrong version, registry down, auth).
+              Check: kubectl -n {{ $labels.namespace }} describe {{ $labels.customresource_kind }} {{ $labels.name }}
+
+        - alert: FluxResourceSuspended
+          expr: |
+            label_replace(
+              max by (exported_namespace, name, customresource_kind) (
+                gotk_resource_info{suspended="true"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 24h
+          labels:
+            severity: warning
+          annotations:
+            summary: Flux {{ $labels.customresource_kind }} {{ $labels.namespace }}/{{ $labels.name }} suspended for over a day
+            description: >-
+              Flux {{ $labels.customresource_kind }} {{ $labels.namespace }}/{{ $labels.name }} has been suspended for more than 24 hours,
+              so it no longer follows Git. Resume it once the fix is done:
+              kubectl -n {{ $labels.namespace }} patch {{ $labels.customresource_kind }} {{ $labels.name }} --type merge -p '{"spec":{"suspend":false}}'
