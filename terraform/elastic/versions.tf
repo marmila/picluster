@@ -3,15 +3,15 @@ terraform {
   required_providers {
     elasticstack = {
       source  = "elastic/elasticstack"
-      version = "0.16.5"
+      version = "0.16.6"
     }
     vault = {
       source  = "hashicorp/vault"
-      version = "5.12.0"
+      version = "5.13.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "3.2.1"
+      version = "3.4.0"
     }
   }
 }
