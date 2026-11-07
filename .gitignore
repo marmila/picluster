@@ -39,3 +39,5 @@
 /ansible-runner/runner/
 /ansible-runner/certbot/
 /ansible-runner/.env
+# Planning documents (working notes, not part of the repository)
+/plans/
