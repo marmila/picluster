@@ -1,6 +1,6 @@
 # CloudNativePG — Keycloak PostgreSQL Cluster
 # Namespace: databases
-# 2 instances (1 primary + 1 replica), 512Mi memory limit per pod.
+# 2 instances (1 primary + 1 replica), 1Gi memory limit per pod.
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -16,9 +16,11 @@ spec:
     requests:
       cpu: 100m
       memory: 256Mi
+    # 512Mi/500m was too tight: on 2026-11-07 the primary was OOMKilled while
+    # uploading a WAL backlog to S3, and the replica sat at its CPU limit.
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: "1"
+      memory: 1Gi
 
   postgresql:
     parameters:
