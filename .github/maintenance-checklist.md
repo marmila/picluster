@@ -1,4 +1,4 @@
-Weekly cluster update. Full instructions: [runbook-weekly-updates.md](https://github.com/marmila/picluster/blob/master/runbook-weekly-updates.md)
+Weekly cluster update. Full instructions: [runbook-cluster-maintenance.md](https://github.com/marmila/picluster/blob/master/runbook-cluster-maintenance.md)
 
 ## 1. Before you start
 - [ ] No alerts on ntfy that are still unresolved
@@ -6,7 +6,7 @@ Weekly cluster update. Full instructions: [runbook-weekly-updates.md](https://gi
 
 ## 2. Weekly bundle
 - [ ] Open the **all non-major dependencies** PR, skim the release notes, CI green → merge
-- [ ] Wait 15 min, run the health check (runbook step 3), all clean
+- [ ] Wait 15 min, run the health check (runbook 4.3), all clean
 - [ ] No `Flux…NotReady` alert on ntfy in the next hour
 
 ## 3. Critical updates (one per session, k3s always last)
