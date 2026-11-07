@@ -278,7 +278,7 @@ When validating changes from a feature branch in the live cluster:
 4. Patch the in-cluster GitRepository to the same branch and reconcile:
 
    ```bash
-   GR_NAME="$(kubectl -n flux-system get gitrepository -o jsonpath='{range .items[?(@.spec.url=="https://github.com/ricsanfre/pi-cluster")]}{.metadata.name}{"\n"}{end}' | head -n1)"
+   GR_NAME="$(kubectl -n flux-system get gitrepository -o jsonpath='{range .items[?(@.spec.url=="https://github.com/marmila/picluster")]}{.metadata.name}{"\n"}{end}' | head -n1)"
    kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"branch":"<branch>"}}}'
    flux reconcile source git "${GR_NAME}" -n flux-system
    flux reconcile kustomization flux-system -n flux-system --with-source

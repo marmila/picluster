@@ -4,8 +4,11 @@
 
 set -euo pipefail
 
-CERT_PATH="$HOME/.certbot/config/live/gateway.homelab.ricsanfre.com/fullchain.pem"
-KEY_PATH="$HOME/.certbot/config/live/gateway.homelab.ricsanfre.com/privkey.pem"
+# certbot stores the certificate under the hostname it was issued for
+# (ansible vars: gateway_hostname = gateway.<dns_domain>)
+GATEWAY_HOSTNAME="${GATEWAY_HOSTNAME:-gateway.homelab.marmilan.com}"
+CERT_PATH="$HOME/.certbot/config/live/$GATEWAY_HOSTNAME/fullchain.pem"
+KEY_PATH="$HOME/.certbot/config/live/$GATEWAY_HOSTNAME/privkey.pem"
 REMOTE_HOST="gateway"
 REMOTE_CERT="/etc/uhttpd.crt"
 REMOTE_KEY="/etc/uhttpd.key"

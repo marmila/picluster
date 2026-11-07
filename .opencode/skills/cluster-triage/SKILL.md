@@ -137,7 +137,7 @@ Vault and RustFS run **outside** the cluster on `node1`, so they will not appear
 workloads. Check reachability from the runner, not from assumptions:
 
 ```bash
-./ansible-runner/ansible-runner.sh bash -lc 'curl -sS -o /dev/null -w "%{http_code}\n" -k https://vault.homelab.ricsanfre.com/v1/sys/health'
+./ansible-runner/ansible-runner.sh bash -lc 'curl -sS -o /dev/null -w "%{http_code}\n" -k https://vault.homelab.marmilan.com:8200/v1/sys/health'
 ```
 
 For Vault, `503` usually means sealed; `200`/`429` mean it is up. For RustFS, verify the S3 endpoint
