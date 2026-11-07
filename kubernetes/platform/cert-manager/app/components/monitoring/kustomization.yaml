@@ -3,6 +3,7 @@ kind: Component
 
 resources:
   - grafana-dashboard.yaml
+  - cert-manager-rules.yaml
 
 configMapGenerator:
   - name: cert-manager-helm-values

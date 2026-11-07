@@ -1,0 +1,37 @@
+# prometheus-blackbox-exporter helm values (base)
+#
+# Probes TLS endpoints outside the cluster (Vault, RustFS, OpenWrt gateway) so
+# Prometheus can alert before their Let's Encrypt certificates expire. Those
+# certificates are issued by Ansible playbooks, not cert-manager, so nothing
+# else watches them. Targets are defined per environment in the overlays.
+
+config:
+  modules:
+    # TLS handshake only, no HTTP request: works for any TLS port and does not
+    # depend on what each service answers on "/".
+    # insecure_skip_verify keeps probe_ssl_earliest_cert_expiry reported even
+    # after a certificate has expired, so an expired certificate shows up as
+    # "expired" rather than only as "unreachable".
+    tls_connect:
+      prober: tcp
+      timeout: 10s
+      tcp:
+        tls: true
+        preferred_ip_protocol: ip4
+        tls_config:
+          insecure_skip_verify: true
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi
+
+serviceMonitor:
+  # One ServiceMonitor per entry in serviceMonitor.targets (set in overlays)
+  enabled: true
+  defaults:
+    module: tls_connect
+    interval: 60s
+    scrapeTimeout: 30s

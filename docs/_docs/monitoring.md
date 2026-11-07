@@ -1880,6 +1880,52 @@ kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-s
 
 To mute a noisy alert for a while, create a silence in the Alertmanager UI (`https://alertmanager.${CLUSTER_DOMAIN}`) rather than changing the routing.
 
+### Certificate expiry alerts
+
+Two kinds of TLS certificates are watched:
+
+- **Outside the cluster** (Let's Encrypt, issued by Ansible with certbot, valid 90 days, not renewed automatically): Vault (`vault.${CLUSTER_DOMAIN}:8200`), RustFS (`object-store.${CLUSTER_DOMAIN}:9091`) and the OpenWrt gateway (`gateway.${CLUSTER_DOMAIN}:443`). A [blackbox exporter](https://github.com/prometheus/blackbox_exporter) (`kubernetes/platform/blackbox-exporter`) opens a TLS connection to each one every minute and reports the certificate's expiry date (`probe_ssl_earliest_cert_expiry`) and whether the endpoint answered (`probe_success`).
+- **Inside the cluster** (cert-manager): cert-manager's own metrics.
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `TLSCertificateExpiringSoon` | an external certificate has less than 14 days left | warning |
+| `TLSCertificateExpiringCritical` | less than 3 days left | critical |
+| `TLSCertificateExpired` | the certificate has expired | critical |
+| `ExternalEndpointDown` | the endpoint has not completed a TLS handshake for 5 minutes | critical |
+| `CertManagerCertificateNotReady` | a cert-manager certificate has not been ready for 15 minutes | warning |
+| `CertManagerCertificateRenewalOverdue` | cert-manager is more than 1 hour past the certificate's renewal time | warning |
+| `CertManagerCertificateExpiringCritical` | a cert-manager certificate expires in less than 24 hours | critical |
+
+The cert-manager alerts use the renewal time instead of a fixed number of days because certificate lifetimes differ (the envoy-gateway certificate lasts about 7 days).
+
+The blackbox `tls_connect` module skips certificate verification on purpose, so the expiry date is still reported after a certificate has expired. Without it, an expired certificate would only show up as `ExternalEndpointDown`.
+
+To renew an external certificate, run the matching target from the repository root on the Ansible control node:
+
+| Endpoint | Command |
+|---|---|
+| Vault | `make deploy-vault` (restarts Vault; the role unseals it again) |
+| RustFS | `make deploy-rustfs` |
+| OpenWrt gateway | `make openwrt-certbot-tls` |
+
+Days left for each external certificate (Prometheus):
+
+```
+(probe_ssl_earliest_cert_expiry - time()) / 86400
+```
+
+Files:
+
+```
+kubernetes/platform/blackbox-exporter/app/base/
+├── helm.yaml                    # OCIRepository + HelmRelease (prometheus-blackbox-exporter)
+├── values.yaml                  # tls_connect module, one ServiceMonitor per target
+└── certificate-rules.yaml       # TLSCertificate* and ExternalEndpointDown alerts
+kubernetes/platform/blackbox-exporter/app/overlays/prod/values.yaml   # targets
+kubernetes/platform/cert-manager/app/components/monitoring/cert-manager-rules.yaml
+```
+
 ### Installing Grafana separately
 [Grafana helm chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana) by default is deployed as a sub-chart of the kube-prometheus-stack helm chart.
 

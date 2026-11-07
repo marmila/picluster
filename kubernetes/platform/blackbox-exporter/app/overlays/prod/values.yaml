@@ -1,0 +1,12 @@
+# prometheus-blackbox-exporter helm values (prod overlay)
+#
+# External TLS endpoints whose certificates are issued by Ansible (certbot),
+# not cert-manager. ${CLUSTER_DOMAIN} is replaced by Flux (cluster-settings).
+serviceMonitor:
+  targets:
+    - name: vault
+      url: vault.${CLUSTER_DOMAIN}:8200
+    - name: object-store
+      url: object-store.${CLUSTER_DOMAIN}:9091
+    - name: gateway
+      url: gateway.${CLUSTER_DOMAIN}:443

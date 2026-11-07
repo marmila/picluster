@@ -1,0 +1,44 @@
+---
+# Alerts for certificates managed by cert-manager inside the cluster.
+#
+# Certificate lifetimes vary (envoy-gateway ~7 days, fluentd/mongodb 90 days),
+# so a fixed "expires in N days" threshold does not fit all of them. Alert on
+# the real failure instead: cert-manager missed its own renewal time.
+#
+# The ServiceMonitor does not honor labels, so the certificate's namespace is
+# in exported_namespace (namespace is cert-manager's own namespace).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cert-manager
+spec:
+  groups:
+  - name: cert-manager
+    rules:
+    - alert: CertManagerCertificateNotReady
+      expr: |
+        max by (exported_namespace, name) (certmanager_certificate_ready_status{condition!="True"}) == 1
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: cert-manager certificate is not ready.
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} has not been ready for 15 minutes. Check with kubectl describe certificate -n {{ $labels.exported_namespace }} {{ $labels.name }}.
+    - alert: CertManagerCertificateRenewalOverdue
+      expr: |
+        max by (exported_namespace, name) (time() - certmanager_certificate_renewal_timestamp_seconds) > 3600
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: cert-manager did not renew a certificate on time.
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} should have been renewed {{ $value | humanizeDuration }} ago. Check the CertificateRequest and the issuer (kubectl get certificaterequest -n {{ $labels.exported_namespace }}).
+    - alert: CertManagerCertificateExpiringCritical
+      expr: |
+        max by (exported_namespace, name) (certmanager_certificate_expiration_timestamp_seconds - time()) < 86400
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: cert-manager certificate expires in less than 24 hours.
+        description: Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }} and has not been renewed.
