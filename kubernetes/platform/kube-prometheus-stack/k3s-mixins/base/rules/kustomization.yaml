@@ -9,6 +9,14 @@ resources:
   - ./etcd-mixin-rules.yaml
   - ./coredns-mixin-rules.yaml
   - ./grafana-mixin-rules.yaml
+  - ./general-rules.yaml
+
+patches:
+  - target:
+      group: monitoring.coreos.com
+      kind: PrometheusRule
+      name: kubernetes
+    path: kubeletdown-fix-patch.yaml
 
 # Disable fluxcd substitution
 commonAnnotations:
