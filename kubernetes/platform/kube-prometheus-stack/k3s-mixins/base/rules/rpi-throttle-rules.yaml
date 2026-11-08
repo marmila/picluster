@@ -1,0 +1,64 @@
+# Raspberry Pi under-voltage and throttling. Not generated from the mixins
+# (generate.sh writes to build/src/templates, so this file is not overwritten).
+#
+# Metrics come from /var/lib/node_exporter/rpi_throttled.prom, written every
+# minute on each Pi by Ansible (basic_setup/tasks/rpi_throttle_metrics.yml) from
+# vcgencmd get_throttled. Linux cannot see this: on 2026-11-05 node6 ran at
+# 600MHz from a loose power cable while scaling_cur_freq said 1.8GHz.
+# The *_since_boot flags stay set until reboot, so they are not alerted on.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: rpi-throttle
+  namespace: monitoring
+spec:
+  groups:
+  - name: rpi-throttle.rules
+    rules:
+    - alert: RaspberryPiUnderVoltage
+      annotations:
+        summary: Under-voltage on {{ $labels.nodename }}.
+        description: The firmware of {{ $labels.nodename }} reported under-voltage in the last 10 minutes (power cable, power supply, or a USB device drawing too much). The CPU slows down and the SSD can disconnect. Runbook CLUSTER-016.
+        runbook: CLUSTER-016
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-016
+      # max_over_time also catches short dips between two samples of a loose cable.
+      expr: |
+        (max_over_time(rpi_throttled_flag{flag="under_voltage_now"}[10m]) > 0)
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 1m
+      labels:
+        severity: warning
+    - alert: RaspberryPiThrottled
+      annotations:
+        summary: CPU of {{ $labels.nodename }} is throttled by the firmware.
+        description: The firmware of {{ $labels.nodename }} has throttled or capped the CPU for 5 minutes. Real clock {{ range printf "rpi_cpu_clock_hz{instance='%s'}" $labels.instance | query }}{{ .Value | humanize }}Hz{{ end }}. Linux tools still show the normal frequency. Usually under-voltage, otherwise heat. Runbook CLUSTER-016.
+        runbook: CLUSTER-016
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-016
+      expr: |
+        (max by (instance) (rpi_throttled_flag{flag=~"throttled_now|capped_now"}) == 1)
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 5m
+      labels:
+        severity: critical
+    - alert: RaspberryPiThrottleMetricsMissing
+      annotations:
+        summary: No throttling metrics from {{ $labels.nodename }}.
+        description: The throttling metrics file of {{ $labels.nodename }} is older than 10 minutes or missing, so under-voltage on this Pi would not be noticed. Check the rpi-throttled-metrics timer. Runbook CLUSTER-016.
+        runbook: CLUSTER-016
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-016
+      # Stale file on a Pi, or an arm64 node (all Pis) without the file at all.
+      expr: |
+        (
+          (time() - node_textfile_mtime_seconds{job="node-exporter",file=~".*rpi_throttled.prom"} > 600)
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+        )
+        or
+        (
+          node_uname_info{job="node-exporter",machine="aarch64"}
+          unless on (instance) node_textfile_mtime_seconds{job="node-exporter",file=~".*rpi_throttled.prom"}
+        )
+      for: 15m
+      labels:
+        severity: warning

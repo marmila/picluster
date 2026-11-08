@@ -23,6 +23,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `FluxResourceSuspended` | `GITOPS-004` | |
 | `TerraformStateLocked`, `TerraformNotReady` | `GITOPS-007` | Stuck OpenTofu state lock after a runner pod died; the alert shows the lock ID. `elastic-stack-config` / `keycloak-config` go not ready with it |
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
+| `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
 | `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85% |
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
@@ -54,6 +55,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `CLUSTER-012` | `DiskPressure`, evictions, or a full node filesystem |
 | `CLUSTER-014` | Cluster API unavailable; a node accepts TCP but never sends a banner; etcd reports no quorum |
 | `CLUSTER-015` | A k3s upgrade stopped part-way: plan not complete, nodes on different versions, node left cordoned |
+| `CLUSTER-016` | A Raspberry Pi reports under-voltage or a throttled CPU; a Pi is slow for no visible reason |
 
 ### GitOps and release — `runbooks/cluster/gitops-release.md`
 

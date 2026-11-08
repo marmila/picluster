@@ -2,11 +2,22 @@
 # Apply node settings that otherwise only take effect on a fresh install:
 # - journald size limit (basic_setup/tasks/journald.yml)
 # - kubelet config (k3s_kubelet_config in vars/picluster.yml), e.g. image GC thresholds
+# - Raspberry Pi throttling metrics (basic_setup/tasks/rpi_throttle_metrics.yml)
 #
 # The k3s roles copy kubelet.config but never restart k3s, so a changed config
 # would wait for the next reboot. This playbook restarts k3s only when the file
 # changed, one node at a time, and waits for the node to be Ready again.
 # Run with: make node-config-update
+
+- name: Export Raspberry Pi throttling state for Prometheus
+  hosts: raspberrypi
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install throttling metrics script and timer
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: rpi_throttle_metrics.yml
 
 - name: Limit journal size on non-k3s hosts
   hosts: picluster:!k3s_cluster

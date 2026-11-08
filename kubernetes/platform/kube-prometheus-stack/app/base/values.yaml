@@ -119,6 +119,21 @@ nodeExporter:
       enabled: false
 prometheus-node-exporter:
   fullnameOverride: node-exporter
+  # Textfile collector: publishes *.prom files from /var/lib/node_exporter on the
+  # host. On the Raspberry Pis, Ansible writes rpi_throttled.prom there every
+  # minute (vcgencmd get_throttled, see basic_setup/tasks/rpi_throttle_metrics.yml).
+  # Setting extraArgs replaces the chart list, so the first two lines repeat the
+  # kube-prometheus-stack defaults (chart 92.17.0).
+  extraArgs:
+    - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+    - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+    - --collector.textfile.directory=/host/node_exporter_textfile
+  extraHostVolumeMounts:
+    - name: textfile
+      hostPath: /var/lib/node_exporter
+      type: DirectoryOrCreate
+      mountPath: /host/node_exporter_textfile
+      readOnly: true
   prometheus:
     monitor:
       enabled: true

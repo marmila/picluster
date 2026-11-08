@@ -12,6 +12,7 @@ resources:
   - ./general-rules.yaml
   - ./node-disk-rules.yaml
   - ./scrape-target-rules.yaml
+  - ./rpi-throttle-rules.yaml
 
 patches:
   - target:

@@ -1,0 +1,46 @@
+#!/bin/bash
+# Export the Raspberry Pi firmware throttling state for the node-exporter
+# textfile collector. Run every minute by rpi-throttled-metrics.timer (root:
+# vcgencmd needs /dev/vcio).
+#
+# Linux reports the requested CPU frequency (scaling_cur_freq), not the real one:
+# on 2026-11-05 node6 ran at 600MHz from under-voltage while Linux said 1.8GHz.
+# Only the firmware (vcgencmd) knows.
+#
+# If vcgencmd fails, the script exits without touching the file, so the file goes
+# stale and RaspberryPiThrottleMetricsMissing fires.
+set -euo pipefail
+
+DIR=/var/lib/node_exporter
+OUT="$DIR/rpi_throttled.prom"
+
+raw=$(vcgencmd get_throttled)         # throttled=0x50005
+raw=${raw#*=}
+value=$((raw))
+clock=$(vcgencmd measure_clock arm)   # frequency(48)=1800000000
+clock=${clock#*=}
+
+# Bit number and name of each get_throttled flag.
+flags="0:under_voltage_now 1:capped_now 2:throttled_now 3:soft_temp_limit_now
+16:under_voltage_since_boot 17:capped_since_boot 18:throttled_since_boot 19:soft_temp_limit_since_boot"
+
+# Write to a temporary file in the same directory, then rename, so node-exporter
+# never reads a half-written file. Only *.prom files are read.
+tmp=$(mktemp "$DIR/.rpi_throttled.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+{
+  echo "# HELP rpi_throttled_raw Value returned by vcgencmd get_throttled."
+  echo "# TYPE rpi_throttled_raw gauge"
+  echo "rpi_throttled_raw $value"
+  echo "# HELP rpi_throttled_flag 1 when the get_throttled bit is set (*_now: right now, *_since_boot: at any time since boot)."
+  echo "# TYPE rpi_throttled_flag gauge"
+  for f in $flags; do
+    echo "rpi_throttled_flag{flag=\"${f#*:}\"} $(( (value >> ${f%%:*}) & 1 ))"
+  done
+  echo "# HELP rpi_cpu_clock_hz ARM clock reported by the firmware (vcgencmd measure_clock arm)."
+  echo "# TYPE rpi_cpu_clock_hz gauge"
+  echo "rpi_cpu_clock_hz $clock"
+} > "$tmp"
+chmod 0644 "$tmp"
+mv "$tmp" "$OUT"
+trap - EXIT

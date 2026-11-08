@@ -17,6 +17,9 @@
     - pi_temp
     - pi_throttling
 
+- name: Export throttling state for Prometheus
+  ansible.builtin.include_tasks: rpi_throttle_metrics.yml
+
 - name: Set GPU memory split to 16 MB
   ansible.builtin.lineinfile:
     path: /boot/firmware/config.txt

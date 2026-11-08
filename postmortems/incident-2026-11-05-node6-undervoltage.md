@@ -108,8 +108,8 @@ node-exporter reports CPU frequency from `scaling_cur_freq`, which kept reading 
 | # | Action | Status |
 |---|---|---|
 | 1 | Route Alertmanager alerts to a real receiver (ntfy) and add a dead-man's switch (healthchecks.io on the Watchdog alert) | In progress |
-| 2 | Export `get_throttled` from every Pi as a Prometheus metric (node-exporter textfile collector, root cron or systemd timer every minute) and alert when bit `0x1` or `0x4` is set | Open |
-| 3 | Check all Pis now: `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'vcgencmd get_throttled; vcgencmd measure_clock arm'` | Open |
+| 2 | Export `get_throttled` from every Pi as a Prometheus metric (node-exporter textfile collector, root cron or systemd timer every minute) and alert when bit `0x1` or `0x4` is set | Done (feature/pi-throttle-alert: `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing`, runbook `CLUSTER-016`) |
+| 3 | Check all Pis now: `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'vcgencmd get_throttled; vcgencmd measure_clock arm'` | Done by action 2: every Pi now reports `rpi_throttled_flag` and `rpi_cpu_clock_hz` |
 | 4 | Secure node6's power cable so it can't work loose again; consider a powered USB hub for the SSD | Open |
 | 5 | ECK operator leak: pin `elastic-operator` to amd64 and look for an ECK release newer than 3.5.0 that fixes it | Open |
 | 6 | When a Pi misbehaves, run `sudo vcgencmd get_throttled` first | Recorded |

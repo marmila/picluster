@@ -436,3 +436,76 @@ References:
 - `kubernetes/platform/system-upgrade/config/base/k3s-upgrade-rules.yaml` — the alerts.
 - `homelab-docs/alerting.md`, section "k3s upgrade alerts".
 - `postmortems/incident-2026-11-05-node6-undervoltage.md` — the 2026-09-27 and 2026-11-07 failures.
+
+## CLUSTER-016 Raspberry Pi Under-Voltage or Throttling
+
+<a id="runbook-cluster-016"></a>
+Runbook ID: `CLUSTER-016`
+Owner: Platform
+Severity: `SEV-2`
+
+Objective: Find and fix the cause when a Raspberry Pi's firmware reports under-voltage or slows its CPU.
+
+Alerts: `RaspberryPiUnderVoltage` (warning, under-voltage in the last 10 minutes), `RaspberryPiThrottled`
+(critical, CPU throttled or capped for 5 minutes, shows the real clock), `RaspberryPiThrottleMetricsMissing`
+(warning, a Pi stopped reporting).
+
+Background: when the supply voltage drops, the firmware slows the CPU (down to 600MHz) and USB devices such as
+the SSD can disconnect. Linux does not see it: `scaling_cur_freq`, `top` and `kubectl top` look normal, the node
+is just slow and pods time out. On 2026-11-05 a loose power cable kept node6 at 600MHz for days. The metrics
+come from `vcgencmd get_throttled`, written every minute by the `rpi-throttled-metrics` timer to
+`/var/lib/node_exporter/rpi_throttled.prom`.
+
+Procedure:
+
+1. On the Pi named in the alert, read the firmware state:
+
+```bash
+sudo bash -c 'vcgencmd get_throttled; vcgencmd measure_clock arm; vcgencmd measure_volts core; vcgencmd measure_temp'
+pi_throttling
+```
+
+   `get_throttled` bits: `0x1` under-voltage now, `0x2` frequency capped now, `0x4` throttled now, `0x8`
+   soft temperature limit now; `0x10000`, `0x20000`, `0x40000`, `0x80000` the same at any time since boot.
+   Example: `0x50005` = under-voltage and throttled now, and both since boot.
+
+2. Match the case:
+
+| What you see | Meaning | Action |
+| --- | --- | --- |
+| `0x1` / `0x10000` set | Power problem | Step 3 |
+| `0x8`, `measure_temp` above 80°C, no `0x1` | Heat | Check the fan or case airflow |
+| `0x...0000` only (since boot), nothing now | Past event, not happening now | Note it; reboot clears the bits |
+| `RaspberryPiThrottleMetricsMissing` | Timer or script broken | Step 5 |
+
+3. Power: reseat the USB-C power cable at both ends, then run step 1 again. A good supply shows `0x0` (or only
+   since-boot bits) within seconds, no reboot needed. If it comes back: try another cable, then another power
+   supply or PoE HAT, and check what is plugged in (the SSD draws the most; a powered USB hub helps).
+
+4. Once fixed, check that the node recovers: CPU load falls, pods on it stop restarting
+   (`kubectl get pods -A -o wide --field-selector spec.nodeName=<node> | grep -v Running`).
+
+5. Metrics missing:
+
+```bash
+systemctl status rpi-throttled-metrics.timer rpi-throttled-metrics.service
+sudo /usr/local/bin/rpi_throttled_metrics && cat /var/lib/node_exporter/rpi_throttled.prom
+```
+
+   If the timer is missing, reinstall it with `make node-config-update` (from pimaster).
+
+Verify:
+
+- `vcgencmd get_throttled` shows no `*_now` bit (`0x0` or only `0x...0000`).
+- `vcgencmd measure_clock arm` shows the full clock (1.5–1.8GHz on a Pi 4).
+- The alerts resolve (`RaspberryPiUnderVoltage` 10 minutes after the last dip).
+
+Rollback:
+
+1. Nothing to roll back. If the node is unstable meanwhile, drain it (`CLUSTER-011`) until the power is fixed.
+
+References:
+
+- `postmortems/incident-2026-11-05-node6-undervoltage.md`
+- `ansible/roles/basic_setup/tasks/rpi_throttle_metrics.yml`, `ansible/roles/basic_setup/scripts/rpi_throttled_metrics`
+- `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rules.yaml`

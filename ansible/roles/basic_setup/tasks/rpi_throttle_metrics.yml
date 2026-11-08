@@ -1,0 +1,63 @@
+---
+# Export vcgencmd get_throttled (under-voltage, throttling) as Prometheus metrics
+# through the node-exporter textfile collector, every minute.
+# Read by:
+# - node1: host node_exporter (prometheus.prometheus.node_exporter role, whose
+#   default textfile directory is /var/lib/node_exporter)
+# - k3s Pis: node-exporter DaemonSet (hostPath mount, kube-prometheus-stack values)
+# Alerts: kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rules.yaml
+
+- name: Create node-exporter textfile directory
+  # No owner or mode: on node1 the node_exporter role owns this directory.
+  ansible.builtin.file:  # noqa risky-file-permissions
+    path: /var/lib/node_exporter
+    state: directory
+
+- name: Copy throttling metrics script
+  ansible.builtin.copy:
+    src: scripts/rpi_throttled_metrics
+    dest: /usr/local/bin/rpi_throttled_metrics
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create throttling metrics service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/rpi-throttled-metrics.service
+    content: |
+      # Managed by Ansible (basic_setup/tasks/rpi_throttle_metrics.yml)
+      [Unit]
+      Description=Export Raspberry Pi throttling state for node-exporter
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/rpi_throttled_metrics
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create throttling metrics timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/rpi-throttled-metrics.timer
+    content: |
+      # Managed by Ansible (basic_setup/tasks/rpi_throttle_metrics.yml)
+      [Unit]
+      Description=Export Raspberry Pi throttling state every minute
+
+      [Timer]
+      OnBootSec=30s
+      OnUnitActiveSec=60s
+      AccuracySec=5s
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start throttling metrics timer
+  ansible.builtin.systemd_service:
+    name: rpi-throttled-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
