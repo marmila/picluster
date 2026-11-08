@@ -9,25 +9,54 @@ Severity: `SEV-2`
 
 Objective: Restore monitoring visibility when scrape targets disappear or are down.
 
+Alerts: `ScrapeTargetDown` (any target down for 15 minutes; the e-commerce app is excluded). Labels `job`
+and `instance` name the target. node1 targets (`node-exporter` on `node1:9100`, bind on `ns:9119`) are
+scraped from outside the cluster: check the service on node1 first.
+
 Procedure:
 
-1. Identify missing targets in Prometheus UI and confirm namespace/workload impact.
-2. Check ServiceMonitor/PodMonitor existence and selector alignment.
+1. List the down targets and their scrape errors (on node2):
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:9090/proxy/api/v1"
+kubectl get --raw "$P/targets?state=active" | python3 -c 'import json,sys; [print(t["labels"].get("job"), t["scrapeUrl"], t["lastError"]) for t in json.load(sys.stdin)["data"]["activeTargets"] if t["health"]!="up"]'
+```
+
+2. Match the error:
+
+| Error | Meaning | Go to |
+| --- | --- | --- |
+| `context deadline exceeded` | No answer: the service hangs, or a network policy drops the traffic | Step 3 |
+| `connection refused` | Service down or listening on another port or address | Step 4 |
+| `x509`, `tls`, `401`, `403` | TLS or auth mismatch in the ServiceMonitor | Step 5 |
+| Target missing from the list | ServiceMonitor or selector problem | Step 5 |
+
+3. Timeouts. Time the endpoint from inside its own pod (`curl -m 30 -w '%{http_code} %{time_total}s'
+   http://<pod-ip>:<port>/metrics`). If it answers fast there, the network blocks Prometheus. Look for drops
+   with the Cilium agent on the target's node:
+
+```bash
+CP=$(kubectl -n kube-system get pods -l k8s-app=cilium --field-selector spec.nodeName=<node> -o jsonpath='{.items[0].metadata.name}')
+kubectl -n kube-system exec $CP -c cilium-agent -- timeout 20 cilium-dbg monitor --type drop | grep <port>
+kubectl -n <ns> get networkpolicy
+```
+
+   `Policy denied` means a NetworkPolicy in the target namespace does not allow Prometheus. Add an allow
+   policy in Git (example: `kubernetes/platform/longhorn/app/components/monitor/prometheus-networkpolicy.yaml`,
+   added 2026-11-08 after the Longhorn chart's own policy had blocked metrics for weeks).
+
+4. Service down: check the pods (`kubectl -n <ns> get pods`) or, for node1, `systemctl status
+   prometheus-node-exporter` / the bind exporter on node1.
+
+5. Selector, port, TLS or auth: compare the monitor with the service.
 
 ```bash
 kubectl get servicemonitor,podmonitor -A | grep -i <target>
 kubectl -n <ns> get svc,pods --show-labels
+kubectl -n kube-prom-stack logs deploy/kube-prometheus-stack-operator --tail=100
 ```
 
-3. Validate scrape endpoint reachability and TLS/auth requirements.
-4. Check Prometheus and operator logs.
-
-```bash
-kubectl -n monitoring logs deploy/kube-prometheus-stack-operator --tail=200
-kubectl -n monitoring get pods
-```
-
-5. Fix labels/selectors/ports/certs in Git and reconcile.
+   Fix it in Git and let Flux reconcile.
 
 Verify:
 

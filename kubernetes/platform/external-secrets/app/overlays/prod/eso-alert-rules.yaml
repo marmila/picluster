@@ -1,0 +1,34 @@
+# External Secrets sync alerts. ClusterSecretStore vault-backend connects to
+# Vault; if it is not ready, no secret in the cluster is refreshed. On
+# 2026-11-07 an expired Vault certificate broke it silently.
+# Metric value is 1 for the condition status currently set.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: external-secrets
+spec:
+  groups:
+  - name: external-secrets.rules
+    rules:
+    - alert: ClusterSecretStoreNotReady
+      expr: |
+        clustersecretstore_status_condition{condition="Ready",status="False"} == 1
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: ClusterSecretStore {{ $labels.name }} is not ready.
+        description: ClusterSecretStore {{ $labels.name }} cannot reach or log in to Vault, so no ExternalSecret is refreshed. Check Vault first (sealed, certificate, network). Runbook VAULT-006.
+        runbook: VAULT-006
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/vault.md#runbook-vault-006
+    - alert: ExternalSecretNotReady
+      expr: |
+        externalsecret_status_condition{condition="Ready",status="False"} == 1
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: ExternalSecret {{ $labels.namespace }}/{{ $labels.name }} is not syncing.
+        description: ExternalSecret {{ $labels.namespace }}/{{ $labels.name }} has failed to sync from Vault for 30 minutes. Usually a missing Vault key or path. Runbook VAULT-006.
+        runbook: VAULT-006
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/vault.md#runbook-vault-006

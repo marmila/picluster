@@ -11,6 +11,8 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | Alert | Runbook | Notes |
 | --- | --- | --- |
 | `TLSCertificateExpiringSoon`, `TLSCertificateExpiringCritical`, `TLSCertificateExpired` | `NET-009` | External Let's Encrypt certificates (Vault, RustFS, gateway). Label `target` names the endpoint |
+| `VaultSealed` | `VAULT-001` | Vault answers TLS but `/v1/sys/health` is not 200 (503 sealed). Unseal on node1 |
+| `ClusterSecretStoreNotReady`, `ExternalSecretNotReady` | `VAULT-006` | Store not ready: check Vault (sealed, certificate) first. One ExternalSecret: usually a missing Vault key |
 | `ExternalEndpointDown` | `VAULT-001` (target `vault`), `MINIO-001` (`object-store`), `NET-009` | Check the certificate first: an expired one also fails the probe |
 | `CertManagerCertificateNotReady` | `NET-005` | In-cluster certificate issuance failing |
 | `CertManagerCertificateRenewalOverdue`, `CertManagerCertificateExpiringCritical` | `NET-007` | cert-manager missed its renewal time |
@@ -29,6 +31,10 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `K3sUpgradePlanStuck`, `K3sNodeVersionDrift` | `CLUSTER-015` | A failed upgrade job is never retried. A node can also be marked done but still run the old version until k3s is restarted |
 | `KubeVersionMismatch` | `CLUSTER-015` | Normal for about an hour during every k3s upgrade; act only if it lasts longer |
 | `KubeJobFailed` | none yet | Old failed jobs keep firing until deleted |
+| `VeleroBackupFailed`, `VeleroNoRecentBackup` | `BACKUP-004` | Nightly `full` schedule at 02:00. Check the BackupStorageLocation (RustFS) first |
+| `LonghornVolumeDegraded`, `LonghornVolumeFaulted` | `LONGHORN-001` | Degraded is normal for a while after a node reboot (replica rebuild) |
+| `CNPGWALArchivingFailing`, `CNPGNoRecentBackup` | `PG-001` | Keycloak Postgres to RustFS. An expired RustFS certificate is the usual cause |
+| `ScrapeTargetDown` | `OBS-001` | `context deadline exceeded` is often a NetworkPolicy dropping Prometheus; node1 targets: check the exporter on node1 |
 
 ## Cluster-wide
 
@@ -83,6 +89,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `BACKUP-001` | Restoring a single namespace with Velero |
 | `BACKUP-002` | Full-cluster restore drill or recovery |
 | `BACKUP-003` | Retention, cleanup, or storage pressure on backups |
+| `BACKUP-004` | Nightly Velero backup failed, partially failed, or did not run |
 
 ### Operations and governance — `runbooks/cluster/operations-governance.md`
 
@@ -120,6 +127,19 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `VAULT-003` | Backup and restore |
 | `VAULT-004` | Auth backend troubleshooting (Kubernetes, AppRole) |
 | `VAULT-005` | Seal migration and key rotation |
+| `VAULT-006` | External Secrets not syncing (ClusterSecretStore or one ExternalSecret) |
+
+### Longhorn storage — `runbooks/components/longhorn.md`
+
+| ID | Use when |
+| --- | --- |
+| `LONGHORN-001` | A Longhorn volume is degraded or faulted |
+
+### Data services — `runbooks/components/data-services.md`
+
+| ID | Use when |
+| --- | --- |
+| `PG-001` | CNPG WAL archiving or base backups failing |
 
 ### S3 storage (RustFS) — `runbooks/components/s3-storage.md`
 
@@ -139,7 +159,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 
 | ID | Use when |
 | --- | --- |
-| `OBS-001` | Prometheus target missing or scrape failing |
+| `OBS-001` | Prometheus target down or scrape failing (`ScrapeTargetDown`) |
 | `OBS-002` | Alert notifications not arriving (ntfy, healthchecks.io) |
 | `OBS-004` | Loki ingestion or retention problems |
 
@@ -160,4 +180,4 @@ These IDs are catalogued but not written. If a task falls into one, use the clos
 flag the gap:
 
 `CLUSTER-003`, `CLUSTER-013`, `SEC-004`, `SEC-005`, `CHANGE-003`, `CHANGE-004`, `AUDIT-001`,
-`OPS-003`, `OPS-004`, `MINIO-002` … `MINIO-005`, `ELASTIC-002` … `ELASTIC-005`, `OBS-003`, `OBS-005`, `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `PG-001`, `NET-001` … `NET-003`.
+`OPS-003`, `OPS-004`, `MINIO-002` … `MINIO-005`, `ELASTIC-002` … `ELASTIC-005`, `OBS-003`, `OBS-005`, `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `NET-001` … `NET-003`.

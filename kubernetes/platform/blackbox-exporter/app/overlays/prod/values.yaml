@@ -10,3 +10,7 @@ serviceMonitor:
       url: object-store.${CLUSTER_DOMAIN}:9091
     - name: gateway
       url: gateway.${CLUSTER_DOMAIN}:443
+    # Seal status, not certificate: see vault-rules.yaml
+    - name: vault-health
+      url: https://vault.${CLUSTER_DOMAIN}:8200/v1/sys/health
+      module: vault_health

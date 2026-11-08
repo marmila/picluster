@@ -1,0 +1,34 @@
+# Longhorn volume health. longhorn_volume_robustness values:
+# 0 unknown (usually detached), 1 healthy, 2 degraded, 3 faulted.
+# A volume is briefly degraded while a replica rebuilds (node reboot, drain),
+# hence the 30 minute wait for the warning.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: longhorn
+spec:
+  groups:
+  - name: longhorn.rules
+    rules:
+    - alert: LonghornVolumeDegraded
+      expr: |
+        longhorn_volume_robustness == 2
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: Longhorn volume {{ $labels.volume }} is degraded.
+        description: Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has fewer healthy replicas than configured for 30 minutes. It still works, but another failure could make it unusable. Runbook LONGHORN-001.
+        runbook: LONGHORN-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/longhorn.md#runbook-longhorn-001
+    - alert: LonghornVolumeFaulted
+      expr: |
+        longhorn_volume_robustness == 3
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Longhorn volume {{ $labels.volume }} is faulted.
+        description: Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has no healthy replica. The workload using it cannot read or write data. Runbook LONGHORN-001.
+        runbook: LONGHORN-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/longhorn.md#runbook-longhorn-001

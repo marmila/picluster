@@ -11,6 +11,7 @@ Contents:
 - [k3s upgrade alerts](#k3s-upgrade-alerts)
 - [Node disk alerts](#node-disk-alerts)
 - [Terraform (tofu-controller) alerts](#terraform-tofu-controller-alerts)
+- [Backup, secrets, storage and scrape alerts](#backup-secrets-storage-and-scrape-alerts)
 - [Alerts and the sre agent](#alerts-and-the-sre-agent)
 - [Mixin rule escaping](#mixin-rule-escaping)
 
@@ -60,7 +61,7 @@ flowchart LR
   agent -- "follows" --> rb
 ```
 
-- **Rules** live next to what they watch: `k3s-mixins` (Kubernetes, nodes, Prometheus), `general` (Watchdog), `certificates-external` (blackbox exporter), `cert-manager`, and the Flux rules in `flux-monitoring`.
+- **Rules** live next to what they watch: `k3s-mixins` (Kubernetes, nodes, Prometheus), `general` (Watchdog), `certificates-external` and `vault` (blackbox exporter), `cert-manager`, the Flux and Terraform rules in `flux-monitoring`, and per-service rules for External Secrets, Velero, Longhorn and Keycloak Postgres. See [Backup, secrets, storage and scrape alerts](#backup-secrets-storage-and-scrape-alerts).
 - **Routing:** `severity=warning|critical` goes to ntfy, `Watchdog` goes to healthchecks.io as a dead-man's switch, `severity=info` is dropped. See [Alert notifications](#alert-notifications-ntfy-and-healthchecksio).
 - **Runbooks:** every alert defined in this repository carries a runbook ID in its `runbook` annotation and at the end of its description, so it shows up in the ntfy message. The [OpenCode sre agent](#alerts-and-the-sre-agent) uses the same IDs.
 - **The weak point is Vault:** the notification URLs come from Vault. If Vault is unreachable, already-running Alertmanager keeps working with the mounted secret, but a new deployment of the alerting config cannot sync it. healthchecks.io is the independent check that catches a silent Alertmanager.
@@ -286,6 +287,37 @@ Files:
 ```
 kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/tofu-alert-rules.yaml
 kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml   # tofu_terraform_*
+```
+
+## Backup, secrets, storage and scrape alerts
+
+Added 2026-11-08. Before this, nothing alerted on a sealed Vault, broken secret syncing, failed backups, a degraded Longhorn volume, or a dead exporter. While building them, the Longhorn metrics turned out to have been missing for weeks: the Longhorn 1.12 chart creates its own NetworkPolicy, which dropped Prometheus. `prometheus-networkpolicy.yaml` in the Longhorn monitor component now allows it.
+
+| Alert | Fires when | Severity | Runbook |
+|---|---|---|---|
+| `VaultSealed` | Vault answers TLS but `/v1/sys/health` is not 200 (503 sealed) for 5 minutes | critical | [VAULT-001](../runbooks/components/vault.md#runbook-vault-001) |
+| `ClusterSecretStoreNotReady` | store `vault-backend` cannot reach or log in to Vault for 10 minutes | critical | [VAULT-006](../runbooks/components/vault.md#runbook-vault-006) |
+| `ExternalSecretNotReady` | one ExternalSecret has failed to sync for 30 minutes | warning | [VAULT-006](../runbooks/components/vault.md#runbook-vault-006) |
+| `VeleroBackupFailed` | a scheduled backup failed or partially failed (fires for 24 hours) | warning | [BACKUP-004](../runbooks/cluster/backup-compliance.md#runbook-backup-004) |
+| `VeleroNoRecentBackup` | no successful scheduled backup in 25 hours | critical | [BACKUP-004](../runbooks/cluster/backup-compliance.md#runbook-backup-004) |
+| `LonghornVolumeDegraded` | a volume has missing replicas for 30 minutes | warning | [LONGHORN-001](../runbooks/components/longhorn.md#runbook-longhorn-001) |
+| `LonghornVolumeFaulted` | a volume has no healthy replica for 5 minutes | critical | [LONGHORN-001](../runbooks/components/longhorn.md#runbook-longhorn-001) |
+| `CNPGWALArchivingFailing` | Keycloak Postgres cannot archive WAL to RustFS for 15 minutes | critical | [PG-001](../runbooks/components/data-services.md#runbook-pg-001) |
+| `CNPGNoRecentBackup` | no Keycloak Postgres base backup in 26 hours | warning | [PG-001](../runbooks/components/data-services.md#runbook-pg-001) |
+| `ScrapeTargetDown` | any scrape target down for 15 minutes (e-commerce excluded); covers node1 node-exporter and bind | warning | [OBS-001](../runbooks/components/observability.md#runbook-obs-001) |
+
+The Vault seal check is a second blackbox probe (target `vault-health`, module `vault_health`, an HTTP GET that only accepts 200). It is excluded from the certificate alerts and `ExternalEndpointDown`, which keep using the TLS probe (target `vault`).
+
+Files:
+
+```
+kubernetes/platform/blackbox-exporter/app/base/vault-rules.yaml                 # VaultSealed (+ module in values.yaml, target in overlays/prod)
+kubernetes/platform/external-secrets/app/overlays/prod/eso-alert-rules.yaml
+kubernetes/platform/velero/app/components/monitoring/velero-alert-rules.yaml
+kubernetes/platform/longhorn/app/components/monitor/longhorn-alert-rules.yaml
+kubernetes/platform/longhorn/app/components/monitor/prometheus-networkpolicy.yaml
+kubernetes/platform/keycloak/database/overlays/prod/postgres-alert-rules.yaml
+kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/scrape-target-rules.yaml
 ```
 
 ## Alerts and the sre agent

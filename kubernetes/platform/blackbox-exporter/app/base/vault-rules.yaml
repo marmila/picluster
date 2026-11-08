@@ -1,0 +1,28 @@
+---
+# Vault seal status from the blackbox probe of /v1/sys/health (target
+# vault-health, module vault_health). The probe fails on any answer other than
+# 200: 503 sealed, 501 not initialized, 429 standby.
+# Only fires while the TLS probe (target vault) succeeds: if Vault is down or
+# its certificate is broken, ExternalEndpointDown or the certificate alerts fire
+# instead.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: vault
+spec:
+  groups:
+  - name: vault.rules
+    rules:
+    - alert: VaultSealed
+      expr: |
+        probe_success{target="vault-health"} == 0
+        and on()
+        probe_success{target="vault"} == 1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: Vault is sealed or not serving.
+        description: Vault answers TLS but /v1/sys/health returns HTTP {{ range query "probe_http_status_code{target='vault-health'}" }}{{ .Value }}{{ end }} (503 sealed, 501 not initialized). No secret can be read, External Secrets stop syncing. Unseal on node1. Runbook VAULT-001.
+        runbook: VAULT-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/vault.md#runbook-vault-001
