@@ -1,0 +1,65 @@
+# Alerts for tofu-controller Terraform resources (config-elastic, config-keycloak).
+#
+# Recurring failure: the tf-runner pod dies during a plan and leaves the
+# OpenTofu state lock behind. Every later run then fails on the lock until it
+# is force-unlocked (config-elastic: 6577 failed runs over 4 days, 2026-11-01 to
+# 2026-11-05, unnoticed). Runbook GITOPS-007.
+#
+# Built on tofu_terraform_info and tofu_terraform_reconciliation_failures from
+# values.yaml (kube-state-metrics customResourceState). label_replace copies
+# exported_namespace to namespace so Alertmanager groups per namespace.
+# TerraformNotReady uses ready!="True" (False or Unknown): a stuck run flips
+# between the two, which would keep resetting a 'False' timer.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tofu-controller
+  annotations:
+    # Rule templates use $labels: keep Flux variable substitution away from them
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  groups:
+    - name: tofu-controller.rules
+      rules:
+        - alert: TerraformStateLocked
+          expr: |
+            label_replace(
+              max by (exported_namespace, name, lock_id) (
+                tofu_terraform_info{state_locked="True"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Terraform {{ $labels.namespace }}/{{ $labels.name }} is blocked by a stuck state lock
+            description: >-
+              Terraform {{ $labels.namespace }}/{{ $labels.name }} has had its OpenTofu state locked for 15 minutes
+              (lock ID {{ $labels.lock_id }}), so every run fails
+              ({{ range printf "tofu_terraform_reconciliation_failures{exported_namespace=\"%s\",name=\"%s\"}" $labels.namespace $labels.name | query }}{{ .Value }}{{ end }} failed runs so far).
+              Usually a tf-runner pod died during a plan. Force-unlock with the lock ID. Runbook GITOPS-007.
+            runbook: GITOPS-007
+            runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/gitops-release.md#runbook-gitops-007
+
+        - alert: TerraformNotReady
+          expr: |
+            label_replace(
+              max by (exported_namespace, name) (
+                tofu_terraform_info{ready!="True", suspended!="true"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Terraform {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 1 hour
+            description: >-
+              Terraform {{ $labels.namespace }}/{{ $labels.name }} has not been Ready for 1 hour
+              ({{ range printf "tofu_terraform_reconciliation_failures{exported_namespace=\"%s\",name=\"%s\"}" $labels.namespace $labels.name | query }}{{ .Value }}{{ end }} failed runs since the last success).
+              If TerraformStateLocked also fires, unlock first.
+              Check kubectl -n {{ $labels.namespace }} describe terraform {{ $labels.name }}. Runbook GITOPS-007.
+            runbook: GITOPS-007
+            runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/gitops-release.md#runbook-gitops-007

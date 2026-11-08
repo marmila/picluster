@@ -505,6 +505,7 @@ References:
 - Fix module output sensitivity and commit.
 - Verify `keycloak_url` points to `keycloak` namespace service FQDN.
 - Force reconcile source, kustomization, then terraform.
+- Stuck state lock (`StateLocked=True`, `error acquiring the state lock`): follow `GITOPS-007`.
 
 ## CNPG Cluster Health and Failover Checks
 

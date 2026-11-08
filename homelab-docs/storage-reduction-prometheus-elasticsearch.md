@@ -173,6 +173,8 @@ For Elasticsearch, revert the ILM values in both `fluentd-config.yaml` and `7-da
 
 ## Known Issue: tofu-controller state lock
 
+Full procedure and alerts: runbook [GITOPS-007](../runbooks/cluster/gitops-release.md#runbook-gitops-007). The preferred fix there is a force-unlock with the lock ID; deleting the Lease below is the fallback.
+
 After applying changes, the `config-elastic` Terraform resource may be stuck with:
 
 ```

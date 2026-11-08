@@ -19,6 +19,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `FluxKustomizationNotReady` | `GITOPS-002` | If many are not ready, look for the one they depend on (often `external-secrets-config` → Vault) |
 | `FluxHelmReleaseNotReady` | `GITOPS-003` | |
 | `FluxResourceSuspended` | `GITOPS-004` | |
+| `TerraformStateLocked`, `TerraformNotReady` | `GITOPS-007` | Stuck OpenTofu state lock after a runner pod died; the alert shows the lock ID. `elastic-stack-config` / `keycloak-config` go not ready with it |
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
 | `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85% |
@@ -58,6 +59,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `GITOPS-004` | You need to suspend and later resume reconciliation safely |
 | `GITOPS-005` | Upgrading or rolling back Flux itself |
 | `GITOPS-006` | Validating a branch against the live cluster |
+| `GITOPS-007` | A tofu-controller Terraform resource is stuck or its state is locked |
 
 ### Security and access — `runbooks/cluster/security-access.md`
 
@@ -101,7 +103,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KEYCLOAK-004` | Rotating the Keycloak admin credentials |
 | `KEYCLOAK-005` | Rotating OIDC client secrets (Grafana, Kiali, OAuth2-Proxy) |
 | `KEYCLOAK-006` | Keycloak Flux Kustomization incident |
-| `KEYCLOAK-007` | tofu-controller failure modes |
+| `KEYCLOAK-007` | tofu-controller failure modes (stuck state lock: `GITOPS-007`) |
 | `KEYCLOAK-008` | CNPG health and failover checks |
 | `KEYCLOAK-009` | Namespace/service DNS debugging |
 | `KEYCLOAK-010` | Planned upgrade of Keycloak, operator, or DB |

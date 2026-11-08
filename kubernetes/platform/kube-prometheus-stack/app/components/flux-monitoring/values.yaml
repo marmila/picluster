@@ -31,6 +31,12 @@ kube-state-metrics:
         resources:
           - plans
         verbs: [ "list", "watch" ]
+      # tofu-controller Terraform resources, for tofu-alert-rules.yaml
+      - apiGroups:
+          - infra.contrib.fluxcd.io
+        resources:
+          - terraforms
+        verbs: [ "list", "watch" ]
   customResourceState:
     enabled: true
     config:
@@ -299,3 +305,34 @@ kube-state-metrics:
                   exported_namespace: [ metadata, namespace ]
                   target_version: [ spec, version ]
                   complete: [ status, conditions, "[type=Complete]", status ]
+          # tofu-controller Terraform resources:
+          # tofu_terraform_info{name, ready, reason, state_locked, lock_id, suspended}
+          # tofu_terraform_reconciliation_failures{name}
+          - groupVersionKind:
+              group: infra.contrib.fluxcd.io
+              version: v1alpha2
+              kind: Terraform
+            metricNamePrefix: tofu
+            labelsFromPath:
+              name: [ metadata, name ]
+              exported_namespace: [ metadata, namespace ]
+            metrics:
+              - name: "terraform_info"
+                help: "The current state of a tofu-controller Terraform resource."
+                each:
+                  type: Info
+                  info:
+                    labelsFromPath:
+                      ready: [ status, conditions, "[type=Ready]", status ]
+                      reason: [ status, conditions, "[type=Ready]", reason ]
+                      state_locked: [ status, conditions, "[type=StateLocked]", status ]
+                      # lock ID needed for force-unlock (runbook GITOPS-007)
+                      lock_id: [ status, lock, pending ]
+                      suspended: [ spec, suspend ]
+              - name: "terraform_reconciliation_failures"
+                help: "Failed reconciliations since the last success of a tofu-controller Terraform resource."
+                each:
+                  type: Gauge
+                  gauge:
+                    path: [ status, reconciliationFailures ]
+                    nilIsZero: true
