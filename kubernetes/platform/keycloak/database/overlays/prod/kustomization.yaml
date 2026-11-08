@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: databases
 resources:
   - ../../base
+  - postgres-alert-rules.yaml
 
 components:
   - ../../components/anti-affinity

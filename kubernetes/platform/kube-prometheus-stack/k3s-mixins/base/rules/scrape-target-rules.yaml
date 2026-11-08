@@ -1,0 +1,30 @@
+# Any scrape target down. Not generated from the mixins (generate.sh writes to
+# build/src/templates, so this file is not overwritten).
+#
+# The chart's TargetDown rule is not installed (defaultRules.create: false), so
+# a dead exporter went unnoticed: Longhorn metrics were blocked by a
+# NetworkPolicy for weeks, and node1 (node-exporter, bind) had no alert at all.
+# The e-commerce demo app is excluded (namespace e-commerce, and its MongoDB and
+# Valkey monitors in namespace databases).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: scrape-targets
+  namespace: monitoring
+spec:
+  groups:
+  - name: scrape-targets.rules
+    rules:
+    - alert: ScrapeTargetDown
+      annotations:
+        summary: Prometheus cannot scrape {{ $labels.job }} on {{ $labels.instance }}.
+        description: Target {{ $labels.instance }} of job {{ $labels.job }} has been down for 15 minutes. Either the service is down or Prometheus cannot reach it (network policy, port, TLS). Runbook OBS-001.
+        runbook: OBS-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/observability.md#runbook-obs-001
+      expr: |
+        up{namespace!="e-commerce", pod!~"(mongodb|valkey|postgres-ecommerce).*"} == 0
+      for: 15m
+      labels:
+        severity: warning

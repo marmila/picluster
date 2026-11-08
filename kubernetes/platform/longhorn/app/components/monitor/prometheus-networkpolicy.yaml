@@ -1,0 +1,28 @@
+# Let Prometheus scrape the Longhorn manager metrics (port 9500).
+#
+# The Longhorn chart (1.12) creates NetworkPolicy/longhorn-manager, which only
+# allows ingress from Longhorn's own components. Prometheus was blocked
+# (Cilium "Policy denied"), so the longhorn-backend target was down and no
+# Longhorn metric reached Prometheus. NetworkPolicies are additive: this one
+# adds Prometheus without changing the chart's policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-manager-allow-prometheus
+spec:
+  podSelector:
+    matchLabels:
+      app: longhorn-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-prom-stack
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 9500

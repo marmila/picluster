@@ -20,6 +20,19 @@ config:
         preferred_ip_protocol: ip4
         tls_config:
           insecure_skip_verify: true
+    # Vault /v1/sys/health answers 200 only when Vault is initialized, unsealed
+    # and active (503 sealed, 501 not initialized). A sealed Vault still
+    # completes the TLS handshake, so tls_connect alone cannot see it.
+    # Certificate problems are left to tls_connect (insecure_skip_verify).
+    vault_health:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        valid_status_codes: [200]
+        preferred_ip_protocol: ip4
+        tls_config:
+          insecure_skip_verify: true
 
 resources:
   requests:

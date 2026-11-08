@@ -3,6 +3,7 @@ kind: Component
 
 resources:
   - grafana-dashboards.yaml
+  - velero-alert-rules.yaml
 
 # patch values.yaml?
 configMapGenerator:

@@ -4,6 +4,7 @@ namespace: external-secrets
 
 resources:
   - ../../base
+  - eso-alert-rules.yaml
 
 configMapGenerator:
   - name: external-secrets-helm-values

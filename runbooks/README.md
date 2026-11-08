@@ -27,7 +27,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | GitOps and Release Operations | [`cluster/gitops-release.md`](cluster/gitops-release.md) | `GITOPS-001` … `GITOPS-007` |
 | Security and Access | [`cluster/security-access.md`](cluster/security-access.md) | `SEC-001` … `SEC-003` (backlog: `SEC-004`, `SEC-005`) |
 | Upgrades and Change Management | [`cluster/change-management.md`](cluster/change-management.md) | `CHANGE-001`, `CHANGE-002` (backlog: `CHANGE-003`, `CHANGE-004`) |
-| Backup and Compliance | [`cluster/backup-compliance.md`](cluster/backup-compliance.md) | `BACKUP-001` … `BACKUP-003` (backlog: `AUDIT-001`) |
+| Backup and Compliance | [`cluster/backup-compliance.md`](cluster/backup-compliance.md) | `BACKUP-001` … `BACKUP-004` (backlog: `AUDIT-001`) |
 | Operations and Governance | [`cluster/operations-governance.md`](cluster/operations-governance.md) | `OPS-001`, `OPS-002` (backlog: `OPS-003`, `OPS-004`) |
 
 ### Components
@@ -35,12 +35,13 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | Domain | File | Runbook IDs |
 | --- | --- | --- |
 | Keycloak | [`components/keycloak.md`](components/keycloak.md) | `KEYCLOAK-001` … `KEYCLOAK-013` |
-| Vault | [`components/vault.md`](components/vault.md) | `VAULT-001` … `VAULT-005` |
+| Vault and External Secrets | [`components/vault.md`](components/vault.md) | `VAULT-001` … `VAULT-006` |
 | S3 Storage (RustFS) | [`components/s3-storage.md`](components/s3-storage.md) | `MINIO-001` (backlog: `MINIO-002` … `MINIO-005`) |
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
 | Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
 | Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-009` (backlog: `NET-001` … `NET-003`) |
-| Kafka and Data Services | — | backlog only: `KAFKA-001`, `KAFKA-002`, `MONGO-001`, `PG-001` |
+| Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001` |
+| Kafka and Data Services | [`components/data-services.md`](components/data-services.md) | `PG-001` (backlog: `KAFKA-001`, `KAFKA-002`, `MONGO-001`) |
 
 ## Runbook Template
 
@@ -135,6 +136,7 @@ References:
 - [`BACKUP-001` Velero Namespace Restore Drill](cluster/backup-compliance.md#runbook-backup-001)
 - [`BACKUP-002` Velero Full-Cluster Restore Drill](cluster/backup-compliance.md#runbook-backup-002)
 - [`BACKUP-003` Backup Retention and Cleanup Execution](cluster/backup-compliance.md#runbook-backup-003)
+- [`BACKUP-004` Velero Backup Failed or Missing](cluster/backup-compliance.md#runbook-backup-004)
 - `AUDIT-001` Incident Evidence Collection and Audit Trail
 
 #### Operations and Governance
@@ -169,6 +171,7 @@ References:
 - [`VAULT-003` Vault Backup and Restore](components/vault.md#runbook-vault-003)
 - [`VAULT-004` Vault Auth Backend Troubleshooting (Kubernetes, AppRole)](components/vault.md#runbook-vault-004)
 - [`VAULT-005` Vault Seal Migration and Key Rotation](components/vault.md#runbook-vault-005)
+- [`VAULT-006` External Secrets Not Syncing from Vault](components/vault.md#runbook-vault-006)
 
 #### S3 Storage (RustFS)
 
@@ -199,7 +202,11 @@ References:
 - `KAFKA-001` Kafka Broker Outage and Partition Recovery
 - `KAFKA-002` Kafka Auth and ACL Drift Recovery
 - `MONGO-001` MongoDB Operator Failover and Restore
-- `PG-001` CloudNativePG Generic Failover Operations
+- [`PG-001` CloudNativePG WAL Archiving or Backup Failure](components/data-services.md#runbook-pg-001)
+
+#### Longhorn Storage
+
+- [`LONGHORN-001` Longhorn Volume Degraded or Faulted](components/longhorn.md#runbook-longhorn-001)
 
 #### Service Mesh and Ingress
 

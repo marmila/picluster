@@ -1,0 +1,39 @@
+# Velero backup alerts. The chart's metrics.prometheusRule.enabled creates no
+# rule unless rules are listed in its spec, so nothing alerted before this.
+# Backups come from Schedule/full (velero/config/base/backup-schedule.yaml),
+# daily at 02:00. Manual backups have schedule="" and are ignored.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: velero
+spec:
+  groups:
+  - name: velero.rules
+    rules:
+    - alert: VeleroBackupFailed
+      # Keeps firing for 24h after the failure, then resolves by itself.
+      expr: |
+        increase(velero_backup_failure_total{schedule!=""}[24h]) > 0
+        or
+        increase(velero_backup_partial_failure_total{schedule!=""}[24h]) > 0
+      labels:
+        severity: warning
+      annotations:
+        summary: Velero backup of schedule {{ $labels.schedule }} failed.
+        description: A backup of schedule {{ $labels.schedule }} failed or partially failed in the last 24 hours. Runbook BACKUP-004.
+        runbook: BACKUP-004
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/backup-compliance.md#runbook-backup-004
+    - alert: VeleroNoRecentBackup
+      # The "> 0" guard skips the value 0 that Velero may report right after a restart.
+      expr: |
+        (time() - velero_backup_last_successful_timestamp{schedule!=""} > 25 * 3600)
+        and
+        velero_backup_last_successful_timestamp{schedule!=""} > 0
+      for: 15m
+      labels:
+        severity: critical
+      annotations:
+        summary: No successful Velero backup of schedule {{ $labels.schedule }} in over 25 hours.
+        description: The last successful backup of schedule {{ $labels.schedule }} was {{ $value | humanizeDuration }} ago. The daily backup runs at 02:00. Runbook BACKUP-004.
+        runbook: BACKUP-004
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/backup-compliance.md#runbook-backup-004

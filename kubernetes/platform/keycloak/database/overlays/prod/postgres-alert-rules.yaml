@@ -1,0 +1,40 @@
+# Keycloak PostgreSQL (CNPG cluster postgres-keycloak) backup alerts.
+# WAL files and base backups go to s3://k3s-barman/postgres-keycloak on RustFS.
+# On 2026-11-07 an expired RustFS certificate stopped WAL archiving and nobody
+# noticed. Only in prod: the dev overlay removes the backup configuration.
+# The pod filter leaves out the e-commerce cluster in the same namespace.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postgres-keycloak
+spec:
+  groups:
+  - name: postgres-keycloak.rules
+    rules:
+    - alert: CNPGWALArchivingFailing
+      # The last failed archive attempt is newer than the last successful one.
+      expr: |
+        cnpg_pg_stat_archiver_last_failed_time{pod=~"postgres-keycloak-.*"}
+        > cnpg_pg_stat_archiver_last_archived_time{pod=~"postgres-keycloak-.*"}
+      for: 15m
+      labels:
+        severity: critical
+      annotations:
+        summary: Keycloak PostgreSQL cannot archive WAL to object storage.
+        description: Pod {{ $labels.pod }} has failed to archive WAL files for 15 minutes. Point-in-time recovery stops working and WAL piles up on the data volume. Usually RustFS down, an expired certificate, or wrong credentials. Runbook PG-001.
+        runbook: PG-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/data-services.md#runbook-pg-001
+    - alert: CNPGNoRecentBackup
+      # Daily ScheduledBackup at 02:30. The "> 0" guard skips clusters with no backup metric yet.
+      expr: |
+        (time() - max by (namespace) (cnpg_collector_last_available_backup_timestamp{pod=~"postgres-keycloak-.*"}) > 26 * 3600)
+        and
+        max by (namespace) (cnpg_collector_last_available_backup_timestamp{pod=~"postgres-keycloak-.*"}) > 0
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: No Keycloak PostgreSQL base backup in over 26 hours.
+        description: The newest base backup of postgres-keycloak is {{ $value | humanizeDuration }} old. The daily backup runs at 02:30. Runbook PG-001.
+        runbook: PG-001
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/data-services.md#runbook-pg-001

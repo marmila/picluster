@@ -9,6 +9,11 @@ Severity: `SEV-1`
 
 Objective: Restore Vault availability and dependent secret consumers.
 
+Alerts: `VaultSealed` (Vault answers TLS but `/v1/sys/health` is not 200: 503 sealed, 501 not initialized),
+`ExternalEndpointDown` with `target=vault` (no TLS handshake at all). `ClusterSecretStoreNotReady` usually
+fires with them: once Vault is back, follow `VAULT-006` if it does not clear. Vault runs on node1; run the
+`vault` commands there.
+
 Preconditions:
 
 - Access to Vault host(s).
@@ -242,3 +247,73 @@ Rollback:
 References:
 - `terraform/vault/resources/seal_config.yaml`
 - Vault official docs: https://developer.hashicorp.com/vault/docs/seal
+
+## VAULT-006 External Secrets Not Syncing from Vault
+
+<a id="runbook-vault-006"></a>
+Runbook ID: `VAULT-006`
+Owner: Security and Platform
+Severity: `SEV-2` (store not ready), `SEV-3` (single ExternalSecret)
+
+Objective: Get External Secrets syncing from Vault again, cluster-wide (`ClusterSecretStore` not ready) or
+for a single `ExternalSecret`.
+
+Alerts: `ClusterSecretStoreNotReady` (critical, the store `vault-backend` cannot reach or log in to Vault),
+`ExternalSecretNotReady` (warning, one ExternalSecret failing for 30 minutes).
+
+Background: the `vault-backend` ClusterSecretStore logs in to Vault with Kubernetes auth (role
+`external-secrets`). Existing Kubernetes Secrets keep working while the store is down, but nothing is
+refreshed and new secrets are not created. On 2026-11-07 an expired Vault certificate broke the store
+without any alert.
+
+Procedure:
+
+1. See what is failing (on node2):
+
+```bash
+kubectl get clustersecretstore vault-backend -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+kubectl get externalsecret -A | grep -v "SecretSynced" | head -20
+```
+
+2. Match the case:
+
+| What you see | Meaning | Go to |
+| --- | --- | --- |
+| Store not ready, message about TLS, x509, or certificate | Vault certificate expired or wrong | `NET-009` |
+| Store not ready, connection refused, timeout, or `503` / `sealed` | Vault down or sealed | `VAULT-001` |
+| Store not ready, `permission denied` or `403` on login | Kubernetes auth role or reviewer token broken | `VAULT-004` |
+| Store ready, one ExternalSecret `SecretSyncedError` | Missing key or path in Vault, or a wrong `remoteRef` | Step 3 |
+
+3. For a single ExternalSecret, read the error and check that the key exists in Vault (on node1):
+
+```bash
+kubectl -n <namespace> describe externalsecret <name> | sed -n '/Status:/,$p'
+vault kv get secret/<path>
+```
+
+   Fix the path in Git or create the key in Vault (`vault kv put` / `vault kv patch`).
+
+4. Force a refresh once the cause is fixed:
+
+```bash
+kubectl -n <namespace> annotate externalsecret <name> force-sync="$(date +%s)" --overwrite
+```
+
+   For the store, ExternalSecrets retry on their own within their `refreshInterval`; to speed up, restart the
+   controller: `kubectl -n external-secrets rollout restart deploy/external-secrets`.
+
+Verify:
+
+- `kubectl get clustersecretstore vault-backend` shows `READY True`.
+- `kubectl get externalsecret -A` shows every entry `SecretSynced`.
+- `ClusterSecretStoreNotReady` and `ExternalSecretNotReady` resolve.
+
+Rollback:
+
+1. If a Vault key was changed by mistake, restore the previous version: `vault kv rollback -version=<n> secret/<path>`.
+
+References:
+
+- `kubernetes/platform/external-secrets/config/base/cluster-secret-store.yaml`
+- `kubernetes/platform/external-secrets/app/overlays/prod/eso-alert-rules.yaml`
+- `postmortems/incident-2026-11-07-letsencrypt-certificates-expired.md`

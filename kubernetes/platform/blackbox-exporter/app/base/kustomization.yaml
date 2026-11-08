@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - helm.yaml
   - certificate-rules.yaml
+  - vault-rules.yaml
 
 configMapGenerator:
   - name: prometheus-blackbox-exporter-helm-values
