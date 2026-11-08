@@ -227,7 +227,7 @@ For each node in [node5, node6, node2, node3, node4]:
   6. wait for all Longhorn volumes Healthy  ← gate between every node
 ```
 
-The existing [ansible/update.yml](ansible/update.yml) handles the OS update + conditional reboot. The Longhorn health gate (step 6) and the kubectl drain/uncordon wrapping would need to be added.
+The existing [ansible/update.yml](../ansible/update.yml) handles the OS update + conditional reboot. The Longhorn health gate (step 6) and the kubectl drain/uncordon wrapping would need to be added.
 
 Suggested Ansible modules for the gate:
 - `kubernetes.core.k8s_info` — poll Longhorn volume objects
@@ -237,6 +237,6 @@ Suggested Ansible modules for the gate:
 
 ## Reference
 
-- [ansible/update.yml](ansible/update.yml) — existing OS update playbook
-- [ansible/files/check_lh.sh](ansible/files/check_lh.sh) — Longhorn health check script
-- [kubernetes/platform/system-upgrade/](kubernetes/platform/system-upgrade/) — k3s version upgrade automation (separate from OS reboots)
+- [ansible/update.yml](../ansible/update.yml) — existing OS update playbook
+- [ansible/files/check_lh.sh](../ansible/files/check_lh.sh) — Longhorn health check script
+- [kubernetes/platform/system-upgrade/](../kubernetes/platform/system-upgrade/) — k3s version upgrade automation (separate from OS reboots)

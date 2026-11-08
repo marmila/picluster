@@ -9,6 +9,8 @@ homelab goes here.
 | [alerting.md](alerting.md) | How alerts reach a phone (ntfy, healthchecks.io), certificate alerts, k3s upgrade alerts, alerts and the OpenCode sre agent |
 | [os-upgrade.md](os-upgrade.md) | How `make os-upgrade` upgrades nodes one at a time |
 | [cluster-maintenance.md](cluster-maintenance.md) | Keeping the cluster updated: how Renovate works here, daily / weekly / monthly tasks, critical update order, event procedures |
+| [node-os-reboot.md](node-os-reboot.md) | Safe reboot of cluster nodes after OS upgrades (etcd quorum, Longhorn) |
+| [storage-reduction-prometheus-elasticsearch.md](storage-reduction-prometheus-elasticsearch.md) | Shrinking Prometheus and Elasticsearch storage |
 
 Related folders:
 
