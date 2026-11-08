@@ -86,6 +86,37 @@ The old image versions were still referenced by exited containers, so `crictl` k
 
 ---
 
+## Follow-up 2026-11-08
+
+**Image GC could not help.** After `make node-config-update` the disk stayed at 82-83%. The kubelet logged
+"Image garbage collection failed" every 5 minutes and freed nothing: all 25G in containerd belongs to images
+used by the 64 running containers (17G unpacked plus 7.4G compressed copies; `cp-schema-registry` alone is
+2.19G). The 50G root LV is too small for this node's workload. The volume group has no free space: the other
+412G is the Longhorn `/storage` LV (175G free). Proposed fix, not done yet: bind-mount `/var/lib/rancher`
+onto `/storage`. Waiting until usage passes about 83%.
+
+**Deleting old k3s folders broke a rollout.** Two old `/var/lib/rancher/k3s/data/<hash>` folders (not
+`current` or `previous`) were deleted to free about 1G (80% after). The next day the kube-prometheus-stack
+upgrade (node-exporter textfile collector) failed:
+
+1. The new node-exporter pod on node-esp-2 crashed with `bind: address already in use` on port 9100.
+2. The old node-exporter container, started 2 weeks earlier, was still running. Its `containerd-shim` runs
+   `runc` from one of the deleted folders, so the kubelet could not stop it (`exec: "runc": executable file not
+   found`).
+3. The DaemonSet rollout never finished, Helm timed out, Flux rolled the release back, and the rollback timed
+   out on the same DaemonSet. The HelmRelease stayed `False`, which also blocked the `k3s-mixins` rules.
+
+Fix: link `runc` back into both deleted folders (`ln -sf .../data/current/bin/runc .../data/<hash>/bin/runc`),
+stop and remove the old container and its sandbox with `crictl`, delete the crashing pod, force the
+HelmRelease. The rollout then completed on all 7 nodes. `CLUSTER-012` now warns about this.
+
+| # | Action | Status |
+|---|---|---|
+| 6 | Warn in `CLUSTER-012` not to delete old k3s data folders while a shim uses them, with the check and the `runc` link fix | Done |
+| 7 | Move `/var/lib/rancher` to `/storage` on node-esp-2 (and node-esp-1) when the root disk passes 83% | Open |
+
+---
+
 ## Quick check
 
 On node2:

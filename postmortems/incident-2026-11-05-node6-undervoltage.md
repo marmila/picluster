@@ -107,7 +107,7 @@ node-exporter reports CPU frequency from `scaling_cur_freq`, which kept reading 
 
 | # | Action | Status |
 |---|---|---|
-| 1 | Route Alertmanager alerts to a real receiver (ntfy) and add a dead-man's switch (healthchecks.io on the Watchdog alert) | In progress |
+| 1 | Route Alertmanager alerts to a real receiver (ntfy) and add a dead-man's switch (healthchecks.io on the Watchdog alert) | Done (end-to-end test 2026-11-07) |
 | 2 | Export `get_throttled` from every Pi as a Prometheus metric (node-exporter textfile collector, root cron or systemd timer every minute) and alert when bit `0x1` or `0x4` is set | Done (feature/pi-throttle-alert: `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing`, runbook `CLUSTER-016`) |
 | 3 | Check all Pis now: `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'vcgencmd get_throttled; vcgencmd measure_clock arm'` | Done by action 2: every Pi now reports `rpi_throttled_flag` and `rpi_cpu_clock_hz` |
 | 4 | Secure node6's power cable so it can't work loose again; consider a powered USB hub for the SSD | Open |
@@ -118,10 +118,37 @@ node-exporter reports CPU frequency from `scaling_cur_freq`, which kept reading 
 | 9 | Raise `jobActiveDeadlineSecs` on the `k3s-agent` Plan from 1800 to 7200: the agent prepare step's wait for the masters counts against it. The 2026-09-27 node6 failure was probably the same timing problem, made worse by under-voltage | Done (feature/k3s-upgrade-fixes) |
 | 10 | Alert on a stuck upgrade plan (`K3sUpgradePlanStuck`) and on a node whose version matches no plan (`K3sNodeVersionDrift`), with runbook `CLUSTER-015` | Done (feature/k3s-upgrade-fixes) |
 | 11 | Alert on a stuck tofu-controller state lock (`TerraformStateLocked`, `TerraformNotReady`) and write the unlock runbook `GITOPS-007` | Done (feature/terraform-alerts) |
+| 12 | Count kernel `Undervoltage detected!` messages (`rpi_undervoltage_events_recent`) so short dips between two firmware snapshots also alert | Done (2026-11-08) |
+| 13 | Check node1's power cable: 3,443 dips on 2026-11-06/07, starting minutes after node6's cable was reseated | Open |
+| 14 | Replace node6's power cable: still 1-5 short dips a day after the reseat | Open |
+
+## Follow-up 2026-11-08: under-voltage history
+
+The kernel logs every dip (`Undervoltage detected!`), so the journal shows the history the alerts did not
+exist for. Dips per day, from `journalctl -k -b` on each Pi (journals start between 2026-10-08 and
+2026-11-05 because of the 500M size cap):
+
+| Pi | Dips | When |
+| --- | --- | --- |
+| node6 | 22,739 | 500-1,800 a day from 2026-10-08 (journal start) to 2026-11-03, then 11 on 11-04 and 0-5 a day since |
+| node1 | 3,443 | 2,608 on 11-06 from 07:40, 835 on 11-07 until 07:28, none since |
+| node3 | 5 | 11-06 07:33-07:49 |
+| node5 | 5 | 11-03 and 11-04 |
+| node4 | 1 | 11-06 07:33:39 |
+| node2 | 0 | |
+
+- node6 was under-voltage for at least a month. The reseat fixed most of it, not all of it.
+- node3 and node4 dipped at the moment node6's cable was reseated, and node1's burst started minutes later.
+  The Pis probably share a power supply or hub, and handling one cable disturbed the others.
+- On 2026-11-08 every Pi showed `0x50000` (since-boot flags only), so none was under-voltage at that moment.
+
+The first version of `RaspberryPiUnderVoltage` used only the firmware flag, read once a minute, and would
+have missed node6's remaining short dips. The script now also exports the kernel messages from the last 2
+minutes (action 12).
 
 ## Open questions
 
-- When did the under-voltage start? Prometheus can show when node6's CPU rose: `100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle",instance=~".*node6.*"}[1h])) * 100` over 30 days. Prometheus was down 2026-10-27 → 2026-10-31, so that window has no data.
+- When did the under-voltage start? At least 2026-10-08, the start of node6's journal (see the follow-up above). Prometheus can show when node6's CPU rose: `100 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle",instance=~".*node6.*"}[1h])) * 100` over 30 days. Prometheus was down 2026-10-27 → 2026-10-31, so that window has no data.
 - Was the 2026-09 same-node network flakiness on node6 the same cause?
 
 ---

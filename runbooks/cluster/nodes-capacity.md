@@ -144,6 +144,23 @@ sudo k3s crictl rmi --prune
    delete exited containers by hand, since the kubelet may re-run init containers of running pods. Once the
    journal is trimmed and DiskPressure clears, the kubelet's own image GC (70%) removes the rest.
 
+   Do not delete old k3s version folders (`/var/lib/rancher/k3s/data/<hash>`) just because they are not
+   `current` or `previous`. Containers started under an older k3s keep a `containerd-shim` that runs `runc`
+   from its own folder. Without it they can no longer be stopped (`exec: "runc": executable file not found`),
+   and the next rollout of any DaemonSet on the node hangs. This happened on node-esp-2 on 2026-11-08 for
+   about 1G of space. Only delete a folder that no running shim uses:
+
+```bash
+ps -eo args | grep "[c]ontainerd-shim" | grep -oE "k3s/data/[0-9a-f]+" | sort | uniq -c
+```
+
+   If one was already deleted, put `runc` back as a link to the current one:
+
+```bash
+sudo mkdir -p /var/lib/rancher/k3s/data/<hash>/bin
+sudo ln -sf /var/lib/rancher/k3s/data/current/bin/runc /var/lib/rancher/k3s/data/<hash>/bin/runc
+```
+
 4. Delete evicted pods so they stop showing up (on node2):
 
 ```bash
