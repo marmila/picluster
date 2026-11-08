@@ -1,0 +1,68 @@
+---
+# Apply node settings that otherwise only take effect on a fresh install:
+# - journald size limit (basic_setup/tasks/journald.yml)
+# - kubelet config (k3s_kubelet_config in vars/picluster.yml), e.g. image GC thresholds
+#
+# The k3s roles copy kubelet.config but never restart k3s, so a changed config
+# would wait for the next reboot. This playbook restarts k3s only when the file
+# changed, one node at a time, and waits for the node to be Ready again.
+# Run with: make node-config-update
+
+- name: Limit journal size on non-k3s hosts
+  hosts: picluster:!k3s_cluster
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Limit systemd journal size
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: journald.yml
+
+- name: Update journald and kubelet config on k3s nodes
+  hosts: k3s_cluster
+  # Masters first (inventory order), one node at a time.
+  serial: 1
+  # Stop on the first failed node instead of restarting the next one.
+  max_fail_percentage: 0
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Include picluster variables
+      ansible.builtin.include_vars: "vars/picluster.yml"
+
+  tasks:
+    - name: Limit systemd journal size
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: journald.yml
+
+    - name: Apply journald change now
+      ansible.builtin.meta: flush_handlers
+
+    - name: Copy kubelet configuration file
+      ansible.builtin.copy:
+        dest: "{{ k3s_config_directory }}/kubelet.config"
+        content: "{{ k3s_kubelet_config }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: kubelet_config
+
+    - name: Restart k3s to load the kubelet config
+      ansible.builtin.service:
+        name: "{{ 'k3s' if inventory_hostname in groups['k3s_master'] else 'k3s-agent' }}"
+        state: restarted
+      when: kubelet_config.changed
+
+    - name: Wait for the node to be Ready
+      ansible.builtin.command:
+        cmd: >-
+          k3s kubectl get node {{ inventory_hostname }}
+          -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      delegate_to: "{{ groups['k3s_master'] | difference([inventory_hostname]) | first }}"
+      register: node_ready
+      until: node_ready.stdout == "True"
+      retries: 30
+      delay: 10
+      changed_when: false
+      when: kubelet_config.changed

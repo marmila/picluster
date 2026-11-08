@@ -1,0 +1,22 @@
+---
+# Cap the systemd journal. Without a limit it grew to 3.9G on node-esp-2's
+# 50G root disk and helped push the node into DiskPressure (2026-11-07).
+- name: Create journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Limit journal size
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/size.conf
+    content: |
+      # Managed by Ansible (basic_setup/tasks/journald.yml)
+      [Journal]
+      SystemMaxUse={{ journald_system_max_use }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart journald

@@ -25,6 +25,7 @@ ANSIBLE_LOCAL_COLLECTIONS_DIR := $(HOME)/.ansible/collections
 	init \
 	secret-files \
 	os-upgrade \
+	node-config-update \
 	external-setup \
 	nodes-setup \
 	dns-setup \
@@ -101,6 +102,9 @@ secret-files: ## Create encrypted/local secret files for Ansible runs
 
 os-upgrade: ## Upgrade OS packages on target nodes
 	$(RUNNER) ansible-playbook update.yml
+
+node-config-update: ## Apply journald limit and kubelet config to running nodes (restarts k3s one node at a time if changed)
+	$(RUNNER) ansible-playbook update_node_config.yml
 
 external-setup: ## Configure external services host prerequisites
 	$(RUNNER) ansible-playbook setup_picluster.yml --tags "external"

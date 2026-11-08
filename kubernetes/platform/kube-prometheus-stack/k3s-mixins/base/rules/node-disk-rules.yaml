@@ -1,0 +1,44 @@
+# Root disk alerts for cluster nodes. Not generated from the mixins (generate.sh
+# writes to build/src/templates, so this file is not overwritten).
+#
+# The mixin filesystem alerts fire at 5% and 3% free, and KubeNodePressure is
+# severity info (not routed), so node-esp-2 reached DiskPressure and evicted
+# pods on 2026-11-07 without any notification. The kubelet evicts at 85% used
+# (imagefs.available<15%) and image GC starts at 70% (k3s_kubelet_config), so
+# 80% leaves time to act.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: node-disk
+  namespace: monitoring
+spec:
+  groups:
+  - name: node-disk.rules
+    rules:
+    - alert: NodeRootDiskFillingUp
+      annotations:
+        summary: Root disk on {{ $labels.nodename }} is over 80% full.
+        description: Root filesystem on {{ $labels.nodename }} is {{ printf "%.1f" $value }}% full. The kubelet evicts pods at 85%. Usually container images or the systemd journal. Runbook CLUSTER-012.
+        runbook: CLUSTER-012
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
+      expr: |
+        (
+          (1 - node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype!=""} / node_filesystem_size_bytes{job="node-exporter",mountpoint="/",fstype!=""}) * 100 > 80
+        )
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 15m
+      labels:
+        severity: warning
+    - alert: KubeNodeDiskPressure
+      annotations:
+        summary: Node {{ $labels.node }} has DiskPressure and is evicting pods.
+        description: Node {{ $labels.node }} has had the DiskPressure condition for 5 minutes. The kubelet evicts pods and blocks new ones until disk space is freed. Runbook CLUSTER-012.
+        runbook: CLUSTER-012
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
+      expr: |
+        kube_node_status_condition{job="kube-state-metrics",condition="DiskPressure",status="true"} == 1
+      for: 5m
+      labels:
+        severity: critical

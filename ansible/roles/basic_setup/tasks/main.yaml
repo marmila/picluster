@@ -29,3 +29,6 @@
 
 - name: Blacklist storage devices in multipath configuration
   ansible.builtin.include_tasks: multipath_blacklist.yml
+
+- name: Limit systemd journal size
+  ansible.builtin.include_tasks: journald.yml

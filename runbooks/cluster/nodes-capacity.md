@@ -94,33 +94,85 @@ Runbook ID: `CLUSTER-012`
 Owner: Platform
 Severity: `SEV-2`
 
-Objective: Recover scheduling and workload health when nodes are tainted with disk pressure.
+Objective: Free root disk space on a node before (or after) the kubelet starts evicting pods.
+
+Alerts: `NodeRootDiskFillingUp` (root disk over 80%, warning), `KubeNodeDiskPressure` (DiskPressure
+condition, critical), and the mixin alerts `NodeFilesystemSpaceFillingUp` / `NodeFilesystemAlmostOutOfSpace`.
+
+Thresholds (`k3s_kubelet_config` in `ansible/vars/picluster.yml`):
+
+| Root disk used | What happens |
+| --- | --- |
+| 70% | kubelet deletes unused images until 60% (`imageGCHighThresholdPercent`) |
+| 80% | `NodeRootDiskFillingUp` fires |
+| 85% | DiskPressure: node tainted `disk-pressure:NoSchedule`, pods evicted (`imagefs.available<15%`) |
+
+Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
+is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here.
 
 Procedure:
 
-1. Identify impacted nodes and pods.
+1. Identify the node and what uses the space. On node2:
 
 ```bash
 kubectl get nodes
 kubectl describe node <node-name> | grep -i -E 'DiskPressure|taint'
-kubectl get events -A | grep -i disk-pressure
+kubectl get pods -A --field-selector status.phase=Failed | grep -i evicted
 ```
 
-2. Free disk space on affected nodes (logs, images, orphaned artifacts).
-3. Verify kubelet and container runtime reclaim behavior.
-4. If needed, drain and reboot node for cleanup.
-5. Confirm taint removal and pod rescheduling.
+On the node:
+
+```bash
+df -h /
+sudo du -xsh /var/lib/rancher/k3s/agent/containerd /var/log /var/lib/longhorn 2>/dev/null
+sudo journalctl --disk-usage
+```
+
+2. Shrink the journal. This freed 3.4G on node-esp-2 (2026-11-07):
+
+```bash
+sudo journalctl --vacuum-size=500M
+```
+
+3. Remove images no container uses:
+
+```bash
+sudo k3s crictl rmi --prune
+```
+
+   This can free nothing (as on node-esp-2): images still referenced by exited containers are kept. Do not
+   delete exited containers by hand, since the kubelet may re-run init containers of running pods. Once the
+   journal is trimmed and DiskPressure clears, the kubelet's own image GC (70%) removes the rest.
+
+4. Delete evicted pods so they stop showing up (on node2):
+
+```bash
+kubectl get pods -A --field-selector status.phase=Failed -o json \
+  | jq -r '.items[] | select(.status.reason=="Evicted") | "\(.metadata.namespace) \(.metadata.name)"' \
+  | while read ns p; do kubectl -n "$ns" delete pod "$p"; done
+```
+
+5. If the journal limit or image GC thresholds are missing on the node (fresh config not applied), run
+   `make node-config-update` on pimaster. It restarts k3s only where the kubelet config changed, one node at
+   a time.
 
 Verify:
 
-- Node condition `DiskPressure=False`.
-- Pending pods are scheduled.
-- Storage-related alerts clear.
+- `df -h /` below 80% on the node.
+- Node condition `DiskPressure=False`, taint gone, DaemonSet pods (fluent-bit, cilium) running on the node.
+- `NodeRootDiskFillingUp` and `KubeNodeDiskPressure` resolve.
 
 Rollback:
 
-1. If cleanup fails, cordon node and evacuate workloads.
-2. Replace node using `CLUSTER-010` workflow.
+1. If space cannot be freed, cordon the node and drain it (`CLUSTER-011`), then investigate offline.
+2. Replace the node using `CLUSTER-010` if the disk is failing.
+
+References:
+
+- `ansible/vars/picluster.yml` (`k3s_kubelet_config`), `ansible/roles/basic_setup/tasks/journald.yml`,
+  `ansible/update_node_config.yml`.
+- `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-disk-rules.yaml`.
+- `postmortems/incident-2026-11-07-node-esp-2-disk-pressure.md`.
 
 ## CLUSTER-014 Hung Node and etcd Quorum Loss Recovery
 

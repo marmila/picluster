@@ -21,6 +21,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `FluxResourceSuspended` | `GITOPS-004` | |
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
+| `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85% |
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
 | `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |
 | `KubePodCrashLooping`, `KubePodNotReady`, `KubeDeploymentReplicasMismatch`, `KubeStatefulSetReplicasMismatch` | sweep step 6, then `GITOPS-003` if the workload belongs to a HelmRelease | |
