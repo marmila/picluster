@@ -8,6 +8,7 @@ homelab goes here.
 |---|---|
 | [alerting.md](alerting.md) | How alerts reach a phone (ntfy, healthchecks.io), certificate alerts, alerts and the OpenCode sre agent |
 | [os-upgrade.md](os-upgrade.md) | How `make os-upgrade` upgrades nodes one at a time |
+| [cluster-maintenance.md](cluster-maintenance.md) | Keeping the cluster updated: how Renovate works here, daily / weekly / monthly tasks, critical update order, event procedures |
 
 Related folders:
 

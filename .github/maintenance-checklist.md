@@ -1,4 +1,4 @@
-Weekly cluster update. Full instructions: [runbook-cluster-maintenance.md](https://github.com/marmila/picluster/blob/master/runbook-cluster-maintenance.md)
+Weekly cluster update. Full instructions: [homelab-docs/cluster-maintenance.md](https://github.com/marmila/picluster/blob/master/homelab-docs/cluster-maintenance.md)
 
 ## 1. Before you start
 - [ ] No alerts on ntfy that are still unresolved
