@@ -39,6 +39,10 @@ Times are UTC. Entries marked "inferred" were reconstructed from pod ages and lo
 | 2026-11-06 07:34 | Clock 1.2–1.5GHz, `get_throttled` = `0x50000` (only the "since boot" bits are left) |
 | 2026-11-06 07:36 | node6 at 1410m (35%), in line with the other nodes |
 | 2026-11-07 07:10 | system-upgrade-controller restarted (pod was 41 days old). It immediately re-creates the node6 upgrade job |
+| 2026-11-07 17:34 | k3s v1.37.2 merged. The controller creates the master jobs and the node5 agent job at the same time. The agent job's prepare step waits for all masters |
+| 2026-11-07 ~17:59 | Last master job (node4) finishes and node4 is labelled done, but k3s on node4 is not restarted: binary v1.37.2 on disk, process still v1.37.0 |
+| 2026-11-07 18:04 | node5 agent job hits the 30-minute deadline while still waiting (`DeadlineExceeded`). The workers stop again |
+| 2026-11-07 ~18:50 | `systemctl restart k3s` on node4, controller restarted. node5 upgrades; the controller then finishes node6, node-esp-1 and node-esp-2 on its own. All 7 nodes on v1.37.2 |
 
 ---
 
@@ -111,6 +115,8 @@ node-exporter reports CPU frequency from `scaling_cur_freq`, which kept reading 
 | 6 | When a Pi misbehaves, run `sudo vcgencmd get_throttled` first | Recorded |
 | 7 | Finish the k3s worker upgrade: restart system-upgrade-controller (`kubectl -n system-upgrade rollout restart deploy/system-upgrade-controller`) | Done (2026-11-07, all nodes on v1.37.0+k3s1) |
 | 8 | After any outage, check `kubectl get plans.upgrade.cattle.io -n system-upgrade` for `JobFailed` and restart the controller if a plan is stuck | Recorded |
+| 9 | Raise `jobActiveDeadlineSecs` on the `k3s-agent` Plan from 1800 to 7200: the agent prepare step's wait for the masters counts against it. The 2026-09-27 node6 failure was probably the same timing problem, made worse by under-voltage | Done (feature/k3s-upgrade-fixes) |
+| 10 | Alert on a stuck upgrade plan (`K3sUpgradePlanStuck`) and on a node whose version matches no plan (`K3sNodeVersionDrift`), with runbook `CLUSTER-015` | Done (feature/k3s-upgrade-fixes) |
 
 ## Open questions
 

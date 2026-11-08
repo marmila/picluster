@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - k3s-server.yaml
   - k3s-agent.yaml
+  - k3s-upgrade-rules.yaml

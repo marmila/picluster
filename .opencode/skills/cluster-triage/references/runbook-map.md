@@ -24,7 +24,8 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
 | `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |
 | `KubePodCrashLooping`, `KubePodNotReady`, `KubeDeploymentReplicasMismatch`, `KubeStatefulSetReplicasMismatch` | sweep step 6, then `GITOPS-003` if the workload belongs to a HelmRelease | |
-| `KubeVersionMismatch` | none yet | Usually a stuck k3s upgrade plan: `kubectl -n system-upgrade get plans`; a `JobFailed` plan is retried only after `kubectl -n system-upgrade rollout restart deploy/system-upgrade-controller` |
+| `K3sUpgradePlanStuck`, `K3sNodeVersionDrift` | `CLUSTER-015` | A failed upgrade job is never retried. A node can also be marked done but still run the old version until k3s is restarted |
+| `KubeVersionMismatch` | `CLUSTER-015` | Normal for about an hour during every k3s upgrade; act only if it lasts longer |
 | `KubeJobFailed` | none yet | Old failed jobs keep firing until deleted |
 
 ## Cluster-wide
@@ -44,6 +45,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `CLUSTER-011` | Planned drain, reboot, or maintenance |
 | `CLUSTER-012` | `DiskPressure`, evictions, or a full node filesystem |
 | `CLUSTER-014` | Cluster API unavailable; a node accepts TCP but never sends a banner; etcd reports no quorum |
+| `CLUSTER-015` | A k3s upgrade stopped part-way: plan not complete, nodes on different versions, node left cordoned |
 
 ### GitOps and release — `runbooks/cluster/gitops-release.md`
 

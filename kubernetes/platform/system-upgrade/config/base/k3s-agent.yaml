@@ -18,7 +18,12 @@ spec:
       - prepare
       - k3s-server
   concurrency: 1
-  jobActiveDeadlineSecs: 1800
+  # Agent jobs are created together with the server jobs and the prepare step
+  # waits until every server runs the new version. That wait counts against
+  # the deadline, and the servers alone take ~25 min on Pis, so 1800s killed
+  # the first agent job before it started (2026-09-27 node6, 2026-11-07 node5).
+  # A failed job is never retried. See runbook CLUSTER-015.
+  jobActiveDeadlineSecs: 7200
   # Cordon node before upgrade it
   cordon: true
   upgrade:

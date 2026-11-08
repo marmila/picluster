@@ -303,3 +303,84 @@ whole cluster appeared unreachable. `node3` reported `throttled=0x50005`; after 
 `node3` and `node4` all showed under-voltage history while `node5` was clean. Power-cycling `node2` and
 `node4` while leaving `node3` running restored quorum and the VIP moved to `node3`. Flux re-converged
 unaided. Follow-up: power delivery on the three control-plane Pis.
+
+## CLUSTER-015 Stuck k3s Upgrade (system-upgrade-controller)
+
+<a id="runbook-cluster-015"></a>
+Runbook ID: `CLUSTER-015`
+Owner: Platform
+Severity: `SEV-3`
+
+Objective: Finish a k3s upgrade that stopped part-way. Upgrades run from the `k3s-server` and `k3s-agent`
+Plans in `kubernetes/platform/system-upgrade/config/base/`: masters first, one at a time, then workers one
+at a time. system-upgrade-controller never retries a failed job, so one failure leaves the remaining nodes
+on the old version until someone acts.
+
+Alerts: `K3sUpgradePlanStuck`, `K3sNodeVersionDrift`. `KubeVersionMismatch` also fires during every normal
+upgrade; act on it only if it lasts more than about an hour.
+
+Preconditions:
+
+- No other node is down or being drained. Upgrade one node at a time.
+- On Pi nodes, check power first: `sudo vcgencmd get_throttled` should be `0x0` (or only the "since boot"
+  bits `0x50000`). Under-voltage makes upgrade jobs time out.
+
+Procedure:
+
+1. Find where it stopped.
+
+```bash
+kubectl get nodes
+kubectl -n system-upgrade get plans,jobs,pods -o wide
+kubectl -n system-upgrade logs deploy/system-upgrade-controller --since=3h | grep -iE "JobFailed|error" | tail -20
+```
+
+2. Match the case:
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| Plan message `DeadlineExceeded`, no job left | Job ran out of time (often waiting for the masters, or under-voltage) | Step 3 |
+| Agent job pod stuck in `Init:0/2` | The prepare step waits until every master runs the plan version | Step 4 for the master that is behind |
+| A node with the plan label (`kubectl get nodes -L plan.upgrade.cattle.io/k3s-server,plan.upgrade.cattle.io/k3s-agent`) but the old version | Job finished, k3s was not restarted | Step 4 |
+| A node upgraded but still `SchedulingDisabled` | Job was killed after the upgrade, before uncordon | Step 5 |
+
+3. Re-create failed jobs by restarting the controller. If a `Failed` job still exists, delete it first,
+   otherwise the controller keeps reporting it.
+
+```bash
+kubectl -n system-upgrade delete job -l upgrade.cattle.io/plan=k3s-agent --field-selector status.successful=0
+kubectl -n system-upgrade rollout restart deploy/system-upgrade-controller
+```
+
+4. Node runs the old version although the new binary is installed. On that node:
+
+```bash
+sudo k3s --version | head -1                        # binary on disk
+sudo systemctl show k3s -p ActiveEnterTimestamp     # when the service started (k3s-agent on workers)
+sudo systemctl restart k3s                          # k3s-agent on workers
+```
+
+   Restart only if the binary is the new version and the service started before the job finished. On a
+   master, make sure the other two masters are `Ready` first so etcd keeps quorum.
+
+5. Node upgraded but still cordoned: `kubectl uncordon <node>`.
+
+Verify:
+
+- `kubectl get nodes` shows every node on the plan version, none `SchedulingDisabled`.
+- `kubectl -n system-upgrade get plans` shows `COMPLETE True` for both plans.
+- `K3sUpgradePlanStuck` and `K3sNodeVersionDrift` resolve.
+
+Rollback:
+
+1. Do not downgrade k3s through the Plans. If a new version misbehaves, revert the version bump in Git and
+   follow the k3s release notes for the supported downgrade path.
+2. If a node does not come back after the restart, follow `CLUSTER-014` (masters) or `CLUSTER-010`.
+
+References:
+
+- `kubernetes/platform/system-upgrade/config/base/k3s-agent.yaml` — `jobActiveDeadlineSecs` is 7200
+  because the agent prepare step's wait for the masters counts against it.
+- `kubernetes/platform/system-upgrade/config/base/k3s-upgrade-rules.yaml` — the alerts.
+- `homelab-docs/alerting.md`, section "k3s upgrade alerts".
+- `postmortems/incident-2026-11-05-node6-undervoltage.md` — the 2026-09-27 and 2026-11-07 failures.

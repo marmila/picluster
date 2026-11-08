@@ -25,6 +25,12 @@ kube-state-metrics:
           - imagepolicies
           - imageupdateautomations
         verbs: [ "list", "watch" ]
+      # k3s upgrade plans (system-upgrade-controller), for k3s-upgrade-rules.yaml
+      - apiGroups:
+          - upgrade.cattle.io
+        resources:
+          - plans
+        verbs: [ "list", "watch" ]
   customResourceState:
     enabled: true
     config:
@@ -275,3 +281,21 @@ kube-state-metrics:
                   ready: [ status, conditions, "[type=Ready]", status ]
                   suspended: [ spec, suspend ]
                   source_name: [ spec, sourceRef, name ]
+          # k3s upgrade plans: suc_plan_info{name, target_version, complete}
+          - groupVersionKind:
+              group: upgrade.cattle.io
+              version: v1
+              kind: Plan
+            metricNamePrefix: suc
+            metrics:
+              - name: "plan_info"
+                help: "The current state of a system-upgrade-controller Plan."
+                each:
+                  type: Info
+                  info:
+                    labelsFromPath:
+                      name: [ metadata, name ]
+                labelsFromPath:
+                  exported_namespace: [ metadata, namespace ]
+                  target_version: [ spec, version ]
+                  complete: [ status, conditions, "[type=Complete]", status ]

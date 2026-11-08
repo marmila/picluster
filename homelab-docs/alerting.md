@@ -8,6 +8,7 @@ Contents:
 - [Alerting overview](#alerting-overview)
 - [Alert notifications (ntfy and healthchecks.io)](#alert-notifications-ntfy-and-healthchecksio)
 - [Certificate expiry alerts](#certificate-expiry-alerts)
+- [k3s upgrade alerts](#k3s-upgrade-alerts)
 - [Alerts and the sre agent](#alerts-and-the-sre-agent)
 - [Mixin rule escaping](#mixin-rule-escaping)
 
@@ -211,6 +212,28 @@ kubernetes/platform/blackbox-exporter/app/base/
 └── certificate-rules.yaml       # TLSCertificate* and ExternalEndpointDown alerts
 kubernetes/platform/blackbox-exporter/app/overlays/prod/values.yaml   # targets
 kubernetes/platform/cert-manager/app/components/monitoring/cert-manager-rules.yaml
+```
+
+## k3s upgrade alerts
+
+k3s is upgraded by [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller) from two Plans (`k3s-server`, then `k3s-agent`). The controller never retries a failed upgrade job, so a single failure leaves the remaining nodes on the old version without any error elsewhere.
+
+kube-state-metrics exports each Plan as `suc_plan_info{name, target_version, complete}` (`customResourceState` in `kube-prometheus-stack/app/components/flux-monitoring/values.yaml`).
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `K3sUpgradePlanStuck` | a Plan has not been Complete for 2 hours | warning |
+| `K3sNodeVersionDrift` | a node has run a k3s version that matches no Plan for 2 hours | warning |
+
+A full rolling upgrade takes about an hour, so neither fires during a normal upgrade. `KubeVersionMismatch` (from the kubernetes mixin) does fire during every upgrade and clears when it finishes. All three point to runbook [CLUSTER-015](../runbooks/cluster/nodes-capacity.md#runbook-cluster-015).
+
+The `k3s-agent` Plan has `jobActiveDeadlineSecs: 7200`. Its jobs are created together with the master jobs and first wait until every master runs the new version; that wait counts against the deadline, and 30 minutes was not enough.
+
+Files:
+
+```
+kubernetes/platform/system-upgrade/config/base/k3s-upgrade-rules.yaml
+kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml   # suc_plan_info
 ```
 
 ## Alerts and the sre agent
