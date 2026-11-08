@@ -1,0 +1,68 @@
+---
+# Alerts for k3s upgrades run by system-upgrade-controller.
+#
+# Two failures seen in practice:
+# - An upgrade job hits its deadline and fails. The controller never retries,
+#   so the plan stays incomplete and the remaining nodes keep the old version
+#   (node6 2026-09-27, node5 2026-11-07).
+# - A job finishes and the plan counts the node as done, but k3s was never
+#   restarted, so the node still runs the old version (node4 2026-11-07).
+#
+# Built on suc_plan_info (kube-state-metrics customResourceState, defined in
+# kube-prometheus-stack/app/components/flux-monitoring/values.yaml) and
+# kube_node_info. A normal rolling upgrade of all nodes takes about an hour,
+# so both alerts wait 2 hours. KubeVersionMismatch (k3s-mixins) fires during
+# every upgrade and is left as it is.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k3s-upgrade
+  annotations:
+    # Rule templates use $labels: keep Flux variable substitution away from them
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  groups:
+    - name: k3s-upgrade.rules
+      rules:
+        - alert: K3sUpgradePlanStuck
+          expr: |
+            label_replace(
+              max by (exported_namespace, name, target_version) (
+                suc_plan_info{complete!="True"}
+              ),
+              "namespace", "$1", "exported_namespace", "(.*)"
+            ) == 1
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: k3s upgrade plan {{ $labels.name }} has not completed for 2 hours
+            description: >-
+              Upgrade plan {{ $labels.name }} (k3s {{ $labels.target_version }}) is not Complete after 2 hours.
+              Usually a job failed (DeadlineExceeded) and system-upgrade-controller will not retry it.
+              Check kubectl -n system-upgrade get plans,jobs. Runbook CLUSTER-015.
+            runbook: CLUSTER-015
+            runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-015
+
+        - alert: K3sNodeVersionDrift
+          expr: |
+            (
+              max by (node, kubelet_version) (kube_node_info)
+              unless on (kubelet_version)
+              label_replace(
+                max by (target_version) (suc_plan_info),
+                "kubelet_version", "$1", "target_version", "(.*)"
+              )
+            )
+            and on () (count(suc_plan_info) > 0)
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: Node {{ $labels.node }} runs k3s {{ $labels.kubelet_version }}, not the version in the upgrade plans
+            description: >-
+              Node {{ $labels.node }} has run k3s {{ $labels.kubelet_version }} for 2 hours, which matches no upgrade plan.
+              Either its upgrade job failed, or the job finished but k3s was not restarted.
+              Compare sudo k3s --version on the node with the running version. Runbook CLUSTER-015.
+            runbook: CLUSTER-015
+            runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-015
