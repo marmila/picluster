@@ -10,6 +10,7 @@ Contents:
 - [Certificate expiry alerts](#certificate-expiry-alerts)
 - [k3s upgrade alerts](#k3s-upgrade-alerts)
 - [Node disk alerts](#node-disk-alerts)
+- [Terraform (tofu-controller) alerts](#terraform-tofu-controller-alerts)
 - [Alerts and the sre agent](#alerts-and-the-sre-agent)
 - [Mixin rule escaping](#mixin-rule-escaping)
 
@@ -262,6 +263,29 @@ kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-disk-rules.
 ansible/vars/picluster.yml                          # k3s_kubelet_config
 ansible/roles/basic_setup/tasks/journald.yml
 ansible/update_node_config.yml                      # make node-config-update
+```
+
+## Terraform (tofu-controller) alerts
+
+The `config-elastic` and `config-keycloak` Terraform resources are applied by tofu-controller. When a `tf-runner` pod dies during a plan, the OpenTofu state lock stays behind and every later run fails on it. In November 2026 this went unnoticed for four days (6577 failed runs).
+
+kube-state-metrics exports each resource (`customResourceState` in `kube-prometheus-stack/app/components/flux-monitoring/values.yaml`):
+
+- `tofu_terraform_info{name, ready, reason, state_locked, lock_id, suspended}`
+- `tofu_terraform_reconciliation_failures{name}`: failed runs since the last success
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `TerraformStateLocked` | a resource has had a stuck state lock for 15 minutes; the message includes the lock ID and the failure count | warning |
+| `TerraformNotReady` | a resource (not suspended) has not been Ready for 1 hour | warning |
+
+Both point to runbook [GITOPS-007](../runbooks/cluster/gitops-release.md#runbook-gitops-007), which force-unlocks with the lock ID from the alert.
+
+Files:
+
+```
+kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/tofu-alert-rules.yaml
+kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml   # tofu_terraform_*
 ```
 
 ## Alerts and the sre agent

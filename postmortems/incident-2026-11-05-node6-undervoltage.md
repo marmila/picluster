@@ -117,6 +117,7 @@ node-exporter reports CPU frequency from `scaling_cur_freq`, which kept reading 
 | 8 | After any outage, check `kubectl get plans.upgrade.cattle.io -n system-upgrade` for `JobFailed` and restart the controller if a plan is stuck | Recorded |
 | 9 | Raise `jobActiveDeadlineSecs` on the `k3s-agent` Plan from 1800 to 7200: the agent prepare step's wait for the masters counts against it. The 2026-09-27 node6 failure was probably the same timing problem, made worse by under-voltage | Done (feature/k3s-upgrade-fixes) |
 | 10 | Alert on a stuck upgrade plan (`K3sUpgradePlanStuck`) and on a node whose version matches no plan (`K3sNodeVersionDrift`), with runbook `CLUSTER-015` | Done (feature/k3s-upgrade-fixes) |
+| 11 | Alert on a stuck tofu-controller state lock (`TerraformStateLocked`, `TerraformNotReady`) and write the unlock runbook `GITOPS-007` | Done (feature/terraform-alerts) |
 
 ## Open questions
 
