@@ -5,7 +5,7 @@
 #
 # Linux reports the requested CPU frequency (scaling_cur_freq), not the real one:
 # on 2026-11-05 node6 ran at 600MHz from under-voltage while Linux said 1.8GHz.
-# Only the firmware (vcgencmd) knows.
+# Only the firmware (vcgencmd) and the kernel log know.
 #
 # If vcgencmd fails, the script exits without touching the file, so the file goes
 # stale and RaspberryPiThrottleMetricsMissing fires.
@@ -19,6 +19,14 @@ raw=${raw#*=}
 value=$((raw))
 clock=$(vcgencmd measure_clock arm)   # frequency(48)=1800000000
 clock=${clock#*=}
+# Kernel "Undervoltage detected!" messages in the last 2 minutes. The firmware
+# flag above is only a snapshot taken once a minute and misses short dips; the
+# kernel logs every one (node6 had 1-5 short dips a day after its cable was
+# reseated, none seen by the flag). The 2 minute window overlaps the next run,
+# so no dip falls between two runs. A count since boot is not used: the journal
+# size cap deletes old entries and the count would jump around.
+dips=$(journalctl -k -q --since "2 minutes ago" 2>/dev/null | grep -ciE "under-?voltage detected" || true)
+dips=${dips:-0}
 
 # Bit number and name of each get_throttled flag.
 flags="0:under_voltage_now 1:capped_now 2:throttled_now 3:soft_temp_limit_now
@@ -40,6 +48,9 @@ trap 'rm -f "$tmp"' EXIT
   echo "# HELP rpi_cpu_clock_hz ARM clock reported by the firmware (vcgencmd measure_clock arm)."
   echo "# TYPE rpi_cpu_clock_hz gauge"
   echo "rpi_cpu_clock_hz $clock"
+  echo "# HELP rpi_undervoltage_events_recent Kernel under-voltage messages in the last 2 minutes."
+  echo "# TYPE rpi_undervoltage_events_recent gauge"
+  echo "rpi_undervoltage_events_recent $dips"
 } > "$tmp"
 chmod 0644 "$tmp"
 mv "$tmp" "$OUT"

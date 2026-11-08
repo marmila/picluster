@@ -454,7 +454,10 @@ Background: when the supply voltage drops, the firmware slows the CPU (down to 6
 the SSD can disconnect. Linux does not see it: `scaling_cur_freq`, `top` and `kubectl top` look normal, the node
 is just slow and pods time out. On 2026-11-05 a loose power cable kept node6 at 600MHz for days. The metrics
 come from `vcgencmd get_throttled`, written every minute by the `rpi-throttled-metrics` timer to
-`/var/lib/node_exporter/rpi_throttled.prom`.
+`/var/lib/node_exporter/rpi_throttled.prom`. `RaspberryPiUnderVoltage` also counts the kernel's `Undervoltage
+detected!` messages (`rpi_undervoltage_events_recent`), so it catches dips of a second or two that the
+once-a-minute firmware snapshot misses. Dips per day on a Pi:
+`sudo journalctl -k -b -o short-iso | grep -i "undervoltage detected" | cut -c1-10 | uniq -c`.
 
 Procedure:
 

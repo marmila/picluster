@@ -329,13 +329,13 @@ How the value reaches Prometheus:
 
 - Ansible installs `/usr/local/bin/rpi_throttled_metrics` and the systemd timer `rpi-throttled-metrics` on every Pi (`raspberrypi` group, node1–6). Every minute it writes `/var/lib/node_exporter/rpi_throttled.prom`.
 - node-exporter reads that directory with its textfile collector: the host `node_exporter` on node1 (role default), the DaemonSet on the k3s nodes (hostPath mount and `--collector.textfile.directory` in `kube-prometheus-stack/app/base/values.yaml`).
-- Metrics: `rpi_throttled_flag{flag}` (`under_voltage_now`, `capped_now`, `throttled_now`, `soft_temp_limit_now` and the same `*_since_boot`), `rpi_throttled_raw`, `rpi_cpu_clock_hz` (real clock from the firmware).
+- Metrics: `rpi_undervoltage_events_recent` (kernel `Undervoltage detected!` messages in the last 2 minutes: catches dips shorter than the 1-minute snapshot), `rpi_throttled_flag{flag}` (`under_voltage_now`, `capped_now`, `throttled_now`, `soft_temp_limit_now` and the same `*_since_boot`), `rpi_throttled_raw`, `rpi_cpu_clock_hz` (real clock from the firmware).
 
 Install or update it on existing nodes with `make node-config-update` (it does not restart k3s unless the kubelet config changed).
 
 | Alert | Fires when | Severity |
 |---|---|---|
-| `RaspberryPiUnderVoltage` | under-voltage at any time in the last 10 minutes (catches short dips) | warning |
+| `RaspberryPiUnderVoltage` | any under-voltage dip in the last 10 minutes, from the kernel log or the firmware flag; shows the number of dips | warning |
 | `RaspberryPiThrottled` | CPU throttled or capped for 5 minutes; the message shows the real clock | critical |
 | `RaspberryPiThrottleMetricsMissing` | a Pi's file is older than 10 minutes, or an arm64 node has none | warning |
 

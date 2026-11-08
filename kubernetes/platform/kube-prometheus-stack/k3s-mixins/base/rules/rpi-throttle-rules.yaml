@@ -20,14 +20,19 @@ spec:
     - alert: RaspberryPiUnderVoltage
       annotations:
         summary: Under-voltage on {{ $labels.nodename }}.
-        description: The firmware of {{ $labels.nodename }} reported under-voltage in the last 10 minutes (power cable, power supply, or a USB device drawing too much). The CPU slows down and the SSD can disconnect. Runbook CLUSTER-016.
+        description: '{{ $labels.nodename }} had under-voltage in the last 10 minutes (about {{ with printf "sum_over_time(rpi_undervoltage_events_recent{instance=''%s''}[10m]) / 2" $labels.instance | query }}{{ . | first | value | printf "%.0f" }}{{ end }} dips logged by the kernel). Usually the power cable or supply, or a USB device drawing too much. The CPU slows down and the SSD can disconnect. Runbook CLUSTER-016.'
         runbook: CLUSTER-016
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-016
-      # max_over_time also catches short dips between two samples of a loose cable.
+      # Two sources: kernel messages (every dip, even a short one) and the
+      # firmware flag (in case the kernel log is unavailable). Each run counts
+      # the last 2 minutes, so the 10 minute sum counts each dip about twice.
       expr: |
-        (max_over_time(rpi_throttled_flag{flag="under_voltage_now"}[10m]) > 0)
+        (
+          max by (instance) (max_over_time(rpi_undervoltage_events_recent[10m])) > 0
+          or
+          max by (instance) (max_over_time(rpi_throttled_flag{flag="under_voltage_now"}[10m])) > 0
+        )
         * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
-      for: 1m
       labels:
         severity: warning
     - alert: RaspberryPiThrottled
