@@ -152,4 +152,4 @@ Rollback:
 References:
 
 - `kubernetes/platform/kube-prometheus-stack/app/components/alertmanager-notifications/`
-- `docs/_docs/monitoring.md`, section "Alert notifications (ntfy and healthchecks.io)"
+- `homelab-docs/alerting.md`, section "Alert notifications (ntfy and healthchecks.io)"

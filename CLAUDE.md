@@ -91,6 +91,9 @@ bundle install
 bundle exec jekyll build
 ```
 
+`docs/` is the upstream Jekyll website: keep it as upstream has it. Documentation for this fork's own changes
+(alerting, homelab procedures) goes in `homelab-docs/`, next to `runbooks/` and `postmortems/`.
+
 ## Architecture
 
 ### Layered automation flow
