@@ -148,44 +148,6 @@ opencode debug agents     # lists agents and the merged permission rules
 Check that agents and skills appear and that the permission order is what you expect. Configuration
 reloads without restarting OpenCode.
 
-## Alerts and the sre agent
-
-<a id="alerts-and-the-sre-agent"></a>
-Alerts reach a phone through ntfy (see [Alerting overview](/docs/prometheus/#alerting-overview)). The agent is not started automatically by an alert: a person reads the alert and decides whether to hand it to the agent. That keeps a human in the loop for anything the agent would run against the live cluster.
-
-```mermaid
-sequenceDiagram
-  participant P as Prometheus
-  participant AM as Alertmanager
-  participant N as ntfy (phone)
-  participant U as You
-  participant A as sre agent
-  participant K as Cluster (read-only)
-
-  P->>AM: alert fires (with runbook ID)
-  AM->>N: notification
-  N->>U: "...expires in 13 days. Runbook NET-009"
-  U->>A: paste the alert, or "triage the cluster"
-  A->>AM: step 0: list firing alerts
-  A->>A: look up alert in runbook map
-  A->>K: read-only checks from the runbook
-  A->>U: Symptom / Evidence / Cause / Action / Risk
-  U->>A: approve the proposed change
-  A->>K: change through Git and Flux, or a make target
-  AM->>N: "Resolved"
-```
-
-How the pieces connect:
-
-| Piece | Where | What it gives the agent |
-| --- | --- | --- |
-| `runbook` annotation on each alert | PrometheusRules in `kubernetes/` | The runbook ID, also shown at the end of the ntfy message |
-| Step 0 of `cluster-triage` | `.opencode/skills/cluster-triage/SKILL.md` | Starts every triage from the firing alerts instead of a blind sweep |
-| Alert → runbook table | `.opencode/skills/cluster-triage/references/runbook-map.md` | Maps alert names, including chart and mixin alerts without an annotation, to runbook IDs |
-| Step 10 of `cluster-triage` | same skill | Certificate days left and reachability for Vault, RustFS and the gateway from the blackbox exporter |
-
-When adding an alert, give it a `runbook` annotation and end its description with `Runbook <ID>.` (no colon: an unquoted `: ` breaks the YAML). If no runbook fits yet, add a row to the alert table with the first check to run, and add the runbook ID to the backlog in `runbooks/README.md`.
-
 ## Maintenance
 
 - Treat agent and skill files like code: review changes, keep paths and commands real.

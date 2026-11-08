@@ -382,4 +382,5 @@ References:
 - `kubernetes/platform/system-upgrade/config/base/k3s-agent.yaml` — `jobActiveDeadlineSecs` is 7200
   because the agent prepare step's wait for the masters counts against it.
 - `kubernetes/platform/system-upgrade/config/base/k3s-upgrade-rules.yaml` — the alerts.
+- `homelab-docs/alerting.md`, section "k3s upgrade alerts".
 - `postmortems/incident-2026-11-05-node6-undervoltage.md` — the 2026-09-27 and 2026-11-07 failures.

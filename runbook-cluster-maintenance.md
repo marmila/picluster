@@ -344,4 +344,4 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 - `runbook-node-os-reboot.md`: safe reboot of nodes (etcd quorum, Longhorn)
 - `postmortems/incident-2026-10-06-keycloak-db-outage.md`: Longhorn stale PID, CNPG PVC resize
 - `postmortems/incident-2026-09-27-cowrie-pipeline-outage.md`
-- `docs/_docs/monitoring.md`: "Alert notifications" (ntfy and healthchecks.io setup)
+- `homelab-docs/alerting.md`: "Alert notifications" (ntfy and healthchecks.io setup)
