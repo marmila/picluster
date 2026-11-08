@@ -88,6 +88,7 @@ Automerge uses **branch automerge**: Renovate pushes straight to `master` once C
 |---|---|---|---|
 | `ubuntu` | blocked | nodes run Ubuntu 24.04 LTS; tag is the base of `metal/x86/build/Dockerfile` | nodes move to a new LTS |
 | `elastic/elasticsearch` | blocked | fluent-plugin-elasticsearch breaks on ES 9 ([#1061](https://github.com/uken/fluent-plugin-elasticsearch/issues/1061)); would break Fluentd → threatmap ingestion | the plugin works with ES 9 |
+| `python` | blocked | the runner image is `python:3.14-slim` and `ansible/pyproject.toml` requires `<3.15`; the 3.15 bump broke the runner and upstream reverted it | the Dockerfile base image, `.python-version`, `requires-python` and `uv.lock` move to 3.15 together |
 | `mongo` | capped `<8.1` | the seed job's `mongosh` must match the MongoDB **8.0.x** server (`mongodb-community.yaml`, not tracked by Renovate) | you upgrade the MongoDB server |
 
 Blocked packages never join a group and are never automerged. Their PRs get the `blocked` label automatically. **Blocking covers the whole package**, so Elasticsearch 8.x patches also come as separate blocked PRs.
