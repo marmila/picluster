@@ -16,3 +16,6 @@ rpi_packages:
   # - linux-modules-extra-raspi
   - fake-hwclock
   - bridge-utils
+
+# Maximum disk space for the systemd journal (journald SystemMaxUse)
+journald_system_max_use: 500M

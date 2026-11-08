@@ -9,6 +9,7 @@ Contents:
 - [Alert notifications (ntfy and healthchecks.io)](#alert-notifications-ntfy-and-healthchecksio)
 - [Certificate expiry alerts](#certificate-expiry-alerts)
 - [k3s upgrade alerts](#k3s-upgrade-alerts)
+- [Node disk alerts](#node-disk-alerts)
 - [Alerts and the sre agent](#alerts-and-the-sre-agent)
 - [Mixin rule escaping](#mixin-rule-escaping)
 
@@ -234,6 +235,33 @@ Files:
 ```
 kubernetes/platform/system-upgrade/config/base/k3s-upgrade-rules.yaml
 kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml   # suc_plan_info
+```
+
+## Node disk alerts
+
+The kubelet evicts pods once a node's root disk is 85% full (DiskPressure). The mixin filesystem alerts only fire at 5% and 3% free, and the mixin `KubeNodePressure` alert is severity `info`, which is not routed. On 2026-11-07 node-esp-2 reached DiskPressure and evicted fluent-bit without any notification.
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `NodeRootDiskFillingUp` | a node's root filesystem is over 80% full for 15 minutes | warning |
+| `KubeNodeDiskPressure` | a node has had the DiskPressure condition for 5 minutes | critical |
+
+Both point to runbook [CLUSTER-012](../runbooks/cluster/nodes-capacity.md#runbook-cluster-012).
+
+Two node settings keep the disks from filling up in the first place:
+
+- **Image GC:** `imageGCHighThresholdPercent: 70` / `imageGCLowThresholdPercent: 60` in `k3s_kubelet_config` (`ansible/vars/picluster.yml`). The default of 85% started image cleanup at the same point as eviction.
+- **Journal size:** `SystemMaxUse=500M` (`ansible/roles/basic_setup/tasks/journald.yml`, variable `journald_system_max_use`).
+
+Both are set on new installs. On running nodes, `make node-config-update` applies them: it restarts k3s only on nodes whose kubelet config changed, one node at a time, and waits for each node to be Ready.
+
+Files:
+
+```
+kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-disk-rules.yaml
+ansible/vars/picluster.yml                          # k3s_kubelet_config
+ansible/roles/basic_setup/tasks/journald.yml
+ansible/update_node_config.yml                      # make node-config-update
 ```
 
 ## Alerts and the sre agent

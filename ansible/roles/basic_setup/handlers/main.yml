@@ -6,3 +6,8 @@
   ansible.builtin.service:
     name: multipathd
     state: restarted
+
+- name: Restart journald
+  ansible.builtin.service:
+    name: systemd-journald
+    state: restarted

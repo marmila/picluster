@@ -10,6 +10,7 @@ resources:
   - ./coredns-mixin-rules.yaml
   - ./grafana-mixin-rules.yaml
   - ./general-rules.yaml
+  - ./node-disk-rules.yaml
 
 patches:
   - target:

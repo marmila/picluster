@@ -25,6 +25,13 @@ k3s_kubelet_config: |
   kind: KubeletConfiguration
   shutdownGracePeriod: 30s
   shutdownGracePeriodCriticalPods: 10s
+  # Delete unused images from 70% root disk use down to 60%. The default (85%)
+  # is the same point where the kubelet evicts pods (imagefs.available<15%,
+  # and images live on the root disk), so cleanup only started once pods were
+  # already being evicted (node-esp-2, 2026-11-07).
+  # Applied to running nodes with `make node-config-update`.
+  imageGCHighThresholdPercent: 70
+  imageGCLowThresholdPercent: 60
 
 
 # k3s server-config
