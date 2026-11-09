@@ -482,8 +482,14 @@ Procedure:
 
 ```bash
 sudo bash -c 'vcgencmd get_throttled; vcgencmd measure_clock arm; vcgencmd measure_volts core; vcgencmd measure_temp'
-pi_throttling
+sudo pi_throttling
+sudo journalctl -k --since today -o short-iso | grep -iE "under-?voltage detected" | cut -c1-19 | tail -5
 ```
+
+   `vcgencmd` and `pi_throttling` need root (`/dev/vcio`); without `sudo` they print `Can't open device
+   file` errors and wrong answers. The last line lists today's dips with their time.
+   To see whether other Pis dipped at the same moment (shared power supply), from pimaster:
+   `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'journalctl -k --since today -o short-iso | grep -iE "under-?voltage detected" | cut -c1-19 | tail -3'`.
 
    `get_throttled` bits: `0x1` under-voltage now, `0x2` frequency capped now, `0x4` throttled now, `0x8`
    soft temperature limit now; `0x10000`, `0x20000`, `0x40000`, `0x80000` the same at any time since boot.
@@ -518,7 +524,10 @@ Verify:
 
 - `vcgencmd get_throttled` shows no `*_now` bit (`0x0` or only `0x...0000`).
 - `vcgencmd measure_clock arm` shows the full clock (1.5–1.8GHz on a Pi 4).
-- The alerts resolve (`RaspberryPiUnderVoltage` 10 minutes after the last dip).
+- The alerts resolve. `RaspberryPiUnderVoltage` clears about 12 minutes after the last dip (2 minute count
+  window plus the 10 minute alert window); the "resolved" ntfy message follows within 5 minutes, so about
+  15-20 minutes after the last dip. A single short dip on one Pi (2026-11-09, node3) needs no action: watch
+  whether it repeats.
 
 Rollback:
 
