@@ -7,13 +7,18 @@
   // Automerge policy (homelab-docs/update-automation.md):
   //   - Renovate merges only when every check passes (Validate Kubernetes, Lint, ...)
   //   - only on weekdays 10:00-18:00 Europe/Rome, so someone can react
-  //   - critical components one per weekday; k3s, Longhorn, Flux, system-upgrade-controller,
-  //     majors and blocked packages stay manual
+  //   - critical components one per weekday; k3s, Longhorn, Cilium, Flux,
+  //     system-upgrade-controller, majors and blocked packages stay manual
   timezone: "Europe/Rome",
   automergeSchedule: ["* 10-17 * * 1-5"],
   // Renovate merges itself (instead of GitHub auto-merge), so the time window
   // and the check results are always respected.
   platformAutomerge: false,
+  // Registries such as ghcr.io and quay.io publish no release dates. Since Renovate 42
+  // an undated release otherwise waits forever on minimumReleaseAge ("Pending Status
+  // Checks", renovate/stability-days). Undated releases are taken without the wait;
+  // the critical automerged components below require a date (timestamp-required).
+  minimumReleaseAgeBehaviour: "timestamp-optional",
   packageRules: [
     {
       description: "Bundle all non-major updates into one weekly PR, automerged on Monday",
@@ -62,6 +67,7 @@
       matchDepNames: ["vault", "hashicorp/vault"],
       matchUpdateTypes: ["minor", "patch", "digest"],
       minimumReleaseAge: "7 days",
+      minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 2"],
     },
     {
@@ -69,6 +75,7 @@
       matchDepNames: ["cloudnative-pg"],
       matchUpdateTypes: ["minor", "patch", "digest"],
       minimumReleaseAge: "7 days",
+      minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 3"],
     },
     {
@@ -76,6 +83,7 @@
       matchDepNames: ["istio/istio"],
       matchUpdateTypes: ["minor", "patch", "digest"],
       minimumReleaseAge: "7 days",
+      minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 4"],
     },
     {
@@ -84,14 +92,13 @@
       matchFileNames: ["kubernetes/platform/istio/**"],
       matchUpdateTypes: ["minor", "patch", "digest"],
       minimumReleaseAge: "7 days",
+      minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 4"],
     },
     {
-      description: "Cilium: automerge on Friday",
+      description: "Cilium: manual. Its chart comes from quay.io, which publishes no release dates, so the 7-day wait cannot be enforced",
       matchDepNames: ["cilium", "quay.io/cilium/charts/cilium"],
-      matchUpdateTypes: ["minor", "patch", "digest"],
-      minimumReleaseAge: "7 days",
-      automergeSchedule: ["* 10-17 * * 5"],
+      automerge: false,
     },
 
     {

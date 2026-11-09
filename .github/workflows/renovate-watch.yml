@@ -1,0 +1,95 @@
+---
+# Tells ntfy when a Renovate PR that should merge by itself did not:
+#   - a check failed on it (nothing broken is automerged, so it waits for you), or
+#   - it has been open for more than 7 days.
+# Only PRs with automerge enabled count: manual ones (k3s, Longhorn, Cilium, Flux,
+# majors, blocked) are listed in the weekly maintenance issue instead.
+# Runs on weekdays after the 10:00-18:00 Europe/Rome automerge window.
+# Needs the repository secret NTFY_URL (e.g. https://ntfy.sh/<topic>); NTFY_TOKEN is optional.
+# Runbook: runbooks/cluster/gitops-release.md#runbook-gitops-011
+name: Renovate watch
+
+'on':
+  schedule:
+    # 17:30 UTC = 18:30 Rome in winter, 19:30 in summer
+    - cron: '30 17 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Send a test notification even if nothing is stuck'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+jobs:
+  watch:
+    name: Check automerge PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find stuck automerge PRs
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr list --repo "$REPO" --author 'app/renovate' --state open --limit 100 \
+            --json number,title,url,createdAt,labels,body,statusCheckRollup > prs.json
+
+          jq -r --arg cutoff "$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)" '
+            [ .[]
+              | select(.body | contains("**Automerge**: Enabled"))
+              | select([.labels[].name] | index("blocked") | not)
+              | . as $pr
+              | ([.statusCheckRollup[]?
+                  | select((.conclusion // .state // "") | test("^(FAILURE|ERROR|TIMED_OUT|CANCELLED|ACTION_REQUIRED|STARTUP_FAILURE)$"))
+                  | (.name // .context)] | unique) as $failed
+              | select(($failed | length) > 0 or $pr.createdAt < $cutoff)
+              | "#\($pr.number) \($pr.title)\n  " +
+                (if ($failed | length) > 0 then "check failed: \($failed | join(", "))" else "open since \($pr.createdAt[0:10])" end) +
+                "\n  \($pr.url)"
+            ] | join("\n")' prs.json > stuck.txt
+
+          count=$(grep -c '^#' stuck.txt || true)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Stuck automerge PRs: $count"
+          cat stuck.txt
+
+      - name: Notify ntfy
+        if: steps.find.outputs.count != '0' || inputs.test
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+          COUNT: ${{ steps.find.outputs.count }}
+          TEST: ${{ inputs.test }}
+          DASHBOARD: ${{ github.server_url }}/${{ github.repository }}/pulls/app%2Frenovate
+        run: |
+          set -euo pipefail
+          if [ -z "${NTFY_URL}" ]; then
+            echo "::error::Repository secret NTFY_URL is not set (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+          if [ "${COUNT}" = "0" ]; then
+            title="Renovate watch: test notification"
+            body="Nothing is stuck. This is a test from the Renovate watch workflow."
+          else
+            title="Renovate: ${COUNT} automerge PR(s) stuck"
+            body="$(cat stuck.txt)
+
+          Runbook GITOPS-011"
+          fi
+          auth=()
+          if [ -n "${NTFY_TOKEN:-}" ]; then auth=(-H "Authorization: Bearer ${NTFY_TOKEN}"); fi
+          curl -fsS "${auth[@]}" \
+            -H "Title: ${title}" \
+            -H "Tags: warning,renovate" \
+            -H "Priority: default" \
+            -H "Click: ${DASHBOARD}" \
+            -d "${body}" \
+            "${NTFY_URL}" > /dev/null
+          echo "Sent to ntfy"

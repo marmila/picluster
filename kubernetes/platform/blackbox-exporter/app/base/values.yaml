@@ -4,6 +4,10 @@
 # Prometheus can alert before their Let's Encrypt certificates expire. Those
 # certificates are issued by Ansible playbooks, not cert-manager, so nothing
 # else watches them. Targets are defined per environment in the overlays.
+#
+# Also probes web UIs through the Envoy gateway (targets named web-*), so an
+# update that breaks the gateway, Istio or Cilium shows up even when Flux
+# reports everything Ready (web-rules.yaml).
 
 config:
   modules:
@@ -30,6 +34,21 @@ config:
       http:
         method: GET
         valid_status_codes: [200]
+        preferred_ip_protocol: ip4
+        tls_config:
+          insecure_skip_verify: true
+
+    # Web UI through the gateway: the gateway answers and the backend is not
+    # failing. Redirects (SSO login) and 401/403 count as up; connection errors,
+    # timeouts and 5xx (e.g. Envoy 503 "no healthy upstream") count as down.
+    # Certificate problems are left to cert-manager alerts (insecure_skip_verify).
+    http_reachable:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        follow_redirects: false
+        valid_status_codes: [200, 301, 302, 303, 307, 308, 401, 403]
         preferred_ip_protocol: ip4
         tls_config:
           insecure_skip_verify: true

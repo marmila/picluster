@@ -24,7 +24,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | --- | --- | --- |
 | Bootstrap and Recovery | [`cluster/bootstrap-recovery.md`](cluster/bootstrap-recovery.md) | `CLUSTER-001`, `CLUSTER-002` (backlog: `CLUSTER-003`) |
 | Nodes and Capacity | [`cluster/nodes-capacity.md`](cluster/nodes-capacity.md) | `CLUSTER-010` … `CLUSTER-012`, `CLUSTER-014` … `CLUSTER-016` (backlog: `CLUSTER-013`) |
-| GitOps and Release Operations | [`cluster/gitops-release.md`](cluster/gitops-release.md) | `GITOPS-001` … `GITOPS-007` |
+| GitOps and Release Operations | [`cluster/gitops-release.md`](cluster/gitops-release.md) | `GITOPS-001` … `GITOPS-011` |
 | Security and Access | [`cluster/security-access.md`](cluster/security-access.md) | `SEC-001` … `SEC-003` (backlog: `SEC-004`, `SEC-005`) |
 | Upgrades and Change Management | [`cluster/change-management.md`](cluster/change-management.md) | `CHANGE-001`, `CHANGE-002` (backlog: `CHANGE-003`, `CHANGE-004`) |
 | Backup and Compliance | [`cluster/backup-compliance.md`](cluster/backup-compliance.md) | `BACKUP-001` … `BACKUP-004` (backlog: `AUDIT-001`) |
@@ -39,7 +39,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | S3 Storage (RustFS) | [`components/s3-storage.md`](components/s3-storage.md) | `MINIO-001` (backlog: `MINIO-002` … `MINIO-005`) |
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
 | Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
-| Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-009` (backlog: `NET-001` … `NET-003`) |
+| Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-010` (backlog: `NET-001` … `NET-003`) |
 | Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001` |
 | Kafka and Data Services | [`components/data-services.md`](components/data-services.md) | `PG-001` (backlog: `KAFKA-001`, `KAFKA-002`, `MONGO-001`) |
 
@@ -116,6 +116,10 @@ References:
 - [`GITOPS-005` Flux Upgrade and Rollback](cluster/gitops-release.md#runbook-gitops-005)
 - [`GITOPS-006` Branch-Based Live Validation Workflow](cluster/gitops-release.md#runbook-gitops-006)
 - [`GITOPS-007` Terraform (tofu-controller) Stuck or State-Locked](cluster/gitops-release.md#runbook-gitops-007)
+- [`GITOPS-008` FluxInstance Not Ready (Flux Cannot Be Upgraded)](cluster/gitops-release.md#runbook-gitops-008)
+- [`GITOPS-009` HelmRelease Upgrade Rolled Back](cluster/gitops-release.md#runbook-gitops-009)
+- [`GITOPS-010` Revert an Automerged (or Merged) Update](cluster/gitops-release.md#runbook-gitops-010)
+- [`GITOPS-011` Renovate Automerge Stuck](cluster/gitops-release.md#runbook-gitops-011)
 
 #### Security and Access
 
@@ -220,3 +224,4 @@ References:
 - [`NET-007` Certificate Renewal Monitoring and Forced Reissuance](components/networking-ingress.md#runbook-net-007)
 - [`NET-008` TLS Secret and Served Certificate Mismatch](components/networking-ingress.md#runbook-net-008)
 - [`NET-009` External Let's Encrypt Certificate Renewal (Vault, RustFS, Gateway)](components/networking-ingress.md#runbook-net-009)
+- [`NET-010` Web Endpoint Down Through the Gateway](components/networking-ingress.md#runbook-net-010)

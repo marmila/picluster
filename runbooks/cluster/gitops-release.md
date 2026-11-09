@@ -426,3 +426,228 @@ References:
 - `kubernetes/platform/elastic-stack/config/base/terraform.yaml`, `kubernetes/platform/keycloak/config/base/terraform.yaml`
 - `kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/tofu-alert-rules.yaml`
 - `postmortems/incident-2026-11-05-node6-undervoltage.md` (tofu-controller lock section)
+
+## GITOPS-008 FluxInstance Not Ready (Flux Cannot Be Upgraded)
+
+<a id="runbook-gitops-008"></a>
+Runbook ID: `GITOPS-008`
+Owner: Platform
+Severity: `SEV-2`
+
+Objective: Get the FluxInstance back to Ready when the Flux operator cannot apply the Flux version in Git.
+Alert: `FluxInstanceNotReady`.
+
+What it means: the running Flux controllers keep working on their current version, but the operator cannot
+install the version in Git, so Flux cannot be upgraded or repaired. Most common cause: the Flux
+**distribution** version (`fluxcd/flux2`, Renovate group "Flux distribution") is newer than what the
+installed **flux-operator** knows. Example 2026-11-09: Flux 2.10.0 merged with flux-operator 0.60.0
+(`BuildFailed: no match found for semver: 2.10.0`); 2.10 needs flux-operator 0.62.0 or later.
+
+Preconditions:
+
+- `kubectl` on node2.
+
+Procedure:
+
+1. Read the reason.
+
+```bash
+kubectl -n flux-system get fluxinstance flux -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+kubectl -n flux-system get fluxinstance flux -o jsonpath='{.spec.distribution.version}{" wanted, running "}{.status.lastAppliedRevision}{"\n"}'
+kubectl -n flux-system get deploy flux-operator -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+```
+
+2. `BuildFailed` / `no match found for semver`: the operator is too old for the wanted version. Check the
+   [flux-operator releases](https://github.com/controlplaneio-fluxcd/flux-operator/releases) for the first
+   version that mentions the Flux version, then pick one:
+   - **Set the distribution back** to the running version in
+     `kubernetes/platform/flux-operator/instance/base/values.yaml` (`instance.distribution.version`) and in
+     `ansible/vars/picluster.yml` (`fluxcd_version`), push to `master`. Then upgrade the operator (Renovate
+     group "Flux", `controlplaneio-fluxcd` charts) first, and the distribution after it, on separate days.
+   - Or upgrade the operator now, if its PR is already at a version that supports the distribution.
+3. Other reasons: the message usually names the failing component; check the operator log.
+
+```bash
+kubectl -n flux-system logs deploy/flux-operator --since=2h | grep -iE "error|fail" | tail -20
+```
+
+4. Speed up reconciliation after pushing the fix (no flux CLI on node2):
+
+```bash
+NOW=$(date +%s)
+kubectl -n flux-system annotate gitrepository flux-system reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+kubectl -n flux-system annotate kustomization flux-operator-instance reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+kubectl -n flux-system annotate helmrelease flux-instance reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+```
+
+Verify:
+
+- `kubectl -n flux-system get fluxinstance flux` shows `Ready=True`; the `Stalled` condition is gone.
+- `kubectl -n flux-system get pods`: all controllers Running.
+- The alert resolves on ntfy.
+
+Rollback:
+
+1. Reverting the version change in Git is the rollback; the running controllers were never changed.
+
+References:
+
+- `kubernetes/platform/flux-operator/` (operator and instance)
+- `homelab-docs/update-automation.md` (Flux stays a manual update)
+
+## GITOPS-009 HelmRelease Upgrade Rolled Back
+
+<a id="runbook-gitops-009"></a>
+Runbook ID: `GITOPS-009`
+Owner: Platform
+Severity: `SEV-3`
+
+Objective: Decide what to do after Flux rolled a failed Helm upgrade back by itself.
+Alert: `FluxHelmReleaseRolledBack`.
+
+What it means: a new chart version (or new values) failed to install or upgrade, and Flux's
+`upgrade.remediation` restored the previous release. The cluster runs the **old** version and is usually
+fine. Git still asks for the new version, so Flux retries and may roll back again.
+
+Preconditions:
+
+- `kubectl` on node2, `gh` or the GitHub UI.
+
+Procedure:
+
+1. Find out what failed.
+
+```bash
+NS=<namespace>; HR=<name>
+kubectl -n $NS get helmrelease $HR -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+kubectl -n $NS get helmrelease $HR -o jsonpath='{range .status.history[*]}{.chartVersion} {.status} {.firstDeployed}{"\n"}{end}'
+kubectl -n $NS get events --sort-by=.lastTimestamp | tail -20
+```
+
+2. Find the commit that changed it (usually a Renovate PR, possibly automerged):
+
+```bash
+git log --oneline -5 -- kubernetes/platform/<component>/
+```
+
+3. Decide:
+   - **Bad release, or values incompatible with the new chart:** revert the commit (`GITOPS-010`).
+     Closing the Renovate PR makes Renovate skip that version.
+   - **Transient** (image pull timeout, node pressure during the upgrade): reset the retries and let Flux
+     try again.
+
+```bash
+NOW=$(date +%s)
+kubectl -n $NS annotate helmrelease $HR reconcile.fluxcd.io/requestedAt="$NOW" reconcile.fluxcd.io/resetAt="$NOW" --overwrite
+```
+
+Verify:
+
+- `kubectl -n $NS get helmrelease $HR` is Ready=True on the intended chart version (reverted or new).
+- Pods of the release are Running; the alert resolves.
+
+Rollback:
+
+1. Nothing to roll back: Flux already restored the previous release.
+
+References:
+
+- `GITOPS-003` (HelmRelease Not-Ready triage), `GITOPS-010` (revert an automerged update)
+
+## GITOPS-010 Revert an Automerged (or Merged) Update
+
+<a id="runbook-gitops-010"></a>
+Runbook ID: `GITOPS-010`
+Owner: Platform
+Severity: `SEV-2` or `SEV-3`
+
+Objective: Undo a dependency update that was merged (by Renovate automerge or by hand) and broke something.
+
+Preconditions:
+
+- A local clone of the repo with push access to `master` (the owner can push past branch protection).
+
+Procedure:
+
+1. Stop more automerges while you work (optional, during a larger incident): add
+   `{ matchPackageNames: ["*"], automerge: false }` at the end of `packageRules` in `.github/renovate.json5`
+   and push (see `homelab-docs/update-automation.md`).
+2. Find the merge commit. Renovate PRs are titled `chore(deps): update ...` or `fix(deps): update ...`.
+
+```bash
+git pull
+git log --oneline --since="2 days ago" --first-parent master
+```
+
+3. Revert it and push.
+
+```bash
+git revert --no-edit <sha>          # squash or rebase merge
+git revert --no-edit -m 1 <sha>     # merge commit
+git push origin master
+```
+
+4. Reconcile faster (node2, no flux CLI):
+
+```bash
+NOW=$(date +%s)
+kubectl -n flux-system annotate gitrepository flux-system reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+kubectl -n flux-system annotate kustomization --all reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+```
+
+5. If Renovate opens the PR again, close it so Renovate skips that version. To block the package for good,
+   add it to the blocked list in `.github/renovate/automerge.json5` (both places).
+
+Verify:
+
+- The alert that started this resolves; the health check in `homelab-docs/cluster-maintenance.md`
+  section 4.3 is clean.
+
+Rollback:
+
+1. Revert the revert (`git revert <revert-sha>`) once the cause is understood.
+
+Caveats:
+
+- **No downgrade for k3s, Longhorn, database major versions**: reverting Git does not undo them. These are
+  manual updates for that reason; fix forward.
+- CRD changes are not removed by a revert.
+
+References:
+
+- `homelab-docs/update-automation.md`, `homelab-docs/cluster-maintenance.md` section 9
+
+## GITOPS-011 Renovate Automerge Stuck
+
+<a id="runbook-gitops-011"></a>
+Runbook ID: `GITOPS-011`
+Owner: Platform
+Severity: `Maintenance`
+
+Objective: Unblock a Renovate PR that should have merged by itself.
+Notification: "Renovate: N automerge PR(s) stuck" on ntfy, from the `Renovate watch` workflow (weekdays after
+18:00 Rome).
+
+Procedure:
+
+1. Open the PR from the notification. Two cases:
+   - **A check failed** (most often `Validate prod manifests`). Open the failed check and use the table
+     "Reading a failure" in `homelab-docs/update-automation.md`. Fix it in the PR branch, or close the PR if
+     the release is bad (Renovate then skips that version).
+   - **Open for more than 7 days** with green checks. Look at the `renovate/stability-days` check and the
+     PR body:
+     - `renovate/stability-days` pending: the release is younger than the required age, or the registry
+       publishes no release date (the critical components require one). Wait, or merge by hand.
+     - Outside its merge day: Vault merges on Tuesday, CloudNativePG Wednesday, Istio Thursday, the weekly
+       bundle Monday, all 10:00-18:00 Rome. Wait for the next window or merge by hand.
+     - Merge conflict: tick the rebase box in the PR body.
+2. To make Renovate run now: tick "Check this box to trigger a request for Renovate to run again" at the
+   bottom of the Dependency Dashboard (issue #238).
+
+Verify:
+
+- The PR is merged or closed; the next `Renovate watch` run sends nothing.
+
+References:
+
+- `.github/workflows/renovate-watch.yml`, `.github/renovate/automerge.json5`

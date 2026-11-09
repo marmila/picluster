@@ -72,9 +72,11 @@ Rules are applied in the order the presets are listed. A later rule overrides an
 
 | PR | Contains | Created | Merged by |
 |---|---|---|---|
-| **all non-major dependencies** | all minor/patch/digest updates not covered below: Helm charts, images, Ansible collections, Terraform providers, Python deps | Monday before 06:00 UTC | **you** |
-| **Critical groups:** `k3s`, `Longhorn`, `Istio`, `CloudNativePG`, `Vault`, `Cilium`, `Flux` (operator), `system-upgrade-controller` | one PR per component | Monday | **you, one at a time** |
-| **Tool groups:** `Helm CLI`, `kubectl`, `Flux CLI`, `Velero CLI`, `Prometheus Operator CRDs` | the same tool pinned in several files (mise, Dockerfile, Ansible) bumped together | Monday | you, any time |
+| **all non-major dependencies** | all minor/patch/digest updates not covered below: Helm charts, images, Ansible collections, Terraform providers, Python deps | Monday before 06:00 Rome | **Renovate** (automerge Monday 10:00–18:00 Rome when every check passes) |
+| **Critical, automerged:** `Vault`, `CloudNativePG`, `Istio` | one PR per component | Monday | **Renovate**, one per weekday (Tue / Wed / Thu), releases at least 7 days old |
+| **Critical, manual:** `k3s`, `Longhorn`, `Cilium`, `Flux` (operator), `Flux distribution` (the cluster's Flux version), `system-upgrade-controller` | one PR per component | Monday | **you, one at a time** |
+| **Tool groups:** `Helm CLI`, `kubectl`, `Velero CLI` | the same tool pinned in several files (mise, Dockerfile, Ansible) bumped together | Monday | **Renovate** (automerge) |
+| **Prometheus Operator CRDs** | CRD chart and CRD version bumped together | Monday | you, any time |
 | **tooling** | `.mise.toml` workstation tools and GitHub Actions (minor/patch) | Monday | **Renovate** (automerge after CI passes) |
 | **Grafana dashboards** | dashboard revision bumps | any time | **Renovate** (automerge) |
 | **Majors** (`type/major`) | one PR per package | any time | **you, after reading release notes** |
@@ -180,16 +182,15 @@ Tick the checklist, add a comment if anything was unusual, close the issue. The 
 | Tuesday | Vault |
 | Wednesday | CloudNativePG |
 | Thursday | Istio |
-| Friday | Cilium |
 
 Nothing to do unless ntfy alerts. A failed Helm upgrade is rolled back by Flux on its own.
 
-**Manual** (cannot be rolled back, or a failure stops Flux itself): **Longhorn, Flux (operator, instance, distribution), system-upgrade-controller, k3s**, and every major version.
+**Manual** (cannot be rolled back, a failure stops Flux itself, or no release date to wait on): **Longhorn, Cilium, Flux (operator, instance, distribution), system-upgrade-controller, k3s**, and every major version.
 
 Rules for the manual ones:
 - **One critical PR per session.** Merge, run the health check (4.3), and only continue when it's clean.
 - Do them when you have **30–60 minutes** to watch.
-- Order: **Longhorn → Flux → system-upgrade-controller → k3s (always last)**.
+- Order: **Cilium → Longhorn → Flux → system-upgrade-controller → k3s (always last)**.
 
 | Component | Watch out for | Can roll back? |
 |---|---|---|
@@ -317,6 +318,10 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 | `FluxKustomizationNotReady` | critical | Flux can't apply a folder from Git for 30 min. Resources only waiting on another one are not alerted | `kubectl -n flux-system describe kustomization <name>` |
 | `FluxSourceNotReady` | warning | Flux can't fetch Git, a chart or an OCI artifact for 15 min | the version doesn't exist, the registry is down, or credentials |
 | `FluxResourceSuspended` | warning | something has been suspended for more than 24h | resume it once the fix is done |
+| `FluxHelmReleaseRolledBack` | warning | a chart upgrade failed and Flux restored the previous version by itself; often an automerged update | runbook `GITOPS-009`: revert the update (`GITOPS-010`) or reset and retry |
+| `FluxInstanceNotReady` | critical | the Flux operator cannot install the Flux version in Git (e.g. operator too old for it); Flux keeps running the old version | runbook `GITOPS-008` |
+| `WebEndpointDown` / `WebEndpointsAllDown` | critical | Grafana, Keycloak, Prometheus or Threatmap do not answer through the gateway; all of them means gateway, Istio or Cilium | runbook `NET-010`; suspect the last merged update |
+| "Renovate: N automerge PR(s) stuck" (GitHub Action, not Alertmanager) | | an automerge PR failed a check or has been open more than 7 days | runbook `GITOPS-011` |
 | `KubeJobFailed` (system-upgrade) | warning | a k3s node upgrade failed | 7.1 "If it gets stuck" |
 | `KubeVersionMismatch` | warning | nodes on different k3s versions | same |
 | `KubePersistentVolumeFillingUp` | warning/critical | a volume is almost full | grow it (7.3) or find what fills it |
@@ -352,9 +357,11 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 | Backups | `kubernetes/platform/velero/config/base/backup-schedule.yaml` | daily full Velero backup 02:00 UTC, kept 72h |
 | k3s upgrades | `kubernetes/platform/system-upgrade/` | node-by-node upgrade when the version changes in Git |
 
-**Automerged** (only when every check passes, weekdays 10:00–18:00 Rome): the weekly bundle (Monday), tools, Grafana dashboards, and Vault / CloudNativePG / Istio / Cilium on their own weekday. See [update-automation.md](update-automation.md).
+**Automerged** (only when every check passes, weekdays 10:00–18:00 Rome): the weekly bundle (Monday), tools, Grafana dashboards, and Vault / CloudNativePG / Istio on their own weekday. See [update-automation.md](update-automation.md).
 
-**Still manual, on purpose:** Longhorn, Flux, system-upgrade-controller, k3s, majors, blocked packages, OS upgrades.
+**Still manual, on purpose:** Longhorn, Cilium, Flux, system-upgrade-controller, k3s, majors, blocked packages, OS upgrades.
+
+**Update alerts** (see section 8 and [update-automation.md](update-automation.md#step-3-alerts-and-runbooks)): Flux rolled an upgrade back, FluxInstance not Ready, web UIs down through the gateway, and the `Renovate watch` workflow for stuck automerge PRs.
 
 ---
 

@@ -1,0 +1,42 @@
+---
+# Web UIs probed through the Envoy gateway by the blackbox exporter (targets
+# web-*, module http_reachable, defined in the overlays). Catches an update that
+# breaks the gateway, Istio, Cilium or an app while Flux still reports Ready.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: web-endpoints
+  annotations:
+    # Rule templates use $labels: keep Flux variable substitution away from them
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  groups:
+  - name: web-endpoints
+    rules:
+    - alert: WebEndpointDown
+      expr: |
+        probe_success{target=~"web-.*"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: '{{ $labels.target }} is not reachable through the gateway'
+        description: >-
+          The probe of {{ $labels.target }} ({{ $labels.instance }}) has failed for 5 minutes: connection error,
+          timeout or a 5xx answer. If more than one web-* target is down, suspect the gateway, Istio or Cilium,
+          especially after a recent update. Runbook NET-010.
+        runbook: NET-010
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-010
+    - alert: WebEndpointsAllDown
+      expr: |
+        count(probe_success{target=~"web-.*"} == 0) == count(probe_success{target=~"web-.*"})
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: All web UIs are unreachable through the gateway
+        description: >-
+          Every web-* probe fails: the gateway, Istio or Cilium is broken, not a single app. Check what was merged
+          or automerged in the last hours first. Runbook NET-010.
+        runbook: NET-010
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-010
