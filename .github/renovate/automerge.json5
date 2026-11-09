@@ -1,13 +1,25 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   // Extended BEFORE groups.json5, so the named groups there take precedence
-  // over the weekly catch-all group below.
+  // over the weekly catch-all group below. groups.json5 only sets group names,
+  // so the automerge settings here apply to the groups too.
+  //
+  // Automerge policy (homelab-docs/update-automation.md):
+  //   - Renovate merges only when every check passes (Validate Kubernetes, Lint, ...)
+  //   - only on weekdays 10:00-18:00 Europe/Rome, so someone can react
+  //   - critical components one per weekday; k3s, Longhorn, Flux, system-upgrade-controller,
+  //     majors and blocked packages stay manual
+  timezone: "Europe/Rome",
+  automergeSchedule: ["* 10-17 * * 1-5"],
+  // Renovate merges itself (instead of GitHub auto-merge), so the time window
+  // and the check results are always respected.
+  platformAutomerge: false,
   packageRules: [
     {
-      description: "Bundle all non-major updates into one weekly PR",
+      description: "Bundle all non-major updates into one weekly PR, automerged on Monday",
       matchUpdateTypes: ["minor", "patch", "digest"],
-      // Blocked packages (see last rule) stay out of the bundle.
-      // Keep this list in sync with the "Blocked packages" rule.
+      // Blocked packages (see "Blocked packages" rule) stay out of the bundle.
+      // Keep this list in sync with that rule.
       matchDepNames: ["!ubuntu", "!elastic/elasticsearch", "!python"],
       groupName: "all non-major",
       group: {
@@ -15,6 +27,9 @@
       },
       schedule: ["before 6am on monday"],
       minimumReleaseAge: "3 days",
+      automerge: true,
+      automergeType: "pr",
+      automergeSchedule: ["* 10-17 * * 1"],
     },
     {
       description: "Automerge workstation tools (mise) and GitHub Actions",
@@ -25,10 +40,77 @@
       automergeType: "branch",
     },
     {
+      description: "Automerge CLI tool groups (mise, runner Dockerfile, Ansible CLI versions): no cluster change",
+      matchDepNames: ["kubectl", "alpine/kubectl", "helm", "helm/helm", "alpine/helm", "velero", "vmware-tanzu/velero"],
+      // not the velero Helm chart, which deploys Velero in the cluster (weekly bundle)
+      matchDatasources: ["!helm"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      automerge: true,
+      automergeType: "pr",
+    },
+    {
       description: "Automerge Grafana dashboard revisions",
       matchDatasources: ["custom.grafana-dashboards"],
       automerge: true,
       automergeType: "branch",
+    },
+
+    // Critical components: automerged one per weekday, only releases at least
+    // 7 days old. A failed Helm upgrade is rolled back by Flux (upgrade.remediation).
+    {
+      description: "Vault: automerge on Tuesday",
+      matchDepNames: ["vault", "hashicorp/vault"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      automergeSchedule: ["* 10-17 * * 2"],
+    },
+    {
+      description: "CloudNativePG: automerge on Wednesday",
+      matchDepNames: ["cloudnative-pg"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      automergeSchedule: ["* 10-17 * * 3"],
+    },
+    {
+      description: "Istio: automerge on Thursday",
+      matchDepNames: ["istio/istio"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      automergeSchedule: ["* 10-17 * * 4"],
+    },
+    {
+      description: "Istio Helm charts: automerge on Thursday (same group as istio/istio)",
+      matchDepNames: ["base", "cni", "istiod", "ztunnel"],
+      matchFileNames: ["kubernetes/platform/istio/**"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      automergeSchedule: ["* 10-17 * * 4"],
+    },
+    {
+      description: "Cilium: automerge on Friday",
+      matchDepNames: ["cilium", "quay.io/cilium/charts/cilium"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      automergeSchedule: ["* 10-17 * * 5"],
+    },
+
+    {
+      description: "Manual: cannot be rolled back, or a failure stops Flux itself",
+      // k3s and Longhorn do not support downgrades. Flux (operator, instance and
+      // distribution): if it breaks, Flux cannot roll anything back, itself included.
+      // system-upgrade-controller runs the k3s node upgrades.
+      matchDepNames: [
+        "k3s-io/k3s",
+        "longhorn", "longhorn/longhorn",
+        "fluxcd/flux2", "flux2",
+        "rancher/system-upgrade-controller",
+      ],
+      automerge: false,
+    },
+    {
+      description: "Manual: Flux operator and instance charts",
+      matchPackageNames: ["/controlplaneio-fluxcd/"],
+      automerge: false,
     },
     {
       description: "Blocked packages: own PRs, never grouped or automerged",
