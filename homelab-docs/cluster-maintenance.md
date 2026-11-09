@@ -330,6 +330,7 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 |---|---|---|
 | Renovate | `.github/renovate.json5`, `.github/renovate/*.json5` | finds updates, groups, schedules, automerges safe ones, blocks the listed ones |
 | CI | `.github/workflows/ci.yml` | yamllint on PRs, `master` and `renovate/**` branches |
+| Kubernetes validation | `.github/workflows/validate-kubernetes.yml`, `.github/scripts/validate_flux.py` | builds every Flux Kustomization, renders every HelmRelease at its new chart version, validates schemas; see [update-automation.md](update-automation.md) |
 | Weekly issue | `.github/workflows/weekly-maintenance.yml`, `.github/maintenance-checklist.md` | Monday 07:00 UTC checklist issue with that week's PRs |
 | Flux failure alerts | `kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/flux-alert-rules.yaml` | alerts when what's in Git can't be applied |
 | Cluster alerts | `kubernetes/platform/kube-prometheus-stack/k3s-mixins/` | standard Kubernetes, node, etcd, Prometheus alerts |
@@ -337,12 +338,13 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 | Backups | `kubernetes/platform/velero/config/base/backup-schedule.yaml` | daily full Velero backup 02:00 UTC, kept 72h |
 | k3s upgrades | `kubernetes/platform/system-upgrade/` | node-by-node upgrade when the version changes in Git |
 
-**Still manual, on purpose:** merging cluster updates (you decided to keep this manual), OS upgrades, majors.
+**Still manual, on purpose:** merging cluster updates, OS upgrades, majors. Automerge for low-risk updates is being introduced step by step: see [update-automation.md](update-automation.md). k3s, Longhorn, majors and blocked packages stay manual.
 
 ---
 
 ## 11. Related documents
 
+- [update-automation.md](update-automation.md): CI validation of Renovate PRs, automerge plan, update alerts
 - [node-os-reboot.md](node-os-reboot.md): safe reboot of nodes (etcd quorum, Longhorn)
 - `postmortems/incident-2026-10-06-keycloak-db-outage.md`: Longhorn stale PID, CNPG PVC resize
 - `postmortems/incident-2026-09-27-cowrie-pipeline-outage.md`
