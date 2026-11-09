@@ -1,0 +1,70 @@
+---
+# Checks that what Flux would apply to the prod cluster still builds and is valid,
+# so Renovate PRs (and later automerge) are not merged blind:
+#   1. kustomize build of every Flux Kustomization, with cluster-settings substituted
+#   2. helm template of every HelmRelease at its pinned chart version and values
+#   3. kubeconform schema validation (Kubernetes + CRD catalog)
+# Details: .github/scripts/validate_flux.py
+name: Validate Kubernetes
+
+'on':
+  pull_request:
+    paths:
+      - 'kubernetes/**'
+      - '.github/scripts/validate_flux.py'
+      - '.github/workflows/validate-kubernetes.yml'
+  push:
+    branches:
+      - master
+      # Renovate branch-automerge has no PR, so check the branch itself
+      - 'renovate/**'
+    paths:
+      - 'kubernetes/**'
+      - '.github/scripts/validate_flux.py'
+      - '.github/workflows/validate-kubernetes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Kubernetes version of the cluster (k3s); used for schemas and chart rendering
+  KUBE_VERSION: 1.37.0
+  # renovate: datasource=github-releases depName=yannh/kubeconform
+  KUBECONFORM_VERSION: v0.7.0
+
+jobs:
+  validate:
+    name: Validate prod manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the codebase
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install tools
+        run: |
+          pip3 install pyyaml
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar xz -C /usr/local/bin kubeconform
+          kustomize version
+          helm version
+          kubeconform -v
+
+      - name: Build Flux Kustomizations and render HelmReleases
+        run: python3 .github/scripts/validate_flux.py --env prod --out "$RUNNER_TEMP/flux" --kube-version "$KUBE_VERSION"
+
+      - name: Validate schemas
+        run: |
+          kubeconform \
+            -kubernetes-version "$KUBE_VERSION" \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -ignore-missing-schemas \
+            -summary \
+            -output text \
+            "$RUNNER_TEMP/flux/manifests"
