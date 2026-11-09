@@ -45,5 +45,12 @@
       matchDepNames: ["mongo"],
       allowedVersions: "<8.1",
     },
+    {
+      description: "ansible-core must stay within what the prometheus.prometheus collection supports",
+      // prometheus.prometheus 0.30.x requires ansible-core <=2.21.99, so 2.22 breaks the runner image build
+      // (ansible-galaxy collection install). Raise this cap when a collection release supports the next version.
+      matchDepNames: ["ansible-core"],
+      allowedVersions: "<2.22",
+    },
   ],
 }

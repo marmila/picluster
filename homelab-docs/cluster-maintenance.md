@@ -62,7 +62,7 @@ Only Grafana dashboard updates reach the cluster without you (via automerge). Th
 | `.github/renovate/clusters.json5` | updates under `kubernetes/clusters/prod` or `dev` get a `prod-` / `dev-` branch prefix and a `[prod]` / `[dev]` suffix |
 | `.github/renovate/customManagers.json5` | finds versions that are not in a standard format: `# renovate: datasource=… depName=…` comments, CloudNativePG `imageName`, Ansible Helm/OCI charts |
 | `.github/renovate/grafanaDashboards.json5` | tracks Grafana.com dashboard revisions |
-| `.github/renovate/automerge.json5` | weekly bundle, automerge rules, **block list**, mongo version cap |
+| `.github/renovate/automerge.json5` | weekly bundle, automerge rules, **block list**, mongo and ansible-core version caps |
 | `.github/renovate/groups.json5` | named groups: one PR per tool or critical component |
 | `.github/renovate/labels.json5` | labels: `type/major` / `minor` / `patch`, and `renovate/<source>` |
 
@@ -90,6 +90,7 @@ Automerge uses **branch automerge**: Renovate pushes straight to `master` once C
 | `elastic/elasticsearch` | blocked | fluent-plugin-elasticsearch breaks on ES 9 ([#1061](https://github.com/uken/fluent-plugin-elasticsearch/issues/1061)); would break Fluentd → threatmap ingestion | the plugin works with ES 9 |
 | `python` | blocked | the runner image is `python:3.14-slim` and `ansible/pyproject.toml` requires `<3.15`; the 3.15 bump broke the runner and upstream reverted it | the Dockerfile base image, `.python-version`, `requires-python` and `uv.lock` move to 3.15 together |
 | `mongo` | capped `<8.1` | the seed job's `mongosh` must match the MongoDB **8.0.x** server (`mongodb-community.yaml`, not tracked by Renovate) | you upgrade the MongoDB server |
+| `ansible-core` | capped `<2.22` | the `prometheus.prometheus` collection (0.30.x) supports ansible-core only up to 2.21; 2.22 breaks the runner image build | a `prometheus.prometheus` release supports 2.22 (check `requires_ansible` on Galaxy) |
 
 Blocked packages never join a group and are never automerged. Their PRs get the `blocked` label automatically. **Blocking covers the whole package**, so Elasticsearch 8.x patches also come as separate blocked PRs.
 
