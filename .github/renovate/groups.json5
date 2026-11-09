@@ -60,8 +60,10 @@
       "group": { "commitMessageTopic": "{{{groupName}}} group" }
     },
     {
-      "description": ["Flux CLI Group"],
-      "groupName": "Flux CLI",
+      // Not just the CLI: fluxcd/flux2 is also the Flux version the cluster runs
+      // (flux-operator instance values) and the bootstrap version (ansible vars).
+      "description": ["Flux distribution Group: upgrades Flux in the cluster"],
+      "groupName": "Flux distribution",
       "matchDepNames": ["flux2", "fluxcd/flux2"],
       "group": { "commitMessageTopic": "{{{groupName}}} group" }
     },

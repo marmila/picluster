@@ -52,7 +52,7 @@ jobs:
               (sort_by(.number) | .[] | \"- #\(.number) \(.title)\") end" <<<"${prs}"
           }
           has_label='def has(l): any(.labels[]; .name == l);'
-          critical='test("(?i)k3s|system-upgrade-controller|longhorn|istio|cloudnative-?pg|vault|cilium|flux group")'
+          critical='test("(?i)k3s|system-upgrade-controller|longhorn|istio|cloudnative-?pg|vault|cilium|flux")'
 
           {
             cat .github/maintenance-checklist.md

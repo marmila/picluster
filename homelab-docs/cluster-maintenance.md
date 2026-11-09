@@ -13,8 +13,8 @@ This document is the single reference for keeping the cluster up to date and hea
 | When | Time | What | Section |
 |---|---|---|---|
 | **Daily** | 1 min | look at ntfy; act only if there is an alert | [3](#3-daily-1-minute) |
-| **Monday** | 15–30 min | weekly maintenance issue: merge the weekly bundle, health check | [4](#4-weekly-monday-1530-minutes) |
-| **During the week** | 30–60 min each | merge **one** critical update when you can watch (k3s last) | [5](#5-critical-updates-one-at-a-time) |
+| **Monday** | 5–15 min | weekly maintenance issue: check the weekly bundle merged by itself, health check | [4](#4-weekly-monday-1530-minutes) |
+| **During the week** | 30–60 min each | merge **one** manual critical update when you can watch (k3s last); the others merge by themselves | [5](#5-critical-updates-one-at-a-time) |
 | **First Monday of the month** | 30–60 min | majors, OS packages, backups check, stale PRs | [6](#6-monthly-first-monday) |
 | **After events** | varies | k3s upgrade, node reboot, power outage, volume resize | [7](#7-event-driven-procedures) |
 
@@ -137,12 +137,13 @@ The **"Weekly maintenance YYYY-Www"** issue (label `maintenance`) opens at 07:00
 
 **If something is already broken, fix it first.** Otherwise you can't tell old problems from new ones.
 
-### 4.2 Merge the weekly bundle
+### 4.2 The weekly bundle (merges by itself)
 
-1. Open the **all non-major dependencies** PR (linked in the issue).
-2. Read the PR description: Renovate lists every package with links to release notes. Look for **breaking**, **removed**, **deprecated**, **migration**, **requires**.
-3. If one package looks risky: tick it off in the Dependency Dashboard, or merge the rest and deal with it separately.
-4. CI green → **Merge pull request** → **Confirm merge**.
+Renovate merges the **all non-major dependencies** PR on **Monday between 10:00 and 18:00 Rome time**, only when every check passes (see [update-automation.md](update-automation.md)).
+
+1. Before 10:00 you can still look at it: Renovate lists every package with links to release notes. Look for **breaking**, **removed**, **deprecated**, **migration**, **requires**. To hold one package back, untick it in the Dependency Dashboard.
+2. **Still open after 18:00?** A check failed. Open the PR → Checks → the failed one, and use the table in [update-automation.md](update-automation.md#reading-a-failure).
+3. After it merged: watch ntfy for an hour, or run the health check (4.3).
 
 ### 4.3 Health check (15 minutes after any merge)
 
@@ -172,10 +173,23 @@ Tick the checklist, add a comment if anything was unusual, close the issue. The 
 
 ## 5. Critical updates (one at a time)
 
-Rules:
+**Automatic** (minor and patch only, releases at least 7 days old, weekdays 10:00–18:00 Rome, only when every check passes):
+
+| Day | Component |
+|---|---|
+| Tuesday | Vault |
+| Wednesday | CloudNativePG |
+| Thursday | Istio |
+| Friday | Cilium |
+
+Nothing to do unless ntfy alerts. A failed Helm upgrade is rolled back by Flux on its own.
+
+**Manual** (cannot be rolled back, or a failure stops Flux itself): **Longhorn, Flux (operator, instance, distribution), system-upgrade-controller, k3s**, and every major version.
+
+Rules for the manual ones:
 - **One critical PR per session.** Merge, run the health check (4.3), and only continue when it's clean.
 - Do them when you have **30–60 minutes** to watch.
-- Order: **Vault → CloudNativePG → Cilium → Istio → Longhorn → Flux operator → system-upgrade-controller → k3s (always last)**.
+- Order: **Longhorn → Flux → system-upgrade-controller → k3s (always last)**.
 
 | Component | Watch out for | Can roll back? |
 |---|---|---|
@@ -184,7 +198,7 @@ Rules:
 | Cilium | CNI: brief network blips while agents roll node by node | yes, carefully |
 | Istio | control plane first, then ztunnel/CNI roll. Check gateway and ingress answer | yes |
 | Longhorn | all volumes `healthy` **before and after**. Engine upgrades run in the background | **no** (no downgrades) |
-| Flux operator | Flux controllers restart; reconciliation pauses briefly | yes |
+| Flux (operator, instance, distribution) | Flux controllers restart; reconciliation pauses briefly. The "Flux distribution" PR (`fluxcd/flux2`) upgrades the Flux **running in the cluster**, not only the CLI | yes, but only by hand: a broken Flux cannot roll itself back |
 | system-upgrade-controller | runs k3s upgrades; check the controller pod restarts cleanly | yes |
 | **k3s** | upgrades every node (see 7.1) | **no** |
 
@@ -338,7 +352,9 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 | Backups | `kubernetes/platform/velero/config/base/backup-schedule.yaml` | daily full Velero backup 02:00 UTC, kept 72h |
 | k3s upgrades | `kubernetes/platform/system-upgrade/` | node-by-node upgrade when the version changes in Git |
 
-**Still manual, on purpose:** merging cluster updates, OS upgrades, majors. Automerge for low-risk updates is being introduced step by step: see [update-automation.md](update-automation.md). k3s, Longhorn, majors and blocked packages stay manual.
+**Automerged** (only when every check passes, weekdays 10:00–18:00 Rome): the weekly bundle (Monday), tools, Grafana dashboards, and Vault / CloudNativePG / Istio / Cilium on their own weekday. See [update-automation.md](update-automation.md).
+
+**Still manual, on purpose:** Longhorn, Flux, system-upgrade-controller, k3s, majors, blocked packages, OS upgrades.
 
 ---
 

@@ -8,20 +8,14 @@
 name: Validate Kubernetes
 
 'on':
+  # Runs on every PR (no path filter) so it can be a required check:
+  # a required check that never starts would block the PR forever.
   pull_request:
-    paths:
-      - 'kubernetes/**'
-      - '.github/scripts/validate_flux.py'
-      - '.github/workflows/validate-kubernetes.yml'
   push:
     branches:
       - master
       # Renovate branch-automerge has no PR, so check the branch itself
       - 'renovate/**'
-    paths:
-      - 'kubernetes/**'
-      - '.github/scripts/validate_flux.py'
-      - '.github/workflows/validate-kubernetes.yml'
   workflow_dispatch:
 
 permissions:

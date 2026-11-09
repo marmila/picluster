@@ -11,7 +11,7 @@ The day-to-day procedure (what to do daily, weekly, monthly) stays in
 | Step | What | Status |
 |---|---|---|
 | 1 | **CI check worth trusting**: every Renovate PR is built and rendered like Flux would apply it | **done** (PR #979) |
-| 2 | **Automerge by risk level** in Renovate, only when the step 1 check passes | planned |
+| 2 | **Automerge by risk level** in Renovate, only when the step 1 check passes | **done** |
 | 3 | **Alerts and runbooks** that replace watching the cluster after a merge (ntfy) | planned |
 
 Decisions already taken (2026-11-09):
@@ -30,8 +30,8 @@ Decisions already taken (2026-11-09):
 - [.github/workflows/validate-kubernetes.yml](../.github/workflows/validate-kubernetes.yml): the workflow
 - [.github/scripts/validate_flux.py](../.github/scripts/validate_flux.py): the build and render logic
 
-**When it runs:** on every PR that touches `kubernetes/**`, on pushes to `renovate/**` branches (Renovate
-branch automerge has no PR) and `master`, and by hand (Actions → Validate Kubernetes → Run workflow).
+**When it runs:** on every PR, on pushes to `renovate/**` branches (Renovate branch automerge has no PR)
+and `master`, and by hand (Actions → Validate Kubernetes → Run workflow).
 
 **What it checks, for the prod cluster:**
 
@@ -95,16 +95,68 @@ locally; GitHub Actions is not affected.
 
 ---
 
-## Step 2: Automerge by risk level (planned)
+## Step 2: Automerge by risk level
 
-| Level | What | How |
+**File:** [.github/renovate/automerge.json5](../.github/renovate/automerge.json5) (group names stay in
+[groups.json5](../.github/renovate/groups.json5)).
+
+### What merges by itself, and when
+
+Renovate merges a PR only when **every check on it passes** (Validate Kubernetes, Lint, CodeQL, ...), and
+only on **weekdays between 10:00 and 18:00 Europe/Rome**. Renovate does the merge itself
+(`platformAutomerge: false`), so the time window and the checks are always respected.
+
+| What | When it merges | Release age |
 |---|---|---|
-| Auto | weekly non-major bundle, tools (mise, GitHub Actions), Grafana dashboards | automerge on Monday, release at least 3 days old |
-| Auto, one per day | Vault, CloudNativePG, Cilium, Istio, Flux operator, system-upgrade-controller | each on its own weekday, release at least 7 days old; Flux rolls a failed Helm upgrade back by itself |
-| Manual | k3s, Longhorn, all majors, blocked packages | as today, see [cluster-maintenance.md](cluster-maintenance.md) |
+| Weekly bundle **all non-major dependencies** | Monday 10:00–18:00 | 3 days |
+| Tools: mise, GitHub Actions, kubectl / Helm / Velero CLI | any weekday 10:00–18:00 | — |
+| Grafana dashboard revisions | any weekday 10:00–18:00 | — |
+| **Vault** (minor/patch) | Tuesday 10:00–18:00 | 7 days |
+| **CloudNativePG** operator (minor/patch) | Wednesday 10:00–18:00 | 7 days |
+| **Istio** (minor/patch) | Thursday 10:00–18:00 | 7 days |
+| **Cilium** (minor/patch) | Friday 10:00–18:00 | 7 days |
 
-Automerge happens only when the step 1 check passes, and only on weekdays between 10:00 and 18:00
-Europe/Rome.
+A PR whose check fails stays open, with the failure on it: nothing broken is merged. Renovate tries again
+on the next run, and the weekly issue lists it.
+
+### What stays manual, and why
+
+| What | Why |
+|---|---|
+| **k3s** | upgrades every node; Kubernetes cannot be downgraded |
+| **Longhorn** | storage; no downgrades |
+| **Flux** (operator, instance charts, and the **Flux distribution** group `fluxcd/flux2`) | if Flux breaks, it cannot roll anything back, itself included |
+| **system-upgrade-controller** | it runs the k3s node upgrades |
+| every **major** version | release notes have to be read |
+| **blocked** packages | see the blocked list in [cluster-maintenance.md](cluster-maintenance.md#24-blocked-packages-and-caps) |
+
+Flux and system-upgrade-controller were planned as automatic; they moved to manual when the rules were
+written, for the reasons above.
+
+> **Flux distribution, not "Flux CLI".** `fluxcd/flux2` is pinned in three places: `.mise.toml` (the CLI on
+> your workstation), `ansible/vars/picluster.yml` (bootstrap) and
+> `kubernetes/platform/flux-operator/instance/base/values.yaml` (**the Flux running in the cluster**).
+> They are one group, so that PR upgrades the cluster. It used to be called "Flux CLI", which hid that.
+
+### Stopping automerge
+
+To stop every automerge at once (for example during an incident), add this rule at the **end** of
+`packageRules` in [.github/renovate.json5](../.github/renovate.json5) and push to `master`:
+
+```json5
+packageRules: [
+  { matchPackageNames: ["*"], automerge: false },
+],
+```
+
+Renovate then opens PRs as before but merges nothing. Remove the rule to turn automerge back on. To hold
+back a single package, untick it in the Dependency Dashboard (issue #238).
+
+### The Validate Kubernetes check runs on every PR
+
+It has no path filter, so it can be made a **required check** on `master`
+(Settings → Branches → `master` → Require status checks → **Validate prod manifests**). A required check that
+only runs for some paths would never start on the other PRs and block them forever.
 
 ## Step 3: Alerts and runbooks (planned)
 
