@@ -96,33 +96,35 @@ spec:
 #       - kind: ConfigMap
 #         name: cluster-settings
 
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: e-commerce-app
-  namespace: flux-system
-spec:
-  interval: 30m
-  timeout: 15m
-  targetNamespace: e-commerce
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  dependsOn:
-    - name: e-commerce-common
-    - name: e-commerce-keycloak
-    - name: e-commerce-kafka
-    - name: e-commerce-databases
-    - name: envoy-gateway-config
-    - name: opentelemetry-collector-app
-  path: ./kubernetes/apps/e-commerce/app/overlays/prod
-  prune: true
-  wait: true
-  postBuild:
-    substituteFrom:
-      - kind: ConfigMap
-        name: cluster-settings
+# Disabled with e-commerce-databases (commit f30380896): it depends on it and would
+# wait forever. Re-enable both together when there is CPU room on the amd64 nodes.
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: e-commerce-app
+#   namespace: flux-system
+# spec:
+#   interval: 30m
+#   timeout: 15m
+#   targetNamespace: e-commerce
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   dependsOn:
+#     - name: e-commerce-common
+#     - name: e-commerce-keycloak
+#     - name: e-commerce-kafka
+#     - name: e-commerce-databases
+#     - name: envoy-gateway-config
+#     - name: opentelemetry-collector-app
+#   path: ./kubernetes/apps/e-commerce/app/overlays/prod
+#   prune: true
+#   wait: true
+#   postBuild:
+#     substituteFrom:
+#       - kind: ConfigMap
+#         name: cluster-settings
 
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
