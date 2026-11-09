@@ -49,7 +49,7 @@ def cluster_kustomizations(env):
         if res.returncode != 0:
             sys.exit(f"cannot build {d.relative_to(REPO)}:\n{res.stderr}")
         for doc in load_docs(res.stdout):
-            if doc.get("kind") == "Kustomization" and doc.get("apiVersion", "").startswith("kustomize.toolkit.fluxcd.io"):
+            if doc.get("kind") == "Kustomization" and doc.get("apiVersion", "").split("/")[0] == "kustomize.toolkit.fluxcd.io":
                 found.append((doc["metadata"]["name"], doc["spec"]["path"], doc["spec"].get("targetNamespace")))
     return found
 
