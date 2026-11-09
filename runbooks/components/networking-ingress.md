@@ -342,3 +342,69 @@ References:
 - `ansible/deploy_vault.yml`, `ansible/deploy_rustfs.yml`, `ansible/generate_gateway_tls_certificate.yml`, `metal/openwrt/script/openwrt-deploy-tls.sh`
 - `kubernetes/platform/blackbox-exporter/` (probes and alert rules)
 - `postmortems/incident-2026-11-07-letsencrypt-certificates-expired.md`
+
+## NET-010 Web Endpoint Down Through the Gateway
+
+<a id="runbook-net-010"></a>
+Runbook ID: `NET-010`
+Owner: Platform
+Severity: `SEV-2` (one app) or `SEV-1` (all)
+
+Objective: Restore web access when the blackbox probes of the web UIs fail.
+Alerts: `WebEndpointDown` (one target), `WebEndpointsAllDown` (every target).
+
+What it means: the blackbox exporter calls Grafana, Keycloak, Prometheus and Threatmap through the Envoy
+gateway (`web-*` targets, module `http_reachable`). A redirect to the SSO login or 401/403 counts as up;
+connection errors, timeouts and 5xx count as down. Flux can report everything Ready while this fails.
+
+Preconditions:
+
+- `kubectl` on node2.
+
+Procedure:
+
+1. **All down**: the shared path is broken (gateway, Istio, Cilium, DNS). **One down**: that app.
+2. Check what changed recently. A merged or automerged update to Envoy Gateway, Istio or Cilium is the
+   first suspect.
+
+```bash
+git log --oneline --since="1 day ago" --first-parent master
+```
+
+3. Gateway and data path:
+
+```bash
+kubectl -n envoy-gateway-system get pods
+kubectl get gateway -A
+kubectl -n istio-system get pods
+kubectl -n kube-system get pods -l k8s-app=cilium
+kubectl get httproute -A
+```
+
+4. One app: its pods and route.
+
+```bash
+kubectl get httproute -A | grep <app>
+kubectl -n <namespace> get pods
+```
+
+5. Probe by hand from inside the cluster (shows the HTTP status the probe sees):
+
+```bash
+kubectl run probe-test --rm -it --restart=Never --image=curlimages/curl -- \
+  curl -sk -o /dev/null -w '%{http_code}\n' https://grafana.<cluster-domain>/api/health
+```
+
+6. If a recent update caused it, revert it (`GITOPS-010`).
+
+Verify:
+
+- Every `web-*` target has `probe_success == 1` in Prometheus; the alert resolves on ntfy.
+
+Rollback:
+
+1. If the fix made things worse, revert it; see `GITOPS-010`.
+
+References:
+
+- `kubernetes/platform/blackbox-exporter/` (targets in the prod overlay, rules in `web-rules.yaml`)

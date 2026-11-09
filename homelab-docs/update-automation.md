@@ -12,7 +12,7 @@ The day-to-day procedure (what to do daily, weekly, monthly) stays in
 |---|---|---|
 | 1 | **CI check worth trusting**: every Renovate PR is built and rendered like Flux would apply it | **done** (PR #979) |
 | 2 | **Automerge by risk level** in Renovate, only when the step 1 check passes | **done** |
-| 3 | **Alerts and runbooks** that replace watching the cluster after a merge (ntfy) | planned |
+| 3 | **Alerts and runbooks** that replace watching the cluster after a merge (ntfy) | **done** |
 
 Decisions already taken (2026-11-09):
 
@@ -114,7 +114,6 @@ only on **weekdays between 10:00 and 18:00 Europe/Rome**. Renovate does the merg
 | **Vault** (minor/patch) | Tuesday 10:00–18:00 | 7 days |
 | **CloudNativePG** operator (minor/patch) | Wednesday 10:00–18:00 | 7 days |
 | **Istio** (minor/patch) | Thursday 10:00–18:00 | 7 days |
-| **Cilium** (minor/patch) | Friday 10:00–18:00 | 7 days |
 
 A PR whose check fails stays open, with the failure on it: nothing broken is merged. Renovate tries again
 on the next run, and the weekly issue lists it.
@@ -125,13 +124,26 @@ on the next run, and the weekly issue lists it.
 |---|---|
 | **k3s** | upgrades every node; Kubernetes cannot be downgraded |
 | **Longhorn** | storage; no downgrades |
+| **Cilium** | its chart comes from quay.io, which publishes no release dates, so the 7-day wait cannot be enforced |
 | **Flux** (operator, instance charts, and the **Flux distribution** group `fluxcd/flux2`) | if Flux breaks, it cannot roll anything back, itself included |
 | **system-upgrade-controller** | it runs the k3s node upgrades |
 | every **major** version | release notes have to be read |
 | **blocked** packages | see the blocked list in [cluster-maintenance.md](cluster-maintenance.md#24-blocked-packages-and-caps) |
 
-Flux and system-upgrade-controller were planned as automatic; they moved to manual when the rules were
-written, for the reasons above.
+Flux, system-upgrade-controller and Cilium were planned as automatic; they moved to manual for the reasons
+above.
+
+### Releases without a date (ghcr.io, quay.io)
+
+Renovate waits a minimum age before offering an update (3 days for the weekly bundle, 7 for critical
+components), using the release date from the registry. **ghcr.io and quay.io publish no release dates.**
+Since Renovate 42 an undated release then waits forever: it shows as "Pending Status Checks" in the
+Dependency Dashboard, with `renovate/stability-days` pending on its PR.
+
+The repo sets `minimumReleaseAgeBehaviour: "timestamp-optional"`: undated releases are offered without the
+wait. The automerged critical components (Vault, CloudNativePG, Istio) set it back to
+`timestamp-required`, so they are only merged once a dated release is 7 days old. That is why Cilium
+(quay.io) is manual.
 
 > **Flux distribution, not "Flux CLI".** `fluxcd/flux2` is pinned in three places: `.mise.toml` (the CLI on
 > your workstation), `ansible/vars/picluster.yml` (bootstrap) and
@@ -158,12 +170,49 @@ It has no path filter, so it can be made a **required check** on `master`
 (Settings → Branches → `master` → Require status checks → **Validate prod manifests**). A required check that
 only runs for some paths would never start on the other PRs and block them forever.
 
-## Step 3: Alerts and runbooks (planned)
+## Step 3: Alerts and runbooks
 
-| Alert | Fires when | Runbook |
-|---|---|---|
-| Upgrade rolled back | Flux reverted a Helm upgrade by itself: the cluster is fine, but the update did not go in | to write |
-| Site down after update | a URL probe (Grafana, Keycloak, apps through the gateway) fails, even if Flux reports Ready | to write |
-| Automerge stuck | a Renovate PR failed the step 1 check, or has been open for more than 7 days | to write |
+All alerts go to ntfy. Runbooks are in [runbooks/](../runbooks/README.md); each alert carries its runbook ID.
 
-Plus a runbook for **reverting an automerged update** (find the commit, `git revert`, Flux rolls back).
+| Alert | Fires when | Severity | Runbook |
+|---|---|---|---|
+| `FluxHelmReleaseRolledBack` | Flux rolled a failed Helm install/upgrade back by itself (1 min). The cluster is fine, the update in Git did not go in | warning | [GITOPS-009](../runbooks/cluster/gitops-release.md#runbook-gitops-009) |
+| `FluxInstanceNotReady` | the Flux operator cannot install the Flux version in Git (15 min); Flux keeps running the old one | critical | [GITOPS-008](../runbooks/cluster/gitops-release.md#runbook-gitops-008) |
+| `WebEndpointDown` | one web UI does not answer through the gateway (5 min) | critical | [NET-010](../runbooks/components/networking-ingress.md#runbook-net-010) |
+| `WebEndpointsAllDown` | every web UI is down: gateway, Istio or Cilium (3 min) | critical | [NET-010](../runbooks/components/networking-ingress.md#runbook-net-010) |
+| "Renovate: N automerge PR(s) stuck" | an automerge PR failed a check, or has been open more than 7 days (weekdays ~18:30 Rome) | ntfy message | [GITOPS-011](../runbooks/cluster/gitops-release.md#runbook-gitops-011) |
+
+To undo an update, merged by hand or automatically: [GITOPS-010](../runbooks/cluster/gitops-release.md#runbook-gitops-010).
+
+The existing Flux alerts (`FluxHelmReleaseNotReady`, `FluxKustomizationNotReady`, `FluxSourceNotReady`,
+`FluxResourceSuspended`) now carry runbook links too. `FluxHelmReleaseNotReady` skips a release that was
+rolled back, so one failed upgrade sends one alert.
+
+### How each one works
+
+- **Rolled back, FluxInstance:** kube-state-metrics reads the Flux objects
+  (`kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml`): HelmReleases get a
+  `remediated` label from their `Remediated` condition, and FluxInstance is now exported like the other Flux
+  objects. Rules: `flux-alert-rules.yaml` next to it.
+- **Web UIs:** the blackbox exporter (`kubernetes/platform/blackbox-exporter/`) calls
+  `https://grafana.<domain>/api/health`, Keycloak's `/realms/master/.well-known/openid-configuration`,
+  Prometheus `/-/healthy` and Threatmap `/`, through the gateway (targets `web-*` in the prod overlay,
+  module `http_reachable`). A redirect to the SSO login and 401/403 count as up; connection errors,
+  timeouts and 5xx count as down. For an app behind the gateway SSO this only proves the gateway answers,
+  not the app behind it. Rules: `web-rules.yaml`. The certificate alerts ignore `web-*` (cert-manager
+  watches those certificates).
+- **Automerge stuck:** [.github/workflows/renovate-watch.yml](../.github/workflows/renovate-watch.yml) runs on
+  weekdays at 17:30 UTC (after the merge window). It looks only at Renovate PRs with "Automerge: Enabled",
+  skips blocked ones, and posts the list to ntfy. Manual PRs are not nagged about; the weekly issue lists them.
+
+### Setup: the ntfy secret for the Renovate watch
+
+The workflow posts straight to ntfy.sh, so it needs the topic URL as a repository secret:
+
+1. GitHub → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+2. Name `NTFY_URL`, value the topic URL, for example `https://ntfy.sh/<your-topic>`. Use the plain topic
+   URL, without the `?template=alertmanager` part Alertmanager uses.
+3. If the topic needs a token, add a second secret `NTFY_TOKEN`.
+4. Test: **Actions** → **Renovate watch** → **Run workflow**, tick "Send a test notification".
+
+Without the secret the workflow fails with "NTFY_URL is not set", visible in the Actions tab.

@@ -25,6 +25,12 @@ kube-state-metrics:
           - imagepolicies
           - imageupdateautomations
         verbs: [ "list", "watch" ]
+      # Flux operator FluxInstance, for flux-alert-rules.yaml (FluxInstanceNotReady)
+      - apiGroups:
+          - fluxcd.controlplane.io
+        resources:
+          - fluxinstances
+        verbs: [ "list", "watch" ]
       # k3s upgrade plans (system-upgrade-controller), for k3s-upgrade-rules.yaml
       - apiGroups:
           - upgrade.cattle.io
@@ -86,6 +92,31 @@ kube-state-metrics:
                   chart_app_version: [ status, history, "0", appVersion ]
                   chart_ref_name: [ spec, chartRef, name ]
                   chart_source_name: [ spec, chart, spec, sourceRef, name ]
+                  # "True" while a failed install/upgrade has been rolled back or uninstalled by
+                  # Flux (upgrade.remediation): FluxHelmReleaseRolledBack in flux-alert-rules.yaml
+                  remediated: [ status, conditions, "[type=Remediated]", status ]
+          # Flux operator: the FluxInstance that installs the Flux controllers themselves.
+          # Not Ready = Flux cannot be upgraded or repaired (e.g. distribution version the
+          # operator does not know). Same metric name, so the Flux alert rules cover it.
+          - groupVersionKind:
+              group: fluxcd.controlplane.io
+              version: v1
+              kind: FluxInstance
+            metricNamePrefix: gotk
+            metrics:
+              - name: "resource_info"
+                help: "The current state of a Flux operator FluxInstance resource."
+                each:
+                  type: Info
+                  info:
+                    labelsFromPath:
+                      name: [ metadata, name ]
+                labelsFromPath:
+                  exported_namespace: [ metadata, namespace ]
+                  ready: [ status, conditions, "[type=Ready]", status ]
+                  reason: [ status, conditions, "[type=Ready]", reason ]
+                  revision: [ status, lastAppliedRevision ]
+                  distribution_version: [ spec, distribution, version ]
           - groupVersionKind:
               group: source.toolkit.fluxcd.io
               version: v1

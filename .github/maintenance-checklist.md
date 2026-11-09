@@ -10,9 +10,9 @@ Weekly cluster update. Full instructions: [homelab-docs/cluster-maintenance.md](
 
 ## 3. Critical updates
 Automatic, one per weekday 10:00–18:00 Rome, releases at least 7 days old:
-Vault (Tue), CloudNativePG (Wed), Istio (Thu), Cilium (Fri). Nothing to do unless ntfy alerts.
+Vault (Tue), CloudNativePG (Wed), Istio (Thu). Nothing to do unless ntfy alerts.
 
-Manual, one per session, k3s always last: **Longhorn, Flux, system-upgrade-controller, k3s**, majors.
+Manual, one per session, k3s always last: **Longhorn, Cilium, Flux, system-upgrade-controller, k3s**, majors.
 - [ ] Merged one manual critical PR from the list below (or none this week)
 - [ ] Health check clean after it (runbook 4.3)
 

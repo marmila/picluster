@@ -2,6 +2,8 @@
 # Alerts for TLS endpoints outside the cluster, probed by the blackbox exporter.
 # Labels on every series: target (short name, e.g. vault), instance (host:port).
 # Target vault-health is the Vault seal probe (vault-rules.yaml), excluded here.
+# Targets web-* are web UIs behind the gateway (web-rules.yaml; their certificates
+# come from cert-manager, which has its own alerts), excluded here.
 #
 # Let's Encrypt certificates last 90 days. On 2026-11-07 the Vault and RustFS
 # certificates expired unnoticed and broke ExternalSecrets and CNPG backups.
@@ -15,9 +17,9 @@ spec:
     rules:
     - alert: TLSCertificateExpiringSoon
       expr: |
-        (probe_ssl_earliest_cert_expiry{target!="vault-health"} - time()) < 14 * 86400
+        (probe_ssl_earliest_cert_expiry{target!="vault-health", target!~"web-.*"} - time()) < 14 * 86400
         and
-        (probe_ssl_earliest_cert_expiry{target!="vault-health"} - time()) >= 3 * 86400
+        (probe_ssl_earliest_cert_expiry{target!="vault-health", target!~"web-.*"} - time()) >= 3 * 86400
       for: 1h
       labels:
         severity: warning
@@ -28,9 +30,9 @@ spec:
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: TLSCertificateExpiringCritical
       expr: |
-        (probe_ssl_earliest_cert_expiry{target!="vault-health"} - time()) < 3 * 86400
+        (probe_ssl_earliest_cert_expiry{target!="vault-health", target!~"web-.*"} - time()) < 3 * 86400
         and
-        (probe_ssl_earliest_cert_expiry{target!="vault-health"} - time()) > 0
+        (probe_ssl_earliest_cert_expiry{target!="vault-health", target!~"web-.*"} - time()) > 0
       for: 10m
       labels:
         severity: critical
@@ -41,7 +43,7 @@ spec:
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: TLSCertificateExpired
       expr: |
-        (probe_ssl_earliest_cert_expiry{target!="vault-health"} - time()) <= 0
+        (probe_ssl_earliest_cert_expiry{target!="vault-health", target!~"web-.*"} - time()) <= 0
       for: 5m
       labels:
         severity: critical
@@ -52,7 +54,7 @@ spec:
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/networking-ingress.md#runbook-net-009
     - alert: ExternalEndpointDown
       expr: |
-        probe_success{target!="vault-health"} == 0
+        probe_success{target!="vault-health", target!~"web-.*"} == 0
       for: 5m
       labels:
         severity: critical

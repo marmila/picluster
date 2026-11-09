@@ -14,3 +14,16 @@ serviceMonitor:
     - name: vault-health
       url: https://vault.${CLUSTER_DOMAIN}:8200/v1/sys/health
       module: vault_health
+    # Web UIs through the Envoy gateway: see web-rules.yaml (WebEndpointDown)
+    - name: web-grafana
+      url: https://grafana.${CLUSTER_DOMAIN}/api/health
+      module: http_reachable
+    - name: web-keycloak
+      url: https://iam.${CLUSTER_DOMAIN}/realms/master/.well-known/openid-configuration
+      module: http_reachable
+    - name: web-prometheus
+      url: https://prometheus.${CLUSTER_DOMAIN}/-/healthy
+      module: http_reachable
+    - name: web-threatmap
+      url: https://threatmap.${CLUSTER_DOMAIN}/
+      module: http_reachable
