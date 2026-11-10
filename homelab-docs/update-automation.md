@@ -133,6 +133,19 @@ on the next run, and the weekly issue lists it.
 Flux, system-upgrade-controller and Cilium were planned as automatic; they moved to manual for the reasons
 above.
 
+### Flux upgrades: operator first, then the distribution
+
+The Flux operator only installs Flux versions it knows. Upgrade in two steps, on separate days:
+
+1. **Operator** (Renovate group "Flux", `controlplaneio-fluxcd` charts). Check it on node2:
+   `kubectl -n flux-system get deploy flux-operator -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'`
+2. **Distribution** (group "Flux distribution", `fluxcd/flux2`), only once the operator release notes list
+   that Flux version. Otherwise the FluxInstance stalls (`FluxInstanceNotReady`, runbook GITOPS-008).
+
+Example: Flux 2.10 needs flux-operator 0.62.0 or later. On 2026-11-09 it was merged with operator 0.60 and
+stalled; Flux went back to 2.9.5, the operator went to 0.62.1 the same day, and **2.10 is the next manual
+update** (tick "fluxcd/flux2 to v2.10.0" in the Dependency Dashboard, issue #238).
+
 ### Releases without a date (ghcr.io, quay.io)
 
 Renovate waits a minimum age before offering an update (3 days for the weekly bundle, 7 for critical
@@ -216,3 +229,28 @@ The workflow posts straight to ntfy.sh, so it needs the topic URL as a repositor
 4. Test: **Actions** → **Renovate watch** → **Run workflow**, tick "Send a test notification".
 
 Without the secret the workflow fails with "NTFY_URL is not set", visible in the Actions tab.
+
+### Checking that the alerts work
+
+In Prometheus (**Query** tab, `https://prometheus.<domain>`), run each query **on its own**: pasting two
+lines in one box gives `parse error: unexpected identifier`.
+
+| Query | Healthy result |
+|---|---|
+| `probe_success{target=~"web-.*"}` | 4 rows (`web-grafana`, `web-keycloak`, `web-prometheus`, `web-threatmap`), all `1` |
+| `gotk_resource_info{customresource_kind="FluxInstance"}` | 1 row with `ready="True"` |
+| `ALERTS{alertname=~"Flux.*\|WebEndpoint.*"}` | empty when nothing is wrong |
+
+The same from node2, without a browser:
+
+```bash
+P=$(kubectl -n kube-prom-stack get pod -l app.kubernetes.io/name=prometheus -o name | head -1)
+kubectl -n kube-prom-stack exec $P -c prometheus -- wget -qO- 'http://localhost:9090/api/v1/query?query=probe_success%7Btarget%3D~%22web-.*%22%7D'
+kubectl -n kube-prom-stack exec $P -c prometheus -- wget -qO- 'http://localhost:9090/api/v1/rules' | grep -oE 'FluxHelmReleaseRolledBack|FluxInstanceNotReady|WebEndpointDown|WebEndpointsAllDown' | sort -u
+```
+
+A probe at `0` while the site opens fine in a browser usually means the URL or the expected status code is
+wrong: fix the target in `kubernetes/platform/blackbox-exporter/app/overlays/prod/`.
+
+The Renovate watch is checked with its test run (step 4 of the setup above): the phone gets
+"Renovate watch: test notification". Verified 2026-11-09.
