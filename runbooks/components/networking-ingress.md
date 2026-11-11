@@ -189,6 +189,20 @@ openssl s_client -connect <hostname>:443 -servername <hostname> </dev/null 2>/de
   | openssl x509 -noout -dates -serial
 ```
 
+6. Alert `TLSCertificateExpiringSoon`, `TLSCertificateExpiringCritical` or `TLSCertificateExpired` with
+   `target=web-grafana` means the certificate the Envoy gateway serves is old. Compare it with the Secret:
+
+```bash
+kubectl get certificate -n envoy-gateway-system pi-cluster-tls -o jsonpath='{.status.notAfter}{"\n"}'
+openssl s_client -connect grafana.<domain>:443 -servername grafana.<domain> </dev/null 2>/dev/null \
+  | openssl x509 -noout -enddate
+```
+
+   Same date: cert-manager did not renew, continue with steps 3–4. Secret newer than the served
+   certificate: Envoy did not pick it up. Restart the controller, then the proxy if needed:
+   `kubectl -n envoy-gateway-system rollout restart deploy/envoy-gateway`, then
+   `kubectl -n envoy-gateway-system rollout restart deploy -l gateway.envoyproxy.io/owning-gateway-name`.
+
 Verify:
 
 - Renewal events appear for the target certificate.

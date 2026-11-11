@@ -41,7 +41,8 @@ config:
     # Web UI through the gateway: the gateway answers and the backend is not
     # failing. Redirects (SSO login) and 401/403 count as up; connection errors,
     # timeouts and 5xx (e.g. Envoy 503 "no healthy upstream") count as down.
-    # Certificate problems are left to cert-manager alerts (insecure_skip_verify).
+    # insecure_skip_verify: certificate expiry is alerted separately (cert-manager
+    # rules, plus web-grafana in certificate-rules.yaml for the served certificate).
     http_reachable:
       prober: http
       timeout: 10s

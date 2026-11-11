@@ -177,11 +177,11 @@ To mute a noisy alert for a while, create a silence in the Alertmanager UI (`htt
 Two kinds of TLS certificates are watched:
 
 - **Outside the cluster** (Let's Encrypt, issued by Ansible with certbot, valid 90 days, not renewed automatically): Vault (`vault.${CLUSTER_DOMAIN}:8200`), RustFS (`object-store.${CLUSTER_DOMAIN}:9091`) and the OpenWrt gateway (`gateway.${CLUSTER_DOMAIN}:443`). A [blackbox exporter](https://github.com/prometheus/blackbox_exporter) (`kubernetes/platform/blackbox-exporter`) opens a TLS connection to each one every minute and reports the certificate's expiry date (`probe_ssl_earliest_cert_expiry`) and whether the endpoint answered (`probe_success`).
-- **Inside the cluster** (cert-manager): cert-manager's own metrics.
+- **Inside the cluster** (cert-manager): cert-manager's own metrics. They see the certificate Secret, not what is served. So the `TLSCertificate*` alerts also cover one web probe, `web-grafana`, which reports the certificate the Envoy gateway actually sends to browsers. Every web UI uses the same wildcard certificate (`pi-cluster-tls`), so one probe is enough. If `web-grafana` fires while `pi-cluster-tls` shows a renewed certificate, Envoy is serving an old one: runbook `NET-007`.
 
 | Alert | Fires when | Severity |
 |---|---|---|
-| `TLSCertificateExpiringSoon` | an external certificate has less than 14 days left | warning |
+| `TLSCertificateExpiringSoon` | an external certificate, or the one the gateway serves (`web-grafana`), has less than 14 days left | warning |
 | `TLSCertificateExpiringCritical` | less than 3 days left | critical |
 | `TLSCertificateExpired` | the certificate has expired | critical |
 | `ExternalEndpointDown` | the endpoint has not completed a TLS handshake for 5 minutes | critical |
@@ -189,7 +189,7 @@ Two kinds of TLS certificates are watched:
 | `CertManagerCertificateRenewalOverdue` | cert-manager is more than 1 hour past the certificate's renewal time | warning |
 | `CertManagerCertificateExpiringCritical` | a cert-manager certificate expires in less than 24 hours | critical |
 
-The cert-manager alerts use the renewal time instead of a fixed number of days because certificate lifetimes differ (the envoy-gateway certificate lasts about 7 days).
+The cert-manager alerts use the renewal time instead of a fixed number of days because certificate lifetimes differ (Let's Encrypt certificates such as `pi-cluster-tls` last 90 days and are renewed with about 30 days left; the internal CA and webhook certificates last much longer).
 
 The blackbox `tls_connect` module skips certificate verification on purpose, so the expiry date is still reported after a certificate has expired. Without it, an expired certificate would only show up as `ExternalEndpointDown`.
 
