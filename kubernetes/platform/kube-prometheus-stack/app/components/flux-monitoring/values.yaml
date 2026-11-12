@@ -43,6 +43,13 @@ kube-state-metrics:
         resources:
           - terraforms
         verbs: [ "list", "watch" ]
+      # Longhorn instance-managers, for LonghornInstanceManagerNotRunning
+      # (kubernetes/platform/longhorn/app/components/monitor/longhorn-alert-rules.yaml)
+      - apiGroups:
+          - longhorn.io
+        resources:
+          - instancemanagers
+        verbs: [ "list", "watch" ]
   customResourceState:
     enabled: true
     config:
@@ -367,3 +374,25 @@ kube-state-metrics:
                   gauge:
                     path: [ status, reconciliationFailures ]
                     nilIsZero: true
+          # Longhorn instance-managers (one per node and instance-manager image):
+          # longhorn_crd_instance_manager_info{name, node, state}
+          # Longhorn exports no metric for their state. An instance-manager the kubelet
+          # rejects (OutOfcpu) stays in state "error", and no volume can start on that node
+          # (incident 2026-11-12).
+          - groupVersionKind:
+              group: longhorn.io
+              version: v1beta2
+              kind: InstanceManager
+            metricNamePrefix: longhorn_crd
+            labelsFromPath:
+              name: [ metadata, name ]
+              exported_namespace: [ metadata, namespace ]
+            metrics:
+              - name: "instance_manager_info"
+                help: "The current state of a Longhorn instance-manager."
+                each:
+                  type: Info
+                  info:
+                    labelsFromPath:
+                      node: [ spec, nodeID ]
+                      state: [ status, currentState ]

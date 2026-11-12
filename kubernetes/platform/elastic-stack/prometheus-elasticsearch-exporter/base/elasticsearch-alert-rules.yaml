@@ -1,0 +1,34 @@
+# Elasticsearch health, from prometheus-elasticsearch-exporter.
+#
+# elasticsearch_cluster_health_status{color} is 1 for the current color. When the exporter
+# cannot reach Elasticsearch it stops exporting the color metrics, so "no green or yellow
+# series" covers red, unreachable, and exporter missing in one expression.
+# On 2026-11-12 Elasticsearch was down for about 8 hours and was only noticed through a
+# failing Terraform run (config-elastic).
+#
+# Kibana is covered by the mixin alert KubeDeploymentReplicasMismatch (deployment efk-kb).
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: elasticsearch
+spec:
+  groups:
+    - name: elasticsearch.rules
+      rules:
+        - alert: ElasticsearchNotHealthy
+          expr: |
+            absent(elasticsearch_cluster_health_status{color=~"green|yellow"} == 1)
+          for: 15m
+          labels:
+            severity: critical
+            namespace: elastic
+          annotations:
+            summary: Elasticsearch has not been green or yellow for 15 minutes
+            description: >-
+              Elasticsearch is red, cannot be reached, or the exporter reports nothing.
+              Log search and indexing may be down, and config-elastic (Terraform) fails.
+              Check the efk-es-default-0 pod first: a pod stuck in Init usually means its Longhorn
+              volume cannot attach (LONGHORN-002). Runbook ELASTIC-001.
+            runbook: ELASTIC-001
+            runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/elastic-logging.md#runbook-elastic-001

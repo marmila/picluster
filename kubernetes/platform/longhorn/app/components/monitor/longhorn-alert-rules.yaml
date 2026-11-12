@@ -1,4 +1,4 @@
-# Longhorn volume health. longhorn_volume_robustness values:
+# Longhorn volume and instance-manager health. longhorn_volume_robustness values:
 # 0 unknown (usually detached), 1 healthy, 2 degraded, 3 faulted.
 # A volume is briefly degraded while a replica rebuilds (node reboot, drain),
 # hence the 30 minute wait for the warning.
@@ -32,3 +32,32 @@ spec:
         description: Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) has no healthy replica. The workload using it cannot read or write data. Runbook LONGHORN-001.
         runbook: LONGHORN-001
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/longhorn.md#runbook-longhorn-001
+    # longhorn_volume_state: 1 creating, 2 attached, 3 detached, 4 attaching, 5 detaching, 6 deleting.
+    # Attaching takes seconds. Stuck there, the pod using the volume never starts. Robustness is then
+    # "unknown", so the two alerts above stay silent (Elasticsearch volume, 2026-11-12, 8 hours).
+    - alert: LonghornVolumeStuckAttaching
+      expr: |
+        longhorn_volume_state == 4
+      for: 15m
+      labels:
+        severity: critical
+      annotations:
+        summary: Longhorn volume {{ $labels.volume }} has been attaching for 15 minutes.
+        description: Volume {{ $labels.volume }} (PVC {{ $labels.pvc_namespace }}/{{ $labels.pvc }}) cannot attach, so the pod using it cannot start. Usually the node's Longhorn instance-manager is not running (no CPU room on the node). Runbook LONGHORN-002.
+        runbook: LONGHORN-002
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/longhorn.md#runbook-longhorn-002
+    # longhorn_crd_instance_manager_info comes from kube-state-metrics (customResourceState in
+    # kube-prometheus-stack/app/components/flux-monitoring/values.yaml), not from Longhorn.
+    # After a Longhorn upgrade every node runs a second instance-manager; if the node has no CPU
+    # room for it, it stays in "error" and the next volume that starts on that node cannot attach.
+    - alert: LonghornInstanceManagerNotRunning
+      expr: |
+        max by (name, node, state) (longhorn_crd_instance_manager_info{state!="running"}) == 1
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: Longhorn instance-manager on {{ $labels.node }} is {{ $labels.state }}.
+        description: Instance-manager {{ $labels.name }} on node {{ $labels.node }} has been {{ $labels.state }} for 15 minutes. Volumes that start on that node cannot attach. Check the events for OutOfcpu. Runbook LONGHORN-002.
+        runbook: LONGHORN-002
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/components/longhorn.md#runbook-longhorn-002

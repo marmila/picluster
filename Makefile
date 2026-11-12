@@ -50,7 +50,8 @@ ANSIBLE_LOCAL_COLLECTIONS_DIR := $(HOME)/.ansible/collections
 	configure-vault \
 	load-external-services-keys \
 	get-pi-status \
-	install-local-utils
+	install-local-utils \
+	admin-cli
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -175,6 +176,10 @@ get-pi-status: ## Get Raspberry Pi throttling status
 
 install-local-utils: ## Install local utility tooling on localhost
 	cd ansible; ansible-playbook install_utilities_localhost.yml --ask-become-pass
+
+ADMIN_CLI_HOST ?= node2
+admin-cli: ## Install the flux CLI (version fluxcd_version) on the admin node (default node2)
+	$(RUNNER) ansible-playbook install_admin_cli.yml -e admin_cli_host=$(ADMIN_CLI_HOST)
 
 configure-minio: ## Configure MinIO Resoures (Terraform)
 	$(RUNNER) ansible-playbook configure_minio.yml

@@ -1,9 +1,45 @@
 ---
+# Install the flux CLI, pinned to fluxcd_version (vars/picluster.yml), the Flux version the cluster runs.
+# Downloads the release archive for the host's CPU, checks it against the release checksums and
+# installs /usr/local/bin/flux. Does nothing when that version is already installed.
 
-- name: Install flux-cd cli
-  ansible.builtin.shell: |
-    set -o pipefail
-    FLUX_VERSION={{ fluxcd_version }} curl -s https://fluxcd.io/install.sh | sudo bash
-  args:
-    executable: /bin/bash
-  changed_when: true
+- name: Get CPU architecture for the flux CLI
+  ansible.builtin.command: uname -m
+  register: flux_cli_uname
+  changed_when: false
+
+- name: Get installed flux CLI version
+  ansible.builtin.command: /usr/local/bin/flux version --client
+  register: flux_cli_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install flux CLI {{ fluxcd_version }}
+  when: ("v" + flux_cli_version) not in (flux_cli_installed.stdout | default(''))
+  vars:
+    flux_cli_version: "{{ fluxcd_version | regex_replace('^v', '') }}"
+    flux_cli_arch: "{{ {'aarch64': 'arm64', 'arm64': 'arm64', 'x86_64': 'amd64', 'armv7l': 'arm'}[flux_cli_uname.stdout] }}"
+    flux_cli_archive: "flux_{{ flux_cli_version }}_linux_{{ flux_cli_arch }}.tar.gz"
+    flux_cli_release_url: "https://github.com/fluxcd/flux2/releases/download/v{{ flux_cli_version }}"
+  block:
+    - name: Download flux CLI archive
+      ansible.builtin.get_url:
+        url: "{{ flux_cli_release_url }}/{{ flux_cli_archive }}"
+        dest: "/tmp/{{ flux_cli_archive }}"
+        checksum: "sha256:{{ flux_cli_release_url }}/flux_{{ flux_cli_version }}_checksums.txt"
+        mode: "0644"
+
+    - name: Unpack flux CLI to /usr/local/bin
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ flux_cli_archive }}"
+        dest: /usr/local/bin
+        remote_src: true
+        include:
+          - flux
+        mode: "0755"
+      become: true
+
+    - name: Remove flux CLI archive
+      ansible.builtin.file:
+        path: "/tmp/{{ flux_cli_archive }}"
+        state: absent

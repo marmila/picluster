@@ -146,6 +146,41 @@ Example: Flux 2.10 needs flux-operator 0.62.0 or later. On 2026-11-09 it was mer
 stalled; Flux went back to 2.9.5, the operator went to 0.62.1 the same day, and **2.10 is the next manual
 update** (tick "fluxcd/flux2 to v2.10.0" in the Dependency Dashboard, issue #238).
 
+After a distribution upgrade, update the `flux` CLI on node2 to the same version: `make admin-cli` (it reads
+`fluxcd_version` from `ansible/vars/picluster.yml`, which Renovate updates in the same group).
+
+### Longhorn upgrades: check CPU room first
+
+After a Longhorn upgrade every node runs a second instance-manager (the new version) next to the old one,
+until the volumes have moved to the new engine. Each one requests 12% of the node's CPU, 480m on a 4-core node.
+Instance-manager pods are bound to their node, so nothing is preempted for them: on a node without that room
+the kubelet rejects the new one (`OutOfcpu`), and the next volume that starts there cannot attach. On
+2026-11-12 this took Elasticsearch down for 8 hours (node-esp-2 at 97% CPU requested,
+`postmortems/incident-2026-11-12-longhorn-instance-manager-outofcpu.md`).
+
+Before merging the Longhorn PR, on node2. Every node needs at least 500m of CPU not requested:
+
+```bash
+for n in $(kubectl get nodes -o name); do echo "${n#node/}: $(kubectl describe $n | grep -A5 'Allocated resources' | grep -E '^ +cpu' | awk '{print $2, $3}')"; done
+kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu
+```
+
+A node with less room: lower the requests of pods on it first, or move one away (`LONGHORN-002` step 4).
+
+After the merge, once the HelmRelease is Ready:
+
+```bash
+kubectl -n longhorn-system get helmrelease longhorn
+kubectl -n longhorn-system get instancemanagers.longhorn.io -o wide     # none in "error"
+kubectl -n longhorn-system get engines.longhorn.io -o jsonpath='{range .items[*]}{.spec.image}{"\n"}{end}' | sort | uniq -c
+```
+
+- An instance-manager in `error`: runbook `LONGHORN-002` (alert `LonghornInstanceManagerNotRunning`).
+- `concurrentAutomaticEngineUpgradePerNodeLimit: 1` (`kubernetes/platform/longhorn/app/base/values.yaml`)
+  moves the volumes to the new engine one per node at a time. Within about an hour all engines show the new
+  version and the old instance-managers are gone, one per node left. A volume that is degraded is upgraded
+  only once its rebuild has finished.
+
 ### Releases without a date (ghcr.io, quay.io)
 
 Renovate waits a minimum age before offering an update (3 days for the weekly bundle, 7 for critical

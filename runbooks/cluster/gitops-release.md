@@ -1,5 +1,10 @@
 # GitOps and Release Runbooks
 
+Run the commands on node2. `kubectl` works there; the `flux` CLI is installed with `make admin-cli`
+(Ansible, version `fluxcd_version` in `ansible/vars/picluster.yml`; re-run it after every Flux upgrade).
+Without the CLI, `flux reconcile <kind> <name>` is the same as
+`kubectl -n <namespace> annotate <kind> <name> reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite`.
+
 ## GITOPS-001 Flux Source Outage Triage
 
 <a id="runbook-gitops-001"></a>
@@ -314,118 +319,152 @@ Rollback:
 1. Patch `GitRepository` ref back to `master`.
 2. Reconcile source and root Kustomization.
 
-## GITOPS-007 Terraform (tofu-controller) Stuck or State-Locked
+## GITOPS-007 Terraform (tofu-controller) Not Ready: State Lock or Plan Error
 
 <a id="runbook-gitops-007"></a>
 Runbook ID: `GITOPS-007`
 Owner: Platform
 Severity: `SEV-3`
 
-Objective: Get a tofu-controller `Terraform` resource (`config-elastic`, `config-keycloak` in `flux-system`)
-reconciling again, most often by releasing a stuck OpenTofu state lock.
+Objective: Get a tofu-controller `Terraform` resource back to `Ready=True`. There are two, in `flux-system`:
 
-Alerts: `TerraformStateLocked`, `TerraformNotReady`. The Kustomization that health-checks the resource
-(`elastic-stack-config`, `keycloak-config`) also goes not ready, so `FluxKustomizationNotReady` usually fires
-too: fix the Terraform resource, the Kustomization follows.
+| Resource | Module | Needs | Flux Kustomization that waits for it |
+| --- | --- | --- | --- |
+| `config-elastic` | `terraform/elastic` | Vault, Elasticsearch (`efk-es-http:9200`), Kibana (`efk-kb-http:5601`) | `elastic-stack-config` |
+| `config-keycloak` | `terraform/keycloak` | Vault, Keycloak (`keycloak-service.keycloak.svc:8080`) | `keycloak-config` |
 
-Background: state is stored in a Kubernetes Secret, and the lock is a Lease named
-`lock-tfstate-default-<name>` in `flux-system`. If the `tf-runner` pod dies during a plan (node reboot,
-eviction, OOM), the lock is never released and every later run fails with `error acquiring the state lock`.
-The lock ID does not change on retries. Seen 2026-10-31 and 2026-11-01 to 2026-11-05 (`config-elastic`, 6577
-failed runs).
+Alerts: `TerraformStateLocked`, `TerraformNotReady`. The Kustomization in the table goes not ready too, so
+`FluxKustomizationNotReady` usually fires as well: fix the Terraform resource, the Kustomization follows.
+
+Two different problems show the same status, `error running Plan: ... exit status 1...`:
+
+- **Stuck state lock.** State is a Secret, the lock is the Lease `lock-tfstate-default-<resource>` in
+  `flux-system`. If the `tf-runner` pod dies during a plan (node reboot, eviction, OOM), the lock stays and every
+  later run fails on it. Seen 2026-10-31, 2026-11-01 to 11-05 (6577 failed runs), 2026-11-12.
+- **Something the module talks to is down.** Elasticsearch, Kibana, Keycloak or Vault. Nothing is wrong with
+  Terraform; fix the dependency. Seen 2026-11-12: Elasticsearch volume could not attach (`LONGHORN-002`).
+
+`kubectl get terraform` (and `-w`) cuts the message off, so it cannot tell them apart. Step 2 prints the
+full error.
 
 Preconditions:
 
-- Nothing else is running OpenTofu against the same state: no `tf-runner` pod for this resource is
-  currently running a plan or apply. Force-unlocking a live run can corrupt the state.
+- `kubectl` on node2.
+- Before a force-unlock: no `tf-runner` pod for this resource is running a plan or apply (step 2 lists them).
+  Unlocking a live run can corrupt the state.
 
 Procedure:
 
-1. Find the stuck resource and its lock (on node2):
+1. Pick the resource. This is the only line to edit; everything below is copy-paste.
 
 ```bash
-kubectl -n flux-system get terraform
-kubectl -n flux-system get terraform <name> -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}{"lock pending: "}{.status.lock.pending}{"\nfailures: "}{.status.reconciliationFailures}{"\n"}'
-kubectl -n flux-system get pods | grep tf-runner
+TF=config-elastic          # or: TF=config-keycloak
 ```
 
-2. Match the case:
+2. Read the status and the full error:
 
-| What you see | Meaning | Go to |
+```bash
+echo "=== conditions ==="
+kubectl -n flux-system get terraform $TF -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}{"\n"}{end}{"lock pending: "}{.status.lock.pending}{"\nfailures: "}{.status.reconciliationFailures}{"\nforce-unlock patch: "}{.spec.tfstate}{"\n"}'
+echo "=== distinct errors (count, first line of each) ==="
+kubectl -n flux-system get terraform $TF -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' | grep -A1 "^Error" | grep -v "^--" | sed -E 's/[0-9a-f-]{36}/<id>/g' | sort | uniq -c | sort -rn | head -15
+echo "=== runner pods ==="
+kubectl -n flux-system get pods | grep tf-runner || echo "none running"
+```
+
+3. Match what step 2 shows:
+
+| Step 2 shows | Meaning | Do |
 | --- | --- | --- |
-| `StateLocked=True`, `lock pending: <uuid>` | Stuck lock | Step 3 |
-| `Ready=Unknown` "Reconciliation in progress", no `StateLocked` | Not stuck, waiting for its interval | Step 6 |
-| `Ready=False` with a plan or apply error, no lock | Real Terraform error (provider, Vault auth, Elasticsearch or Keycloak down) | Step 7 |
+| `StateLocked=True`, or `Error acquiring the state lock` | Stuck lock | Step 4 |
+| `dial tcp ...:9200` timeout or refused, `efk-es-http` | Elasticsearch down | `ELASTIC-001`, then step 6. Do not touch Terraform |
+| `dial tcp ...:5601`, `efk-kb-http` | Kibana down | `ELASTIC-001` (Kibana), then step 6 |
+| `keycloak-service` or `:8080` errors | Keycloak down | `kubectl -n keycloak get pods`; database: `KEYCLOAK-008`. Then step 6 |
+| `permission denied`, `403`, `vault` | Vault sealed, or login or policy broken | `VAULT-001`, `VAULT-006`, then step 6 |
+| `Failed to query available provider packages`, `Unsupported argument`, `Inconsistent dependency lock file` | A recent commit to `terraform/` broke the module or a provider | `GITOPS-010` (revert), then step 6 |
+| `Ready=Unknown` "Reconciliation in progress", no errors | Not stuck: waiting for its 30-minute interval | Step 6 |
+| `force-unlock patch:` not empty, no lock | A patch from an earlier unlock was left behind | Remove it: last command of step 4 |
 
-3. Save the lock details before unlocking (unlocking deletes them). They say who took the lock and when,
-   which is needed to find out why the runner died:
-
-```bash
-kubectl -n flux-system get lease lock-tfstate-default-<name> -o jsonpath='{.metadata.annotations.app\.terraform\.io/lock-info}{"\n"}'
-```
-
-4. Force-unlock. Both fields are required: `forceUnlock` without `lockIdentifier` silently does nothing.
+4. Stuck lock: save the lock details, force-unlock, wait, remove the patch. One paste:
 
 ```bash
-LOCK_ID=$(kubectl -n flux-system get terraform <name> -o jsonpath='{.status.lock.pending}')
-echo "$LOCK_ID"
-kubectl -n flux-system patch terraform <name> --type merge \
-  -p "{\"spec\":{\"tfstate\":{\"forceUnlock\":\"yes\",\"lockIdentifier\":\"${LOCK_ID}\"}}}"
+LOCK_ID=$(kubectl -n flux-system get terraform $TF -o jsonpath='{.status.lock.pending}')
+[ -n "$LOCK_ID" ] || LOCK_ID=$(kubectl -n flux-system get terraform $TF -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}' | grep -oE 'ID: +[0-9a-f-]{36}' | head -1 | awk '{print $2}')
+if [ -z "$LOCK_ID" ]; then echo "NO LOCK ID FOUND: not a lock problem, go back to step 3"; else
+  echo "lock: $LOCK_ID"
+  echo "=== lock info: who took it and when (keep it for step 7) ==="
+  kubectl -n flux-system get lease lock-tfstate-default-$TF -o jsonpath='{.metadata.annotations.app\.terraform\.io/lock-info}{"\n"}'
+  kubectl -n flux-system patch terraform $TF --type merge -p "{\"spec\":{\"tfstate\":{\"forceUnlock\":\"yes\",\"lockIdentifier\":\"${LOCK_ID}\"}}}"
+  echo "waiting 2 minutes for the unlock run..."; sleep 120
+  kubectl -n flux-system get terraform $TF -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}{"\n"}{end}'
+fi
+kubectl -n flux-system patch terraform $TF --type json -p '[{"op":"remove","path":"/spec/tfstate"}]'
 ```
 
-   The patch triggers a reconcile at once. Within 1–2 minutes `kubectl -n flux-system get terraform <name>`
-   should show `Ready=True`. If `status.lock.pending` is empty but the error says the state is locked, use the
-   ID from the error message (`Lock Info: ID:`) instead. Fallback if the patch does not help: delete the Lease
-   `kubectl -n flux-system delete lease lock-tfstate-default-<name>` and reconcile (step 6).
+   - Both fields are needed: `forceUnlock` without `lockIdentifier` silently does nothing.
+   - The last command removes the patch so force-unlock does not stay armed. Flux does not remove it by
+     itself. If it says `the server rejected our request ... /spec/tfstate`, there was nothing to remove.
+   - No `StateLocked=True` any more: continue with step 6. If `Ready=False` now shows another error, go back
+     to step 2: the lock may have hidden it.
+   - Still locked: step 5.
 
-5. Once `Ready=True`, remove the patch so force-unlock does not stay armed:
+5. Fallback, only if step 4 did not release the lock: delete the Lease, then step 6.
 
 ```bash
-kubectl -n flux-system patch terraform <name> --type json -p '[{"op":"remove","path":"/spec/tfstate"}]'
+kubectl -n flux-system delete lease lock-tfstate-default-$TF
 ```
 
-   Flux does not remove it by itself: a field set with `kubectl patch` stays until removed.
-
-6. Trigger a reconcile (resource only waiting for its 30m interval, or after deleting the Lease):
+6. Run it again and wait for the result (instead of `get terraform -w`):
 
 ```bash
-kubectl -n flux-system annotate terraform <name> reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
+kubectl -n flux-system annotate terraform $TF reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
+kubectl -n flux-system wait terraform $TF --for=jsonpath='{.status.conditions[?(@.type=="Ready")].status}'=True --timeout=5m && echo "FIXED" || echo "STILL FAILING: run step 2 again"
+case $TF in config-elastic) KS=elastic-stack-config;; config-keycloak) KS=keycloak-config;; esac
+kubectl -n flux-system annotate kustomization $KS reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
+kubectl -n flux-system get kustomization $KS
 ```
 
-7. For a real Terraform error, read the runner output and controller logs, then fix the module or the
-   dependency (Vault, Elasticsearch, Keycloak):
+   The Kustomization can show `dependency ... is not ready` for a while after the Terraform resource is fixed,
+   when the app it depends on (`elastic-stack-app`, `keycloak-app`) is still recovering. It follows on its
+   own.
+
+7. After a lock: find why the runner died, around the time in the lock info from step 4. Node reboots or
+   `NotReady`, evictions, OOM:
 
 ```bash
-kubectl -n flux-system describe terraform <name> | sed -n '/Conditions:/,$p'
-kubectl -n flux-system logs deploy/tofu-controller --tail=100 | grep -i <name>
+kubectl get events -A --sort-by=.lastTimestamp | grep -iE "tf-runner|evict|oom|NodeNotReady" | tail -20
+kubectl get nodes
 ```
 
-8. Find why the runner died, using the lock time from step 3: node reboots or `NotReady`, evictions, OOM.
-
-```bash
-kubectl get events -A --sort-by=.lastTimestamp | grep -iE "tf-runner|evict|oom" | tail -20
-```
+   Events are kept for about an hour. For older locks, check the node uptime (`uptime` on the node) and
+   `postmortems/` for an outage at that time.
 
 Verify:
 
-- `kubectl -n flux-system get terraform` shows `READY True` for every resource.
-- `status.reconciliationFailures` is 0 and `spec.tfstate` is gone.
+- `kubectl -n flux-system get terraform` shows `READY True` for both resources.
+- Step 2 shows `failures: 0` and an empty `force-unlock patch:`.
 - `TerraformStateLocked`, `TerraformNotReady` and the related `FluxKustomizationNotReady` resolve.
 
 Rollback:
 
-1. If a run fails after the unlock, suspend the resource
-   (`kubectl -n flux-system patch terraform <name> --type merge -p '{"spec":{"suspend":true}}'`), fix the
-   cause, then resume. No alert fires for a suspended Terraform resource, so do not forget to resume it.
-2. If the state looks damaged, stop (suspend) before the next apply and restore the state Secret
-   `tfstate-default-<name>` in `flux-system` from a backup, if one includes it.
+1. If a run fails after the unlock, suspend the resource while you fix the cause, then resume:
+
+```bash
+kubectl -n flux-system patch terraform $TF --type merge -p '{"spec":{"suspend":true}}'
+# fix the cause
+kubectl -n flux-system patch terraform $TF --type merge -p '{"spec":{"suspend":false}}'
+```
+
+   No alert fires for a suspended Terraform resource, so do not forget to resume it.
+2. If the state looks damaged, keep it suspended and restore the state Secret `tfstate-default-$TF` in
+   `flux-system` from a Velero backup.
 
 References:
 
 - [tofu-controller: force unlock Terraform states](https://flux-iac.github.io/tofu-controller/use-tf-controller/force-unlock-terraform-states/)
 - `kubernetes/platform/elastic-stack/config/base/terraform.yaml`, `kubernetes/platform/keycloak/config/base/terraform.yaml`
 - `kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/tofu-alert-rules.yaml`
-- `postmortems/incident-2026-11-05-node6-undervoltage.md` (tofu-controller lock section)
+- `postmortems/incident-2026-11-05-node6-undervoltage.md` (lock), `postmortems/incident-2026-11-12-longhorn-instance-manager-outofcpu.md` (Elasticsearch down)
 
 ## GITOPS-008 FluxInstance Not Ready (Flux Cannot Be Upgraded)
 
