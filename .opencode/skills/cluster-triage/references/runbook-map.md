@@ -21,7 +21,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `FluxKustomizationNotReady` | `GITOPS-002` | If many are not ready, look for the one they depend on (often `external-secrets-config` → Vault) |
 | `FluxHelmReleaseNotReady` | `GITOPS-003` | |
 | `FluxResourceSuspended` | `GITOPS-004` | |
-| `TerraformStateLocked`, `TerraformNotReady` | `GITOPS-007` | Stuck OpenTofu state lock after a runner pod died; the alert shows the lock ID. `elastic-stack-config` / `keycloak-config` go not ready with it |
+| `TerraformStateLocked`, `TerraformNotReady` | `GITOPS-007` | Stuck OpenTofu state lock after a runner pod died; the alert shows the lock ID. Without a lock, read the full error (step 2): `dial tcp ...:9200` means Elasticsearch is down (`ELASTIC-001`), not a Terraform problem. `elastic-stack-config` / `keycloak-config` go not ready with it |
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
@@ -34,6 +34,8 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KubeJobFailed` | none yet | Old failed jobs keep firing until deleted |
 | `VeleroBackupFailed`, `VeleroNoRecentBackup` | `BACKUP-004` | Nightly `full` schedule at 02:00. Check the BackupStorageLocation (RustFS) first |
 | `LonghornVolumeDegraded`, `LonghornVolumeFaulted` | `LONGHORN-001` | Degraded is normal for a while after a node reboot (replica rebuild) |
+| `LonghornVolumeStuckAttaching`, `LonghornInstanceManagerNotRunning` | `LONGHORN-002` | Usually an instance-manager rejected with `OutOfcpu` after a Longhorn upgrade (node-esp-2). Do not cordon the node |
+| `ElasticsearchNotHealthy` | `ELASTIC-001` | Pod in `Init` = volume cannot attach (`LONGHORN-002`). `CLUSTER_RECOVERED` shards after a restart: wait |
 | `CNPGWALArchivingFailing`, `CNPGNoRecentBackup` | `PG-001` | Keycloak Postgres to RustFS. An expired RustFS certificate is the usual cause |
 | `ScrapeTargetDown` | `OBS-001` | `context deadline exceeded` is often a NetworkPolicy dropping Prometheus; node1 targets: check the exporter on node1 |
 
@@ -67,7 +69,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `GITOPS-004` | You need to suspend and later resume reconciliation safely |
 | `GITOPS-005` | Upgrading or rolling back Flux itself |
 | `GITOPS-006` | Validating a branch against the live cluster |
-| `GITOPS-007` | A tofu-controller Terraform resource is stuck or its state is locked |
+| `GITOPS-007` | A tofu-controller Terraform resource is not Ready: stuck state lock, or a plan error (often a dependency down) |
 
 ### Security and access — `runbooks/cluster/security-access.md`
 
@@ -136,6 +138,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | ID | Use when |
 | --- | --- |
 | `LONGHORN-001` | A Longhorn volume is degraded or faulted |
+| `LONGHORN-002` | A volume stays `attaching`, a pod is stuck in `Init` with `FailedAttachVolume`, an instance-manager is in `error` |
 
 ### Data services — `runbooks/components/data-services.md`
 
@@ -155,7 +158,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 
 | ID | Use when |
 | --- | --- |
-| `ELASTIC-001` | Elasticsearch cluster red or yellow |
+| `ELASTIC-001` | Elasticsearch red or down, Kibana not Ready |
 
 ### Monitoring and tracing — `runbooks/components/observability.md`
 

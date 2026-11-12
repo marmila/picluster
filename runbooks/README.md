@@ -40,7 +40,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
 | Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
 | Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-010` (backlog: `NET-001` … `NET-003`) |
-| Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001` |
+| Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001`, `LONGHORN-002` |
 | Kafka and Data Services | [`components/data-services.md`](components/data-services.md) | `PG-001` (backlog: `KAFKA-001`, `KAFKA-002`, `MONGO-001`) |
 
 ## Runbook Template
@@ -115,7 +115,7 @@ References:
 - [`GITOPS-004` Safe Suspend and Resume Strategy](cluster/gitops-release.md#runbook-gitops-004)
 - [`GITOPS-005` Flux Upgrade and Rollback](cluster/gitops-release.md#runbook-gitops-005)
 - [`GITOPS-006` Branch-Based Live Validation Workflow](cluster/gitops-release.md#runbook-gitops-006)
-- [`GITOPS-007` Terraform (tofu-controller) Stuck or State-Locked](cluster/gitops-release.md#runbook-gitops-007)
+- [`GITOPS-007` Terraform (tofu-controller) Not Ready: State Lock or Plan Error](cluster/gitops-release.md#runbook-gitops-007)
 - [`GITOPS-008` FluxInstance Not Ready (Flux Cannot Be Upgraded)](cluster/gitops-release.md#runbook-gitops-008)
 - [`GITOPS-009` HelmRelease Upgrade Rolled Back](cluster/gitops-release.md#runbook-gitops-009)
 - [`GITOPS-010` Revert an Automerged (or Merged) Update](cluster/gitops-release.md#runbook-gitops-010)
@@ -188,8 +188,8 @@ References:
 
 #### Elastic and Logging
 
-- [`ELASTIC-001` Elasticsearch Red or Yellow Cluster Recovery](components/elastic-logging.md#runbook-elastic-001)
-- `ELASTIC-002` Kibana Unavailability Triage
+- [`ELASTIC-001` Elasticsearch Red, Down, or Kibana Not Ready](components/elastic-logging.md#runbook-elastic-001)
+- `ELASTIC-002` Kibana Unavailability Triage (basic Kibana restart is in `ELASTIC-001`)
 - `ELASTIC-003` Fluent Bit and Fluentd Ingestion Failure
 - `ELASTIC-004` ILM and Index Template Drift Recovery
 - `ELASTIC-005` Elastic Stack Upgrade and Rollback
@@ -212,6 +212,7 @@ References:
 #### Longhorn Storage
 
 - [`LONGHORN-001` Longhorn Volume Degraded or Faulted](components/longhorn.md#runbook-longhorn-001)
+- [`LONGHORN-002` Volume Stuck Attaching (Instance-Manager Not Running)](components/longhorn.md#runbook-longhorn-002)
 
 #### Service Mesh and Ingress
 

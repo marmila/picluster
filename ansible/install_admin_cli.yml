@@ -1,0 +1,29 @@
+---
+# Install the flux CLI on the admin node, where cluster commands are run with kubectl (node2).
+# Only that node gets it: the CLI is a client and uses the same ~/.kube/config as kubectl.
+# Version: fluxcd_version in vars/picluster.yml. Re-run after every Flux upgrade.
+#
+#   make admin-cli
+#   make admin-cli ADMIN_CLI_HOST=node3    # another node
+
+- name: Install admin CLIs on the admin node
+  hosts: "{{ admin_cli_host | default('node2') }}"
+  gather_facts: false
+  become: false
+
+  pre_tasks:
+    - name: Include picluster variables
+      ansible.builtin.include_vars: "vars/picluster.yml"
+
+  tasks:
+    - name: Install flux CLI
+      ansible.builtin.include_tasks: tasks/install_fluxcd_cli.yml
+
+    - name: Show flux CLI version
+      ansible.builtin.command: /usr/local/bin/flux version --client
+      register: admin_cli_flux_version
+      changed_when: false
+
+    - name: Print flux CLI version
+      ansible.builtin.debug:
+        msg: "{{ admin_cli_flux_version.stdout }}"

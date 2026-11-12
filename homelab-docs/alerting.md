@@ -303,6 +303,9 @@ Added 2026-11-08. Before this, nothing alerted on a sealed Vault, broken secret 
 | `VeleroNoRecentBackup` | no successful scheduled backup in 25 hours | critical | [BACKUP-004](../runbooks/cluster/backup-compliance.md#runbook-backup-004) |
 | `LonghornVolumeDegraded` | a volume has missing replicas for 30 minutes | warning | [LONGHORN-001](../runbooks/components/longhorn.md#runbook-longhorn-001) |
 | `LonghornVolumeFaulted` | a volume has no healthy replica for 5 minutes | critical | [LONGHORN-001](../runbooks/components/longhorn.md#runbook-longhorn-001) |
+| `LonghornVolumeStuckAttaching` | a volume has been `attaching` for 15 minutes (its pod cannot start) | critical | [LONGHORN-002](../runbooks/components/longhorn.md#runbook-longhorn-002) |
+| `LonghornInstanceManagerNotRunning` | an instance-manager has not been `running` for 15 minutes (kube-state-metrics `longhorn_crd_instance_manager_info`) | warning | [LONGHORN-002](../runbooks/components/longhorn.md#runbook-longhorn-002) |
+| `ElasticsearchNotHealthy` | Elasticsearch not green or yellow for 15 minutes: red, unreachable, or no exporter data | critical | [ELASTIC-001](../runbooks/components/elastic-logging.md#runbook-elastic-001) |
 | `CNPGWALArchivingFailing` | Keycloak Postgres cannot archive WAL to RustFS for 15 minutes | critical | [PG-001](../runbooks/components/data-services.md#runbook-pg-001) |
 | `CNPGNoRecentBackup` | no Keycloak Postgres base backup in 26 hours | warning | [PG-001](../runbooks/components/data-services.md#runbook-pg-001) |
 | `ScrapeTargetDown` | any scrape target down for 15 minutes (e-commerce excluded); covers node1 node-exporter and bind | warning | [OBS-001](../runbooks/components/observability.md#runbook-obs-001) |
@@ -317,6 +320,8 @@ kubernetes/platform/external-secrets/app/overlays/prod/eso-alert-rules.yaml
 kubernetes/platform/velero/app/components/monitoring/velero-alert-rules.yaml
 kubernetes/platform/longhorn/app/components/monitor/longhorn-alert-rules.yaml
 kubernetes/platform/longhorn/app/components/monitor/prometheus-networkpolicy.yaml
+kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.yaml   # longhorn_crd_instance_manager_info (kube-state-metrics)
+kubernetes/platform/elastic-stack/prometheus-elasticsearch-exporter/base/elasticsearch-alert-rules.yaml
 kubernetes/platform/keycloak/database/overlays/prod/postgres-alert-rules.yaml
 kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/scrape-target-rules.yaml
 ```

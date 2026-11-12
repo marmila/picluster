@@ -4,6 +4,7 @@ resources:
   - elasticsearch-exporter-externalsecret.yaml
   - helm.yaml
   - grafana-dashboards.yaml
+  - elasticsearch-alert-rules.yaml
 
 configMapGenerator:
   - name: prometheus-elasticsearch-exporter-helm-values
