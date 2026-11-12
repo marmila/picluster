@@ -18,6 +18,17 @@ image:
 leaderElection:
   enabled: true
 
+# Chart default requests 500m CPU / 256Mi for a job that wakes up every 5 minutes
+# (measured: 3m CPU, 15Mi). Lowered so it does not take the CPU a Longhorn
+# instance-manager needs on a small node (incident 2026-11-12).
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
 deschedulerPolicyAPIVersion: descheduler/v1alpha2
 deschedulerPolicy:
   profiles:
