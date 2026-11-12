@@ -15,6 +15,13 @@ defaultSettings:
   # Avoid aggressive fast-rebuild behavior; prefer lower background churn.
   fastReplicaRebuildEnabled: false
 
+  # Upgrade volume engines to the current engine image automatically after a Longhorn upgrade,
+  # one volume per node at a time. Without it (default 0) volumes stay on the old engine, the old
+  # instance-manager stays alive next to the new one, and each reserves ~480m CPU. On node-esp-2
+  # (4 vCPU) the second one cannot be scheduled (OutOfcpu), so any volume restarting there cannot
+  # attach (Elasticsearch down 2026-11-12, same in 2026-09).
+  concurrentAutomaticEngineUpgradePerNodeLimit: 1
+
   # Threshold below which a node's disk is marked unschedulable.
   # Lowered from the 25% default to 10% to tolerate the snapshot overhead
   # from daily Velero backups (3 snapshots × replica count per node).
