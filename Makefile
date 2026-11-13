@@ -25,6 +25,7 @@ ANSIBLE_LOCAL_COLLECTIONS_DIR := $(HOME)/.ansible/collections
 	init \
 	secret-files \
 	os-upgrade \
+	os-upgrade-check \
 	node-config-update \
 	external-setup \
 	nodes-setup \
@@ -101,8 +102,11 @@ init: os-upgrade nodes-setup external-services configure-os-backup k3s-install k
 secret-files: ## Create encrypted/local secret files for Ansible runs
 	$(RUNNER) ansible-playbook create_secret_files.yml
 
-os-upgrade: ## Upgrade OS packages on target nodes
+os-upgrade: ## Upgrade OS packages one node at a time (drain, reboot, uncordon, wait for Longhorn when a reboot is needed)
 	$(RUNNER) ansible-playbook update.yml
+
+os-upgrade-check: ## Dry run of os-upgrade: pending packages and what would be drained or rebooted (changes nothing)
+	$(RUNNER) ansible-playbook update.yml --check --diff
 
 node-config-update: ## Apply journald limit and kubelet config to running nodes (restarts k3s one node at a time if changed)
 	$(RUNNER) ansible-playbook update_node_config.yml

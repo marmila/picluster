@@ -211,7 +211,7 @@ Rules for the manual ones:
    - Read the release notes (or paste the PR link to Claude for a review).
    - Merge one at a time like critical updates, or leave it open for later.
    - Close the ones you will never take ([2.6](#26-closing-a-renovate-pr)).
-2. **OS packages:** on node1 run `make os-upgrade` (cluster nodes one at a time). If nodes report `*** System restart required ***`, reboot them following [node-os-reboot.md](node-os-reboot.md), then do [7.2](#72-after-a-node-reboot-or-k3s-agent-restart).
+2. **OS packages:** on node1 run `make os-upgrade-check` (dry run), then `make os-upgrade`. It upgrades one node at a time and, when a node needs a reboot, drains it, reboots it, uncordons it and waits for Longhorn before the next ([node-os-maintenance.md](node-os-maintenance.md)). For nodes upgraded **without** a reboot, do [7.2](#72-after-a-node-reboot-or-k3s-agent-restart).
 3. **Backups:** check that the last Velero backups completed:
    ```bash
    kubectl -n velero get backups --sort-by=.metadata.creationTimestamp | tail -4
@@ -272,7 +272,7 @@ kubectl -n longhorn-system get pods -l longhorn.io/component=instance-manager -o
 kubectl uncordon $NODE
 ```
 
-A full reboot ([node-os-reboot.md](node-os-reboot.md)) also clears it.
+A full reboot ([node-os-maintenance.md](node-os-maintenance.md)) also clears it.
 
 ### 7.3 Growing a volume (PVC)
 
@@ -376,7 +376,7 @@ Alerts arrive on **ntfy** (warning and critical). `info` alerts are dropped. The
 ## 11. Related documents
 
 - [update-automation.md](update-automation.md): CI validation of Renovate PRs, automerge plan, update alerts
-- [node-os-reboot.md](node-os-reboot.md): safe reboot of nodes (etcd quorum, Longhorn)
+- [node-os-maintenance.md](node-os-maintenance.md): OS upgrades (`make os-upgrade`) and safe node reboots (etcd quorum, Longhorn)
 - `postmortems/incident-2026-10-06-keycloak-db-outage.md`: Longhorn stale PID, CNPG PVC resize
 - `postmortems/incident-2026-09-27-cowrie-pipeline-outage.md`
 - [alerting.md](alerting.md): "Alert notifications" (ntfy and healthchecks.io setup)

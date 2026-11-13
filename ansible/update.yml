@@ -1,54 +1,52 @@
 ---
-- name: Update all packages and reboot if needed
-  # Only cluster nodes. pimaster is the ansible-runner container (local
-  # connection), which is updated by rebuilding its image, not with apt.
-  hosts: picluster
-  # One node at a time, so reboots never take down several masters/workers at once.
+# OS package upgrade (make os-upgrade), one node at a time.
+#
+# Order: k3s workers, then k3s masters, then hosts outside k3s (node1: Vault,
+# RustFS, DNS, HAProxy). pimaster is the ansible-runner container (local
+# connection), updated by rebuilding its image, not with apt.
+#
+# When a node needs a reboot (/var/run/reboot-required), a k3s node is drained
+# first, uncordoned once it is Ready again, and the run waits until no Longhorn
+# volume is degraded before the next node. Before every node, all nodes must be
+# Ready and schedulable and no Longhorn volume degraded or faulted. Details in
+# tasks/os_upgrade_node.yml and homelab-docs/node-os-maintenance.md.
+#
+# Dry run: make os-upgrade-check (--check --diff). Upgrades nothing, drains and
+# reboots nothing; runs the read-only checks and reports per node what a real
+# run would do.
+#
+# Any failure stops the whole run (max_fail_percentage 0 + any_errors_fatal),
+# so the masters are never touched after a worker failed.
+
+- name: Upgrade k3s workers
+  hosts: k3s_worker
   serial: 1
-  # Stop the whole run if a node fails, instead of moving on to the next one.
   max_fail_percentage: 0
+  any_errors_fatal: true
   become: true
   gather_facts: false
-
   tasks:
-    - name: Update apt repo and cache on all Debian/Ubuntu boxes
-      ansible.builtin.apt:
-        update_cache: true
-        # Run the equivalent of apt-get update command on all servers
-        force_apt_get: true
-        # Do not use the aptitude command
-        # instead use the apt-get command on Debian/Ubuntu boxes
-        cache_valid_time: 3600
-        # Update the apt cache if its older than the cache_valid_time.
-        # This option is set in seconds
+    - name: Upgrade the node, reboot it safely if needed
+      ansible.builtin.include_tasks: tasks/os_upgrade_node.yml
 
-    - name: Upgrade all packages on servers
-      ansible.builtin.apt:
-        upgrade: dist
-        # Run the equivalent of ‘apt-get upgrade’
-        force_apt_get: true
-        # Use apt-get instead of aptitude
+- name: Upgrade k3s masters
+  hosts: k3s_master
+  serial: 1
+  max_fail_percentage: 0
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Upgrade the node, reboot it safely if needed
+      ansible.builtin.include_tasks: tasks/os_upgrade_node.yml
 
-    - name: Check if a reboot is needed on all servers
-      ansible.builtin.stat:
-        path: /var/run/reboot-required
-        get_checksum: false
-        # Algorithm to determine checksum of file
-      register: reboot_required_file
-      # Save a result in and we are going to use it as follows to reboot the box
-
-    - name: Reboot the box if kernel updated
-      ansible.builtin.reboot:
-        msg: "Reboot initiated by Ansible for kernel updates"
-        connect_timeout: 5
-        reboot_timeout: 300
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
-        test_command: uptime
-        # Execute uptime command on the rebooted server and expect success from
-        # to determine the machine is ready for further tasks
-      when: reboot_required_file.stat.exists
-      # First, check that the file named /var/run/reboot-required exists using a
-      # variable named reboot_required_file.
-      # The reboot module will only work if that file exists and it is enforced
-      # using ‘when: reboot_required_file.stat.exists’ Ansible condition.
+- name: Upgrade hosts outside k3s
+  hosts: picluster:!k3s_cluster
+  serial: 1
+  max_fail_percentage: 0
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Upgrade the node, reboot it safely if needed
+      ansible.builtin.include_tasks: tasks/os_upgrade_node.yml
