@@ -11,9 +11,8 @@ homelab goes here.
 | [cluster-maintenance.md](cluster-maintenance.md) | Keeping the cluster updated: how Renovate works here, daily / weekly / monthly tasks, critical update order, event procedures |
 | [update-automation.md](update-automation.md) | How Renovate updates get checked by CI and (step by step) merged automatically, and the alerts that watch them |
 | [node-os-reboot.md](node-os-reboot.md) | Safe reboot of cluster nodes after OS upgrades (etcd quorum, Longhorn) |
-| [storage-reduction-prometheus-elasticsearch.md](storage-reduction-prometheus-elasticsearch.md) | Shrinking Prometheus and Elasticsearch storage |
 
 Related folders:
 
 - [runbooks/](../runbooks/README.md): step-by-step fixes, referenced by ID from alerts (for example `NET-009`).
-- [postmortems/](../postmortems/): incident reports.
+- [postmortems/](../postmortems/): incident reports (also the 2026-04-17 Prometheus / Elasticsearch storage reduction).

@@ -1,4 +1,4 @@
-# Runbook: Storage Reduction — Prometheus and Elasticsearch PVCs
+# Incident: Prometheus and Elasticsearch PVCs Nearly Full (Storage Reduction)
 
 **Date:** 2026-04-17
 **Status:** Applied
@@ -173,31 +173,10 @@ For Elasticsearch, revert the ILM values in both `fluentd-config.yaml` and `7-da
 
 ## Known Issue: tofu-controller state lock
 
-Full procedure and alerts: runbook [GITOPS-007](../runbooks/cluster/gitops-release.md#runbook-gitops-007). The preferred fix there is a force-unlock with the lock ID; deleting the Lease below is the fallback.
+After applying the changes, the `config-elastic` Terraform resource was stuck with
+`error acquiring the state lock` (`Operation: OperationTypePlan`, `Who: runner@config-elastic-tf-runner`): a
+previous runner pod had been killed mid-plan and left its Lease behind. At the time it was fixed by deleting the
+Lease `lock-tfstate-default-config-elastic`.
 
-After applying changes, the `config-elastic` Terraform resource may be stuck with:
-
-```
-error acquiring the state lock: Lock Info:
-  ID: <uuid>
-  Operation: OperationTypePlan
-  Who: runner@config-elastic-tf-runner
-```
-
-This happens when a previous runner pod was killed mid-plan, leaving an orphaned Kubernetes Lease.
-
-**Fix:**
-
-```bash
-# Delete the orphaned lock lease (name always follows this pattern)
-kubectl delete lease -n flux-system lock-tfstate-default-config-elastic
-
-# Force immediate reconciliation
-kubectl annotate terraform -n flux-system config-elastic \
-  reconcile.fluxcd.io/requestedAt="$(date -u +%Y-%m-%dT%H:%M:%SZ)" --overwrite
-
-# Watch it recover
-kubectl get terraform -n flux-system config-elastic --watch
-```
-
-Expected progression: `Applying` → `Applied successfully` → `Outputs written` → `READY: True`.
+The current procedure (force-unlock with the lock ID first, deleting the Lease only as a fallback) and its
+alerts are in runbook [GITOPS-007](../runbooks/cluster/gitops-release.md#runbook-gitops-007).
