@@ -20,7 +20,8 @@
 # that needs it is simply rebooted, as the playbook did before.
 #
 # Tunables (-e): os_upgrade_drain_timeout (default 300s),
-# os_upgrade_longhorn_retries (default 90, x 20 s = 30 min).
+# os_upgrade_longhorn_retries (default 360, x 20 s = 2 h: Longhorn here rebuilds
+# one replica per node at a time, as full copies, so 30 min was too short).
 
 - name: Pick the master that runs kubectl for this node
   ansible.builtin.set_fact:
@@ -215,7 +216,7 @@
       delegate_to: "{{ os_upgrade_kubectl_host }}"
       register: os_upgrade_volumes_after
       until: os_upgrade_volumes_after.stdout_lines | select('match', '.* (degraded|faulted)$') | list | length == 0
-      retries: "{{ os_upgrade_longhorn_retries | default(90) }}"
+      retries: "{{ os_upgrade_longhorn_retries | default(360) }}"
       delay: 20
       changed_when: false
       when: os_upgrade_is_k3s

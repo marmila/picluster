@@ -95,8 +95,9 @@ pre-flight check fails in the dry run, the real run would stop at the same place
 make os-upgrade
 ```
 
-A run that reboots every node can take one to two hours, mostly waiting for Longhorn rebuilds. Start it when
-you can watch it.
+A run that reboots every node can take many hours, mostly waiting for Longhorn rebuilds (up to 2 hours per
+node). Start it inside `tmux` or `screen`, so a dropped SSH session does not stop it halfway, and split it over
+several sessions with `--limit` if needed (section 3.3).
 
 Order: workers (node5, node6, node-esp-1, node-esp-2), then masters (node2, node3, node4), then node1. For
 each node:
@@ -110,7 +111,8 @@ each node:
    3. wait until the node is `Ready` (up to 5 minutes),
    4. masters only: wait 30 s more for etcd to re-sync,
    5. uncordon,
-   6. wait until no Longhorn volume is `degraded` (up to 30 minutes).
+   6. wait until no Longhorn volume is `degraded` (up to 2 hours: Longhorn here rebuilds one replica per node at
+      a time, as a full copy, and may first clean up the volume's snapshots).
 
 kubectl runs as `k3s kubectl` on another master (never on the node being rebooted). node1 is not a k3s node:
 it is upgraded and rebooted without the drain and Longhorn steps. After a node1 reboot check `vault status` on
@@ -132,8 +134,8 @@ Run through the runner wrapper to pass options:
 ./ansible-runner/ansible-runner.sh ansible-playbook update.yml --limit node5
 ./ansible-runner/ansible-runner.sh ansible-playbook update.yml --limit k3s_worker
 
-# Longer drain timeout, longer Longhorn wait (retries x 20 s)
-./ansible-runner/ansible-runner.sh ansible-playbook update.yml -e os_upgrade_drain_timeout=600s -e os_upgrade_longhorn_retries=180
+# Longer drain timeout, longer Longhorn wait (retries x 20 s: 540 = 3 h, default 360 = 2 h)
+./ansible-runner/ansible-runner.sh ansible-playbook update.yml -e os_upgrade_drain_timeout=600s -e os_upgrade_longhorn_retries=540
 ```
 
 ### 3.4 After the run
@@ -196,7 +198,7 @@ Read the last failed task:
 | `Pre-flight \| No Longhorn volume degraded or faulted` | A rebuild is still running, or a volume is faulted | Wait, or `LONGHORN-001` |
 | `Reboot \| Drain the node` | Eviction blocked: a PodDisruptionBudget, or Longhorn protecting the last healthy replica | See "Drain blocked" below. The node was uncordoned |
 | `Reboot \| Wait for the node to be Ready` | Node did not come back in 5 minutes | See "Node does not come back" |
-| `Reboot \| Wait until no Longhorn volume is degraded` | Rebuild took more than 30 minutes | See "Volume stuck in degraded"; run again when healthy |
+| `Reboot \| Wait until no Longhorn volume is degraded` | Rebuild took more than 2 hours | See "Volume stuck in degraded"; run again when healthy |
 
 ### Drain blocked
 
@@ -212,7 +214,35 @@ be healthy. As a last resort, only if the node must reboot now:
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --disable-eviction --grace-period=30 --force
 ```
 
-### Volume stuck in degraded for more than 30 minutes
+### Volume stuck in degraded
+
+A slow rebuild usually is not stuck. Longhorn settings here (`concurrentReplicaRebuildPerNodeLimit: 1`,
+`fastReplicaRebuildEnabled: false` in `kubernetes/platform/longhorn/app/base/values.yaml`) mean one rebuild per
+node at a time, each a full copy. Before a rebuild, Longhorn also cleans up (purges) the volume's snapshots,
+which can take a long time on a volume with large snapshots. Seen on 2026-11-13 after the node5 reboot: the
+Prometheus volume (50 GB, 123 GB of snapshots) blocked the queue for over an hour while the cleanup ran.
+
+Signs of this case, all normal:
+
+- longhorn-manager logs `Replica rebuildings for map[...] are in progress on this node, which reaches or exceeds
+  the concurrent limit value 1`: the other volumes are queued.
+- longhorn-manager logs `Waiting for snapshot purge to complete before rebuilding` and `failed to start rebuild
+  ... context deadline exceeded` every 30 s: the cleanup is still running.
+
+Watch cleanup and rebuild progress per degraded volume:
+
+```bash
+kubectl -n longhorn-system get engines.longhorn.io -o json | python3 -c '
+import json,sys
+for e in json.load(sys.stdin)["items"]:
+    s=e["status"]; n=e["spec"].get("volumeName","")
+    for r,p in (s.get("purgeStatus") or {}).items():
+        if p.get("isPurging"): print(n, "cleanup", str(p.get("progress"))+"%")
+    for r,p in (s.get("rebuildStatus") or {}).items():
+        print(n, "rebuild", str(p.get("progress"))+"%", p.get("state"), p.get("error",""))'
+```
+
+If the percentages keep rising, wait. If nothing moves for 30 minutes or there is an error:
 
 ```bash
 kubectl -n longhorn-system get replicas.longhorn.io -o wide | grep -E "RB|ERR"
