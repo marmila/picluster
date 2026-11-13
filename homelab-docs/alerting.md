@@ -360,6 +360,8 @@ kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rul
 <a id="alerts-and-the-sre-agent"></a>
 Alerts reach a phone through ntfy (see [Alerting overview](#alerting-overview)). The agent is not started automatically by an alert: a person reads the alert and decides whether to hand it to the agent. That keeps a human in the loop for anything the agent would run against the live cluster.
 
+Planned: a **Triage** button on each ntfy alert that starts a read-only agent in the cluster and posts its report back to ntfy. Fixes stay manual. See [sre-triage-agent.md](sre-triage-agent.md).
+
 ```mermaid
 sequenceDiagram
   participant P as Prometheus

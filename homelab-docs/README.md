@@ -11,6 +11,7 @@ homelab goes here.
 | [cluster-maintenance.md](cluster-maintenance.md) | Keeping the cluster updated: how Renovate works here, daily / weekly / monthly tasks, critical update order, event procedures |
 | [update-automation.md](update-automation.md) | How Renovate updates get checked by CI and (step by step) merged automatically, and the alerts that watch them |
 | [node-os-reboot.md](node-os-reboot.md) | Safe reboot of cluster nodes after OS upgrades (etcd quorum, Longhorn) |
+| [sre-triage-agent.md](sre-triage-agent.md) | Plan (not built yet): a Triage button on ntfy alerts that starts a read-only Claude Code agent in the cluster and sends back a report |
 
 Related folders:
 
