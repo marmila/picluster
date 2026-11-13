@@ -95,6 +95,9 @@ pre-flight check fails in the dry run, the real run would stop at the same place
 make os-upgrade
 ```
 
+A run that reboots every node can take one to two hours, mostly waiting for Longhorn rebuilds. Start it when
+you can watch it.
+
 Order: workers (node5, node6, node-esp-1, node-esp-2), then masters (node2, node3, node4), then node1. For
 each node:
 

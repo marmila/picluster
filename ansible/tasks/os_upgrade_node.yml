@@ -7,8 +7,9 @@
 #      30 s etcd re-sync (masters), uncordon, wait until no Longhorn volume is degraded.
 #      Any failure in step 3 uncordons the node and stops the whole run.
 #
-# kubectl runs as "k3s kubectl" on another master (never on the node being
-# rebooted), like update_node_config.yml.
+# kubectl runs as "k3s kubectl" on a master that is not this node, never on the
+# node being rebooted: the first master in the inventory order, so node2 for
+# workers, node1, node3 and node4, and node3 for node2 (like update_node_config.yml).
 #
 # Check mode (make os-upgrade-check): step 1 runs for real (read-only), the apt
 # package lists are refreshed, the upgrade is only simulated, and nothing is
@@ -21,9 +22,9 @@
 # Tunables (-e): os_upgrade_drain_timeout (default 300s),
 # os_upgrade_longhorn_retries (default 90, x 20 s = 30 min).
 
-- name: Set the kubectl host (another master)
+- name: Pick the master that runs kubectl for this node
   ansible.builtin.set_fact:
-    os_upgrade_kubectl_host: "{{ groups['k3s_master'] | difference([inventory_hostname]) | first }}"
+    os_upgrade_kubectl_host: "{{ groups['k3s_master'] | reject('equalto', inventory_hostname) | first }}"
 
 - name: Check whether k3s is installed on the kubectl host
   ansible.builtin.command:
