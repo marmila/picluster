@@ -510,13 +510,12 @@ kubectl -n flux-system get deploy flux-operator -o jsonpath='{.spec.template.spe
 kubectl -n flux-system logs deploy/flux-operator --since=2h | grep -iE "error|fail" | tail -20
 ```
 
-4. Speed up reconciliation after pushing the fix (no flux CLI on node2):
+4. Speed up reconciliation after pushing the fix (node2):
 
 ```bash
-NOW=$(date +%s)
-kubectl -n flux-system annotate gitrepository flux-system reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
-kubectl -n flux-system annotate kustomization flux-operator-instance reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
-kubectl -n flux-system annotate helmrelease flux-instance reconcile.fluxcd.io/requestedAt="$NOW" --overwrite
+flux reconcile source git flux-system -n flux-system
+flux reconcile kustomization flux-operator-instance -n flux-system
+flux reconcile helmrelease flux-instance -n flux-system
 ```
 
 Verify:
@@ -626,7 +625,7 @@ git revert --no-edit -m 1 <sha>     # merge commit
 git push origin master
 ```
 
-4. Reconcile faster (node2, no flux CLI):
+4. Reconcile faster (node2). `flux reconcile` takes one object at a time, so annotate all Kustomizations at once:
 
 ```bash
 NOW=$(date +%s)

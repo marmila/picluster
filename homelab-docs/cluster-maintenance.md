@@ -2,7 +2,7 @@
 
 **Cluster:** picluster (k3s HA, FluxCD GitOps)
 **Owner:** Marco
-**Where to run commands:** `kubectl` on **node2** (no `flux` CLI there), host commands on **node1**, `gh` on the workstation.
+**Where to run commands:** `kubectl` and the `flux` CLI on **node2** (the CLI is installed with `make admin-cli`, pinned to the cluster's Flux version), host commands on **node1**, `gh` on the workstation.
 
 This document is the single reference for keeping the cluster up to date and healthy: how Renovate works in this repo, what runs automatically, and what you do daily, weekly, monthly and after specific events.
 
@@ -292,7 +292,15 @@ A full reboot ([node-os-reboot.md](node-os-reboot.md)) also clears it.
 
 ### 7.4 A HelmRelease is stuck (`Stalled` / `RetriesExceeded`)
 
-After its retries run out, Flux stops trying. Once the cause is fixed, reset it (`flux reconcile hr --reset`, without the flux CLI):
+After its retries run out, Flux stops trying. Once the cause is fixed, reset it:
+
+```bash
+NS=<ns>; HR=<name>
+flux reconcile hr $HR -n $NS --reset
+flux get hr $HR -n $NS
+```
+
+The same with kubectl only, if the `flux` CLI is not available:
 
 ```bash
 NS=<ns>; HR=<name>; TS=$(date +%s)
