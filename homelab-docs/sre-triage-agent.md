@@ -323,12 +323,12 @@ review and approve the push.
 
 - [x] Claude: `docker/sre-triage/` (Dockerfile, listener.sh, agents.json, settings.json).
 - [x] Claude: `.github/workflows/build-sre-triage.yml` (and Dockerfiles added to the Renovate regex manager).
-- [ ] You: approve, push; check the image exists for both architectures on ghcr.io.
+- [x] You: approve, push; check the image exists for both architectures on ghcr.io (public, `sha-ffab15c`).
 
 ### Phase 2: secrets
 
-- [ ] You: create the command topic name and the Vault secret (6.1).
-- [ ] Optional, Claude: `~/.secrets/sre-triage.ini` support in `create_secret_files.yml` and
+- [x] You: create the command topic name and the Vault secret (6.1).
+- [x] Claude: `~/.secrets/sre-triage.ini` support in `create_secret_files.yml` and
   `load_external_services_keys.yml`, so `make load-external-services-keys` can recreate it after a rebuild.
 
 ### Phase 3: Kubernetes manifests

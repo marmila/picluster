@@ -11,6 +11,7 @@
     github_pat_file: "~/.secrets/github-pat.ini"
     threatmap_credentials_file: "~/.secrets/threatmap-credentials.ini"
     alertmanager_notifications_file: "~/.secrets/alertmanager-notifications.ini"
+    sre_triage_file: "~/.secrets/sre-triage.ini"
     vault_secret_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.secrets/vault.env"
 
   tasks:
@@ -32,6 +33,7 @@
               - MaxMind license key and account ID → read from ~/.secrets/threatmap-credentials.ini
               - MongoDB and Kafka passwords → auto-generated if not in Vault
           • Alertmanager notification URLs (ntfy, healthchecks.io) → read from ~/.secrets/alertmanager-notifications.ini
+          • SRE triage agent (Claude token, ntfy topics) → read from ~/.secrets/sre-triage.ini, skipped if missing
           • General Ansible variables
 
     - name: Include picluster variables
@@ -99,3 +101,7 @@
     - name: Load Alertmanager notification URLs
       ansible.builtin.include_tasks:
         file: tasks/load_alertmanager_notifications_into_vault.yml
+
+    - name: Load SRE triage agent credentials
+      ansible.builtin.include_tasks:
+        file: tasks/load_sre_triage_into_vault.yml

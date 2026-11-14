@@ -1,0 +1,61 @@
+---
+# SRE triage agent (homelab-docs/sre-triage-agent.md): Claude Code token and ntfy topics.
+# Optional: when ~/.secrets/sre-triage.ini does not exist (token left empty in 'make secret-files'),
+# nothing is written and the agent stays without credentials.
+
+- name: Check SRE triage file exists on controller
+  ansible.builtin.stat:
+    path: "{{ sre_triage_file }}"
+  register: sre_triage_file_stat
+
+- name: Skip SRE triage credentials (no file)
+  ansible.builtin.debug:
+    msg: "{{ sre_triage_file }} not found: secret/sre-triage not written (triage agent not configured)."
+  when: not sre_triage_file_stat.stat.exists
+
+- name: Load SRE triage credentials into Vault
+  when: sre_triage_file_stat.stat.exists
+  block:
+    - name: Read SRE triage file from localhost
+      ansible.builtin.set_fact:
+        sre_triage_content: "{{ lookup('file', sre_triage_file) }}"
+      no_log: true
+
+    - name: Set SRE triage facts from file
+      ansible.builtin.set_fact:
+        sre_triage_values: "{{ sre_triage_values | default({}) | combine({item: (sre_triage_content | regex_search('(?m)^\\s*' ~ item ~ '\\s*=\\s*(\\S+)\\s*$', '\\1') | default([''], true) | first)}) }}"
+      loop:
+        - claude_oauth_token
+        - claude_token_created
+        - ntfy_command_url
+        - ntfy_reply_url
+      no_log: true
+
+    - name: Validate SRE triage file
+      ansible.builtin.assert:
+        that:
+          - sre_triage_values.claude_oauth_token | length > 20
+          - sre_triage_values.claude_token_created is match('^\d{4}-\d{2}-\d{2}$')
+          - sre_triage_values.ntfy_command_url is match('https://')
+          - sre_triage_values.ntfy_reply_url is match('https://')
+          - "'?' not in sre_triage_values.ntfy_reply_url"
+        fail_msg: |
+          SRE triage file is incomplete or invalid: {{ sre_triage_file }}
+
+          Run 'make secret-files' to recreate it, or fix it by hand. Required keys:
+            claude_oauth_token = <output of claude setup-token>
+            claude_token_created = YYYY-MM-DD
+            ntfy_command_url = https://ntfy.sh/<secret command topic>
+            ntfy_reply_url = https://ntfy.sh/<alerts topic>   (no ?template=...)
+        quiet: true
+
+    - name: Create/update sre-triage in Vault
+      community.hashi_vault.vault_write:
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        validate_certs: "{{ not (enable_letsencrypt | default(false)) }}"
+        ca_cert: "{{ vault_cacert | default(omit) }}"
+        path: "secret/data/sre-triage"
+        data:
+          data: "{{ sre_triage_values }}"
+      no_log: true

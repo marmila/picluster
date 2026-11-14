@@ -122,6 +122,7 @@
             - HTTP Auth: secret/ingress/basic-auth
             - S3 monitoring: secret/s3/prometheus
             - Alertmanager notifications: secret/alertmanager/notifications
+            - SRE triage agent: secret/sre-triage (optional)
 
           Next Steps:
             1. Store Vault credentials securely
