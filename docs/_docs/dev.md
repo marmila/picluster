@@ -20,7 +20,7 @@ The development setup is the following:
 The recommended path is the automated workflow (`make -C dev dev-up`). The
 manual walkthrough below is kept so each step can be understood and debugged.
 Both use the same k3d network, Cilium, CoreDNS and Flux components, and the dev
-cluster now runs the same k3s minor as production (`v1.37.1+k3s1`).
+cluster now runs the same k3s minor as production (`v1.37.2+k3s1`).
 {{site.data.alerts.end}}
 
 ## Automated workflow (recommended)
@@ -57,7 +57,7 @@ Every Make target asserts the `k3d-picluster` kubectl context.
 | local-path | k3s bundled provisioner, default StorageClass |
 | `dev-external` | stable Service/EndpointSlice names for RustFS/Vault |
 
-The k3s image defaults to `rancher/k3s:v1.37.1-k3s1` to match prod. Override it
+The k3s image defaults to `rancher/k3s:v1.37.2-k3s1` to match prod. Override it
 with `K3S_IMAGE=rancher/k3s:<tag>` or add agents with `K3D_AGENTS=1` for
 multi-node scheduling tests.
 
@@ -278,7 +278,7 @@ Follow official [K3D installation guide](https://docs.docker.com/engine/install/
   ```shell
   $ k3d version
   k3d version v5.8.3
-  k3s version v1.37.1-k3s1 (default)
+  k3s version v1.37.2-k3s1 (default)
   ```
 
 ### Kubectl
@@ -426,7 +426,7 @@ docker network create \
     hostPort: "6443"
   # Setting version of k3s
   # Same k3s minor as prod; override with K3S_IMAGE for a POC.
-  image: rancher/k3s:v1.37.1-k3s1
+  image: rancher/k3s:v1.37.2-k3s1
   # Setting docker network to be used
   network: picluster
   options:
@@ -497,7 +497,7 @@ docker network create \
 
     Set `K3D_AGENTS=1` (or `2`) in `dev/create_cluster.sh` to add workers; each agent gets the next `172.30.0.x` address.
 
-  - k3s version is defined through the corresponding docker image label (`image: rancher/k3s:v1.37.1-k3s1`), matching production.
+  - k3s version is defined through the corresponding docker image label (`image: rancher/k3s:v1.37.2-k3s1`), matching production.
 
   - Following k3s services are disabled: `kube-proxy`, `traefik`, `servicelb`, `flannel`, `network-policy` and `metrics-server` (Flux installs metrics-server). `local-path` is left enabled and is the default StorageClass.
 
