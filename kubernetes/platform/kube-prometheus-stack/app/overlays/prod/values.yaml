@@ -10,3 +10,16 @@ prometheus:
         memory: 2Gi
       limits:
         memory: 4Gi
+    ## Prefer the amd64 nodes (node-esp-1/2). Preferred, not required: if both are down,
+    ## Prometheus still starts on a Pi instead of staying Pending. 2026-11-14: a drain of
+    ## node-esp-1/2 put it on node6, where WAL replay + Longhorn rebuild drove load to 55
+    ## and the node went NotReady (homelab-docs/node-os-maintenance.md 3.5).
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values: ["amd64"]
