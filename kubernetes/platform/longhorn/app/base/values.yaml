@@ -22,6 +22,11 @@ defaultSettings:
   # attach (Elasticsearch down 2026-11-12, same in 2026-09).
   concurrentAutomaticEngineUpgradePerNodeLimit: 1
 
+  # Velero takes a CSI "bak" snapshot of every PVC at 02:00. Without this, the local snapshot stays
+  # on the volume after the upload to RustFS (Prometheus: 6 snapshots / 110 GB on a 50 GB volume,
+  # 2026-11-14), and every replica rebuild has to copy it. Restores read from RustFS, not from it.
+  autoCleanupSnapshotAfterOnDemandBackupCompleted: true
+
   # Threshold below which a node's disk is marked unschedulable.
   # Lowered from the 25% default to 10% to tolerate the snapshot overhead
   # from daily Velero backups (3 snapshots × replica count per node).

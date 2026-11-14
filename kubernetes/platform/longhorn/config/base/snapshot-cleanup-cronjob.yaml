@@ -10,21 +10,26 @@ metadata:
   name: longhorn-snapshot-cleanup
   namespace: longhorn-system
 spec:
-  # Run at 3:30am daily — after the Velero backup window at 2am, giving
-  # Velero time to complete before we purge old engine snapshots.
+  # Fallback only. Since 2026-11-14 Longhorn deletes the snapshot of each Velero backup as soon as
+  # its upload finishes (autoCleanupSnapshotAfterOnDemandBackupCompleted in longhorn/app values).
+  # This job removes whatever that missed (older than RETAIN_DAYS) and runs a purge.
+  # Runs at 3:30, after the 2:00 Velero backup. It exits 1 when any API call fails, so the job
+  # shows Failed and KubeJobFailed fires: before, purge errors (HTTP 500) were only printed and
+  # snapshots piled up unnoticed.
   schedule: "30 3 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
+      backoffLimit: 1
       template:
         metadata:
           labels:
             longhorn.io/job-task: snapshot-cleanup
         spec:
           serviceAccountName: longhorn-snapshot-cleanup
-          restartPolicy: OnFailure
+          restartPolicy: Never
           containers:
           - name: cleanup
             image: python:3.11-slim
@@ -38,7 +43,7 @@ spec:
             - -u
             - -c
             - |
-              import urllib.request, json, os, sys
+              import urllib.request, urllib.error, socket, json, os, sys
               from datetime import datetime, timezone, timedelta
 
               BASE = os.environ['LONGHORN_URL']
@@ -46,7 +51,9 @@ spec:
               cutoff = (datetime.now(timezone.utc) - timedelta(days=retain_days)).strftime('%Y-%m-%d')
               print(f"Longhorn snapshot cleanup — purging older than {cutoff} (retain {retain_days} days)")
 
-              def api(url, data=None, timeout=30):
+              errors = []
+
+              def api(url, data=None, timeout=30, timeout_ok=False):
                   req = urllib.request.Request(url,
                       data=json.dumps(data).encode() if data is not None else None,
                       headers={'Content-Type': 'application/json'} if data is not None else {},
@@ -54,11 +61,20 @@ spec:
                   try:
                       with urllib.request.urlopen(req, timeout=timeout) as r:
                           return json.loads(r.read())
+                  except (socket.timeout, TimeoutError) as e:
+                      if timeout_ok:
+                          return {}
+                      errors.append(f"{url.split('/')[-1]}: {e}")
+                  except urllib.error.URLError as e:
+                      if timeout_ok and isinstance(getattr(e, 'reason', None), (socket.timeout, TimeoutError)):
+                          return {}
+                      errors.append(f"{url.split('/')[-1]}: {e}")
                   except Exception as e:
-                      print(f"  warn [{url.split('?')[-1]}]: {e}")
-                      return {}
+                      errors.append(f"{url.split('/')[-1]}: {e}")
+                  print(f"  ERROR {errors[-1]}")
+                  return None
 
-              vols = api(f"{BASE}/volumes").get('data', [])
+              vols = (api(f"{BASE}/volumes") or {}).get('data', [])
               if not vols:
                   print("ERROR: could not reach Longhorn API or no volumes found", file=sys.stderr)
                   sys.exit(1)
@@ -68,20 +84,30 @@ spec:
 
               for vol in vols:
                   vid = vol['id']
-                  snaps = api(f"{BASE}/volumes/{vid}?action=snapshotList", {}).get('data', [])
-                  to_del = [s for s in snaps
+                  # Snapshot calls need a running engine: a detached volume answers 500.
+                  if vol.get('state') != 'attached':
+                      print(f"{vid[:40]}: skipped ({vol.get('state')})")
+                      continue
+                  snaps = api(f"{BASE}/volumes/{vid}?action=snapshotList", {})
+                  if snaps is None:
+                      continue
+                  to_del = [s for s in snaps.get('data', [])
                             if s['name'] != 'volume-head'
+                            and not s.get('removed')
                             and s.get('created', '')[:10] < cutoff]
-                  if not to_del:
+                  if to_del:
+                      print(f"{vid[:40]}: {len(to_del)} snapshots to delete")
+                      for s in to_del:
+                          api(f"{BASE}/volumes/{vid}?action=snapshotDelete", {"name": s['name']})
+                      deleted_total += len(to_del)
+                  elif not any(s.get('removed') for s in snaps.get('data', [])):
                       continue
 
-                  print(f"{vid[:40]}: {len(to_del)} snapshots to delete")
-                  for s in to_del:
-                      api(f"{BASE}/volumes/{vid}?action=snapshotDelete", {"name": s['name']})
-
-                  # Trigger purge with a short timeout — fire-and-forget.
-                  # The engine continues the purge even if the HTTP connection drops.
-                  api(f"{BASE}/volumes/{vid}?action=snapshotPurge", {}, timeout=5)
-                  deleted_total += len(to_del)
+                  # Purge frees the space of deleted snapshots (also ones a previous run left behind).
+                  # Short timeout: the engine keeps purging after the HTTP call returns.
+                  api(f"{BASE}/volumes/{vid}?action=snapshotPurge", {}, timeout=5, timeout_ok=True)
 
               print(f"Done. Marked {deleted_total} snapshots for deletion across {len(vols)} volumes.")
+              if errors:
+                  print(f"FAILED: {len(errors)} Longhorn API call(s) failed, see ERROR lines above", file=sys.stderr)
+                  sys.exit(1)
