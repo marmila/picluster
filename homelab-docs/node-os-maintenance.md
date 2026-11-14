@@ -221,6 +221,9 @@ A slow rebuild usually is not stuck. Longhorn settings here (`concurrentReplicaR
 node at a time, each a full copy. Before a rebuild, Longhorn also cleans up (purges) the volume's snapshots,
 which can take a long time on a volume with large snapshots. Seen on 2026-11-13 after the node5 reboot: the
 Prometheus volume (50 GB, 123 GB of snapshots) blocked the queue for over an hour while the cleanup ran.
+The snapshots came from the nightly Velero backup; since 2026-11-14 Longhorn deletes them right after the upload
+and the 03:30 cleanup job purges what is left, so this should be rare now. If a volume has many snapshots again,
+see `LONGHORN-003` in `runbooks/components/longhorn.md` before starting a node maintenance.
 
 Signs of this case, all normal:
 

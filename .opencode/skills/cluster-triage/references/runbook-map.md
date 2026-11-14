@@ -25,13 +25,13 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
-| `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85% |
+| `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85%. node-esp-1/2: `/` is only 50 GB and the images are all in use, so GC frees nothing; the fix is moving `/var/lib/rancher` to `/storage` (planned) |
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
 | `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |
 | `KubePodCrashLooping`, `KubePodNotReady`, `KubeDeploymentReplicasMismatch`, `KubeStatefulSetReplicasMismatch` | sweep step 6, then `GITOPS-003` if the workload belongs to a HelmRelease | |
 | `K3sUpgradePlanStuck`, `K3sNodeVersionDrift` | `CLUSTER-015` | A failed upgrade job is never retried. A node can also be marked done but still run the old version until k3s is restarted |
 | `KubeVersionMismatch` | `CLUSTER-015` | Normal for about an hour during every k3s upgrade; act only if it lasts longer |
-| `KubeJobFailed` | none yet | Old failed jobs keep firing until deleted |
+| `KubeJobFailed` | `LONGHORN-003` for `*snapshot-cleanup*` jobs in `longhorn-system`, otherwise none yet | Old failed jobs keep firing until deleted |
 | `VeleroBackupFailed`, `VeleroNoRecentBackup` | `BACKUP-004` | Nightly `full` schedule at 02:00. Check the BackupStorageLocation (RustFS) first |
 | `LonghornVolumeDegraded`, `LonghornVolumeFaulted` | `LONGHORN-001` | Degraded is normal for a while after a node reboot (replica rebuild) |
 | `LonghornVolumeStuckAttaching`, `LonghornInstanceManagerNotRunning` | `LONGHORN-002` | Usually an instance-manager rejected with `OutOfcpu` after a Longhorn upgrade (node-esp-2). Do not cordon the node |

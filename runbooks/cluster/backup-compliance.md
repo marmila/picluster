@@ -150,7 +150,9 @@ kubectl get volumesnapshots -A | grep -v "true" | head
 ```
 
    Snapshot errors: check Longhorn volume health (`LONGHORN-001`) and the snapshot count per volume
-   (`postmortems/longhorn-snapshot-incident-postmortem.md`).
+   (`LONGHORN-003`, `postmortems/longhorn-snapshot-incident-postmortem.md`). The local Longhorn snapshot of each
+   backup is deleted right after the upload (`autoCleanupSnapshotAfterOnDemandBackupCompleted`); the backup in
+   RustFS stays until the Velero TTL (72 h).
 
 4. Velero not running or schedule paused:
 

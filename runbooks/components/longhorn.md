@@ -191,3 +191,95 @@ References:
 - `postmortems/incident-2026-11-12-longhorn-instance-manager-outofcpu.md`
 - `kubernetes/platform/longhorn/app/components/monitor/longhorn-alert-rules.yaml`
 - `homelab-docs/update-automation.md` (Longhorn upgrades: check CPU room first)
+
+## LONGHORN-003 Snapshot Cleanup Job Failed or Snapshots Piling Up
+
+<a id="runbook-longhorn-003"></a>
+Runbook ID: `LONGHORN-003`
+Owner: Platform
+Severity: `SEV-3`
+
+Objective: Keep Longhorn volumes free of old backup snapshots, so replica rebuilds stay short and disks keep
+their space.
+
+Alerts: `KubeJobFailed` with `job_name` `longhorn-snapshot-cleanup-*` (or a manual `snapshot-cleanup-*` job) in
+`longhorn-system`. Also seen as very slow rebuilds after a node reboot (`LONGHORN-001`), or a volume whose
+`actualSize` is far above its size.
+
+Background: the Velero `full` backup (02:00) takes a CSI snapshot of type `bak` of every PVC: Longhorn
+snapshots the volume and uploads it to RustFS. Since 2026-11-14 the Longhorn setting
+`autoCleanupSnapshotAfterOnDemandBackupCompleted: true` deletes that local snapshot as soon as the upload
+finishes. The CronJob `longhorn-snapshot-cleanup` (03:30) is the fallback: it deletes snapshots older than
+`RETAIN_DAYS` (3), then **purges** every volume that has removed snapshots, one volume at a time (deleting only
+marks a snapshot; the purge frees the space, and Longhorn runs at most 5 purges at once). It fails when an API
+call fails, a purge reports an error, or one volume purges for more than 2 hours. Before the fix, Prometheus
+carried 110 GB of snapshots on a 50 GB volume and every rebuild copied them.
+
+Procedure:
+
+1. Read why the job failed (on node2):
+
+```bash
+JOB=$(kubectl -n longhorn-system get jobs --sort-by=.metadata.creationTimestamp -o name | grep snapshot-cleanup | tail -1)
+kubectl -n longhorn-system logs "$JOB" | grep -E "ERROR|FAILED|purge done|delete"
+```
+
+2. Match the case:
+
+| Log line | Meaning | Action |
+| --- | --- | --- |
+| `purge still running after 7200s` | A large volume (usually Prometheus) purges slowly; Longhorn keeps purging after the job gives up | Step 3, then step 4 |
+| `snapshotPurge: HTTP 500 ... concurrent snapshot purge limit reached` after 30 min of retries | Other purges or rebuilds held all 5 slots | Step 4; it retries next night |
+| `purge error: ...` | The engine reported an error | Step 3; if the volume is degraded, `LONGHORN-001` |
+| `snapshotList` / `snapshotDelete` errors | Longhorn API or the volume's engine not reachable | `LONGHORN-001` / `LONGHORN-002` for that volume |
+
+3. Purges running and snapshots per volume now:
+
+```bash
+kubectl -n longhorn-system get engines.longhorn.io -o json | python3 -c '
+import json,sys
+for e in json.load(sys.stdin)["items"]:
+    ps=[v for v in (e.get("status",{}).get("purgeStatus") or {}).values() if v.get("state")=="in_progress"]
+    if ps: print("purging:", e["spec"].get("volumeName"), min(int(v.get("progress",0)) for v in ps), "%")'
+kubectl -n longhorn-system get snapshots.longhorn.io -o json | python3 -c '
+import json,sys,collections
+c=collections.Counter(); r=collections.Counter(); g=collections.Counter()
+for s in json.load(sys.stdin)["items"]:
+    v=s["spec"]["volume"]; st=s.get("status",{}); c[v]+=1; g[v]+=int(st.get("size") or 0); r[v]+=1 if st.get("markRemoved") else 0
+for v,n in sorted(c.items(), key=lambda x:-g[x[0]])[:8]: print(f"{v}  snaps {n}  removed {r[v]}  {g[v]/1e9:.1f} GB")'
+```
+
+   One removed snapshot can stay: Longhorn cannot purge the snapshot directly under the live data until a
+   newer snapshot exists (the next backup creates one).
+
+4. Once no purge is running, delete the failed job so `KubeJobFailed` resolves:
+
+```bash
+kubectl -n longhorn-system delete job <job>
+```
+
+5. To clean up now instead of waiting for 03:30, run the job by hand (`RETAIN_DAYS=0` also deletes the
+   snapshots of earlier days; today's are kept). Not while volumes rebuild: purges and rebuilds share the disks.
+
+```bash
+kubectl -n longhorn-system create job snapshot-cleanup-manual --from=cronjob/longhorn-snapshot-cleanup --dry-run=client -o yaml \
+  | sed 's/value: "3"/value: "0"/' | kubectl apply -f -
+kubectl -n longhorn-system logs -f job/snapshot-cleanup-manual
+```
+
+Verify:
+
+- Each volume has at most 1–2 snapshots, `removed` 0 or 1.
+- The next nightly job ends `Complete`.
+
+Rollback:
+
+1. Nothing to roll back: deleting and purging snapshots does not touch the volume data or the backups in
+   RustFS. A deleted snapshot cannot be restored, so restores come from Velero (`BACKUP-001`).
+
+References:
+
+- `kubernetes/platform/longhorn/config/base/snapshot-cleanup-cronjob.yaml`
+- `kubernetes/platform/longhorn/app/base/values.yaml` (`autoCleanupSnapshotAfterOnDemandBackupCompleted`)
+- `kubernetes/platform/velero/config/base/` (schedule and VolumeSnapshotClass)
+- `homelab-docs/node-os-maintenance.md` (slow rebuilds caused by snapshot purges)

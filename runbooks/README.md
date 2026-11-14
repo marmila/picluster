@@ -40,7 +40,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
 | Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
 | Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-010` (backlog: `NET-001` … `NET-003`) |
-| Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001`, `LONGHORN-002` |
+| Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001`, `LONGHORN-002`, `LONGHORN-003` |
 | Kafka and Data Services | [`components/data-services.md`](components/data-services.md) | `PG-001` (backlog: `KAFKA-001`, `KAFKA-002`, `MONGO-001`) |
 
 ## Runbook Template
@@ -213,6 +213,7 @@ References:
 
 - [`LONGHORN-001` Longhorn Volume Degraded or Faulted](components/longhorn.md#runbook-longhorn-001)
 - [`LONGHORN-002` Volume Stuck Attaching (Instance-Manager Not Running)](components/longhorn.md#runbook-longhorn-002)
+- [`LONGHORN-003` Snapshot Cleanup Job Failed or Snapshots Piling Up](components/longhorn.md#runbook-longhorn-003)
 
 #### Service Mesh and Ingress
 

@@ -1,7 +1,9 @@
 # SRE triage agent from a ntfy button (implementation plan)
 
-Status: **in progress** (written 2026-11-13; phase 0 done 2026-11-14, results in
-[section 10](#10-phase-0-results)). Each phase below has a checklist; tick it in Git as the work lands.
+Status: **live, without the button yet** (written 2026-11-13). Phases 0–3 done on 2026-11-14: the pod runs and
+answers `triage` sent to the command topic. Still to do: the Triage button in the alert notifications and the
+acceptance tests (phase 4), docs and runbook (phase 5). Findings in [section 10](#10-phase-0-results). Each
+phase below has a checklist; tick it in Git as the work lands.
 
 ## Contents
 
@@ -223,31 +225,27 @@ Behaviour, in order:
   exact commands for a person to run.
 - If evidence is missing or a check is not allowed, say so instead of guessing.
 
-`settings.json` permissions:
+`settings.json` permissions (the file in `docker/sre-triage/` is the reference; this is its logic):
 
-```json
-{
-  "permissions": {
-    "allow": [
-      "Read", "Grep", "Glob", "Skill",
-      "Bash(kubectl get:*)", "Bash(kubectl describe:*)", "Bash(kubectl logs:*)",
-      "Bash(kubectl top:*)", "Bash(kubectl events:*)", "Bash(kubectl auth can-i:*)",
-      "Bash(flux get:*)", "Bash(flux events:*)", "Bash(flux logs:*)", "Bash(flux tree:*)",
-      "Bash(jq:*)"
-    ],
-    "deny": [
-      "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch",
-      "Bash(kubectl apply:*)", "Bash(kubectl delete:*)", "Bash(kubectl patch:*)",
-      "Bash(kubectl edit:*)", "Bash(kubectl exec:*)", "Bash(kubectl annotate:*)",
-      "Bash(kubectl scale:*)", "Bash(kubectl rollout:*)", "Bash(flux reconcile:*)",
-      "Bash(flux suspend:*)", "Bash(flux resume:*)", "Bash(git push:*)", "Bash(curl:*)"
-    ]
-  }
-}
-```
+- **Allow:** `Read`, `Grep`, `Glob`, `Skill`; `kubectl get|describe|logs|top|events|auth can-i|version`,
+  also with the namespace flag before the verb (`kubectl -n * get *`, `kubectl --namespace * get *`, ...);
+  `flux get|events|logs|tree`, also as `flux -n * ...`; and the read-only helpers the skill pipes into: `jq`,
+  `grep`, `sort`, `uniq`, `head`, `tail`, `wc`, `date`.
+- **Deny:** `Edit`, `Write`, `NotebookEdit`, `WebFetch`, `WebSearch`, `curl`, `git push`, and every kubectl
+  write verb **in any position** (`Bash(kubectl * exec *)`, `* delete *`, `* apply *`, `* patch *`, `* edit *`,
+  `* replace *`, `* create *`, `* annotate *`, `* label *`, `* scale *`, `* rollout *`, `* drain *`,
+  `* cordon *`, `* uncordon *`, `* taint *`, `* cp *`, `* port-forward *`, `* proxy *`, `* debug *`, `* run *`,
+  `* set *`), same for `flux * reconcile|suspend|resume|delete|create *`.
+- **Not allowed on purpose:** `awk` and `sed` (they can write files and run commands), `cat`: the agent reads
+  repository files with the Read and Grep tools, as its prompt says.
 
-The deny list repeats what `dontAsk` already blocks; it is there in case the mode behaves differently from what
-phase 0 shows.
+Why both lists: a prefix rule `Bash(kubectl get:*)` does not match `kubectl -n longhorn-system get ...` (flag
+before the verb), so the first live triage was refused half its checks. The wildcard rule that fixes it is
+loose: `Bash(kubectl -n * get *)` alone also allowed `kubectl -n x exec p -- get`. Deny wins over allow, so
+the write verbs are denied in any position. Cost: a read whose arguments contain one of those words (for
+example `-l app=delete`) is refused too; the agent then says so in its report. Tested on the workstation with
+the real files on 2026-11-14 (allowed: namespaced reads, `;` / `&&` / `2>&1` / pipes of allowed commands;
+refused: delete, reconcile, an exec hidden in a chain, awk). RBAC (6.5) stays the real boundary.
 
 ### 6.5 RBAC
 
@@ -335,12 +333,15 @@ review and approve the push.
 
 - [x] Claude: `kubernetes/platform/sre-triage/` and the Flux Kustomization.
 - [x] Claude: `kubectl kustomize` build check before the push (kubeconform runs in CI).
-- [ ] You: approve, push, check on node2: pod Running, logs show "subscribed".
-- [ ] You: run the RBAC check from 6.5 (`no` for Secrets).
+- [x] You: approve, push, check on node2: pod Running, logs show "subscribed".
+- [x] You: run the RBAC check from 6.5 (`no` for Secrets, delete, exec; `yes` for nodes; Alertmanager readable
+  through the proxy with the Role as written, no `services` `get` needed).
 
 ### Phase 4: button and end-to-end test
 
-- [ ] You: subscribe to the command topic in the ntfy app, send `triage`: a report arrives.
+- [x] Send `triage` to the command topic: a report arrives (2026-11-14, sent with curl from node2; subscribing in
+  the ntfy app is still to do). To send it without the app:
+  `curl -d triage "$(kubectl -n sre-triage get secret sre-triage -o jsonpath='{.data.NTFY_COMMAND_URL}' | base64 -d)"`
 - [ ] You: add the action to `ntfy_url` (6.8); send a test alert (`OBS-002` step 5); tap **Triage**.
 - [ ] Run the acceptance tests (section 8).
 
@@ -383,7 +384,7 @@ next tap.
 No separate bill: each triage uses the Claude subscription quota, shared with interactive sessions. With
 `sonnet`, a triage is a few minutes of agent work. If quota gets tight, lower `TRIAGE_DAILY_LIMIT`. For scale: in
 phase 0 a trivial run (4–10 turns, no kubectl) took 4–20 seconds and Claude Code reported an equivalent cost of
-$0.06–0.14; a real triage will be several times that.
+$0.06–0.14. The first real triages in the cluster (2026-11-14): 8 turns, about 2–3 minutes, $0.20 equivalent.
 
 ### 9.4 Logs
 
@@ -406,10 +407,16 @@ skill, `--setting-sources project` (so no personal settings leak in, as in the p
 | Config directory | Claude Code writes several files to `CLAUDE_CONFIG_DIR` on every run: it must be writable (6.6). |
 | ntfy `actions` + `template=alertmanager` | The message keeps the templated text and gets the **Triage** button; a POST to the command topic arrives as a `message` event. |
 
-Still open, checked in later phases:
+Found while deploying (phases 3–4, 2026-11-14):
 
-- The exact host names Claude Code contacts, for the FQDN NetworkPolicy: watch Hubble drops on the first run in
-  the cluster (phase 4) and add any that are missing.
-- Whether `kubectl get --raw` through `services/proxy` works with only the Role in 6.5, or needs `services`
-  `get` too (phase 3).
-- Tapping the button on the phone (phase 4).
+| Point | Result |
+| --- | --- |
+| Egress (FQDN policy) | Works with the hosts in 6.6: clone from github.com, ntfy.sh stream, Claude API. No Hubble drops. |
+| `services/proxy` with only the Role in 6.5 | Enough: the agent reads Alertmanager through the API server proxy. |
+| Image pull on a Pi | The image is 311 MB compressed; the first pull on node5 took about 15 minutes (pod stays `ContainerCreating`), the first repo clone about 2 minutes. Later restarts on the same node are fast. |
+| Vault secret | Check value **lengths**, not only key names: the first version held the doc's placeholders literally (`<output of step 2>`) and an empty token, the pod exited with `CLAUDE_CODE_OAUTH_TOKEN is not set`. Check: `vault kv get -format=json secret/sre-triage \| jq -r '.data.data \| to_entries[] \| "\(.key) \(.value \| length)"'` (token about 108, command URL 59, reply URL about 49). |
+| Flux health check | While the pod crashed, `sre-triage-app` stayed `False` (stalled Deployment) after the fix too, until `flux reconcile kustomization sre-triage-app -n flux-system`. |
+| ntfy stream | One reconnect after `curl: (7) Failed to connect to ntfy.sh port 443`, recovered after 10 s. If it happens often, force IPv4 (`curl -4`) in `listener.sh`. |
+| Permissions | See 6.4: the namespace flag before the verb needed wildcard rules plus deny rules. |
+
+Still open: tapping the button on the phone (phase 4).
