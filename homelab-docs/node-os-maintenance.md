@@ -99,6 +99,14 @@ A run that reboots every node can take many hours, mostly waiting for Longhorn r
 node). Start it inside `tmux` or `screen`, so a dropped SSH session does not stop it halfway, and split it over
 several sessions with `--limit` if needed (section 3.3).
 
+```bash
+tmux new -s osup
+make os-upgrade 2>&1 | tee -a /tmp/os-upgrade.log
+```
+
+Follow it from node2 with `watch -n 60 ~/bin/lh-snaps.sh` (degraded volumes) and `~/bin/lh-rebuild.sh`
+(rebuild progress); the scripts are in `LONGHORN-003` step 3.
+
 Order: workers (node5, node6, node-esp-1, node-esp-2), then masters (node2, node3, node4), then node1. For
 each node:
 
@@ -144,6 +152,30 @@ Run through the runner wrapper to pass options:
   [cluster-maintenance.md 7.2](cluster-maintenance.md#72-after-a-node-reboot-or-k3s-agent-restart) for it, or
   Longhorn volume expansion fails silently on that node. Rebooted nodes are fine.
 - Check nothing is left cordoned: `kubectl get nodes` shows no `SchedulingDisabled`.
+
+### 3.5 First full run (2026-11-14)
+
+The first run of the playbook over all nodes worked, in two parts on the same day:
+
+1. Workers: node-esp-1, node-esp-2 and node6 were upgraded and rebooted; node5 had been done the day before and
+   was skipped.
+2. Before node2 (the first master) the pre-flight stopped the run: node6 was `Unknown`. Draining node-esp-1 and
+   node-esp-2 had moved their heavy pods to node6, a Pi: Prometheus (replaying its 50 GB data at startup),
+   `postgres-keycloak-1`, keycloak, operators, image pulls of 6 to 25 minutes, and the Longhorn rebuild of the
+   Prometheus volume on top. Load went to 55 on 4 cores, the kubelet missed its heartbeats and the node went
+   `NotReady` three times. Kubernetes then evicted Prometheus, which restarted on node-esp-2 and became `3/3`
+   there; the Longhorn UI gave HTTP 500 while the Longhorn manager on node6 was too slow, and recovered on its
+   own. No restart of Longhorn or of any pod was needed.
+3. After the Prometheus rebuild finished (0 degraded volumes), `make os-upgrade` was started again: the
+   workers were skipped quickly, the masters and node1 went through without a problem.
+
+What to take from it:
+
+- The pre-flight did its job: a master reboot with a node `NotReady` would have been worse.
+- Pods drained from node-esp-1/2 do not move back after the uncordon, and the Pis cannot carry them. Planned:
+  a preferred node affinity that keeps Prometheus on node-esp-1/2, and a pre-flight check on node load.
+- Rebuilds after a reboot are short when volumes carry no old snapshots (see `LONGHORN-003`); the long wait was
+  the Prometheus volume rebuilding while its pod was crash-looping on node6.
 
 ## 4. Manual safe reboot
 
@@ -194,7 +226,7 @@ Read the last failed task:
 
 | Failed at | Meaning | Do |
 | --- | --- | --- |
-| `Pre-flight \| All nodes Ready and schedulable` | A node is NotReady or cordoned (the message lists it) | Fix or uncordon it, run again |
+| `Pre-flight \| All nodes Ready and schedulable` | A node is NotReady or cordoned (the message lists it) | Fix or uncordon it, run again. A node `Unknown` right after another node's drain is usually overloaded: see "A node goes NotReady after a drain" |
 | `Pre-flight \| No Longhorn volume degraded or faulted` | A rebuild is still running, or a volume is faulted | Wait, or `LONGHORN-001` |
 | `Reboot \| Drain the node` | Eviction blocked: a PodDisruptionBudget, or Longhorn protecting the last healthy replica | See "Drain blocked" below. The node was uncordoned |
 | `Reboot \| Wait for the node to be Ready` | Node did not come back in 5 minutes | See "Node does not come back" |
@@ -262,6 +294,22 @@ ssh <node> sudo systemctl status k3s-agent  # workers
 ssh <node> sudo journalctl -u k3s -n 50     # or -u k3s-agent
 ```
 
+### A node goes NotReady after a drain
+
+Seen 2026-11-14 on node6 (section 3.5). The pods of a drained node landed on a Pi, which is too slow for them.
+
+```bash
+kubectl top nodes
+kubectl get pods -A -o wide --field-selector spec.nodeName=<node> --no-headers | awk '{print $1, $2, $4}' | column -t
+ssh <node> uptime                                  # load above ~8 on a Pi is too much
+ssh <node> sudo vcgencmd get_throttled             # 0x0: not a power problem
+```
+
+- Do not restart Longhorn or force-delete pods. After about 5 minutes `NotReady`, Kubernetes evicts the pods
+  itself and they start on a node with room. A pod can stay `Terminating` for several minutes while containerd
+  on the slow node catches up: wait. A force delete can leave a Longhorn volume attached to the slow node.
+- Run `make os-upgrade` again when the node is `Ready`, its load is down and there are 0 degraded volumes.
+
 ### etcd unhealthy after a master reboot
 
 k3s runs etcd inside the k3s process, so there is no etcd pod and no `etcdctl` by default. Check from another
@@ -282,3 +330,4 @@ ssh <node> sudo journalctl -u k3s -n 100 | grep -i etcd
   from OS upgrades
 - History: last fully manual reboot of all nodes 2026-04-21 → 2026-04-23. Drain, uncordon and the Longhorn wait
   were added to the playbook on 2026-11-13; before that `make os-upgrade` rebooted nodes without draining.
+  First full run with them: 2026-11-14 (section 3.5).

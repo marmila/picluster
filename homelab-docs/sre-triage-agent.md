@@ -63,6 +63,16 @@ You can also send free text: subscribe to the command topic in the ntfy app and 
 `why is the elasticsearch volume degraded?`. The listener passes the text to the agent as the focus of the
 triage. A plain `triage` (the button) means "all firing alerts".
 
+Phone setup and where things show up:
+
+- Subscribe to the command topic **exactly as stored in Vault** (on node1:
+  `vault kv get -field=ntfy_command_url secret/sre-triage`; in the app, use the part after `https://ntfy.sh/`).
+  Publish there, not in the alerts topic.
+- "Triage started" and the report arrive in the **alerts** topic, not in the command topic.
+- Nothing arrives at all: check the pod log (`kubectl -n sre-triage logs deploy/sre-triage | grep -E "^20"`).
+  No `request:` line at the time you sent it means the message went to another topic. 2026-11-14: the app was
+  subscribed to an older, hand-made `sre-triage-...` topic; re-subscribing with the Vault value fixed it.
+
 ## 3. Decisions
 
 | Decision | Choice | Why |
@@ -339,8 +349,8 @@ review and approve the push.
 
 ### Phase 4: button and end-to-end test
 
-- [x] Send `triage` to the command topic: a report arrives (2026-11-14, sent with curl from node2; subscribing in
-  the ntfy app is still to do). To send it without the app:
+- [x] Send `triage` to the command topic: a report arrives (2026-11-14, first with curl from node2, then from
+  the ntfy app after subscribing to the Vault command topic, see section 2). To send it without the app:
   `curl -d triage "$(kubectl -n sre-triage get secret sre-triage -o jsonpath='{.data.NTFY_COMMAND_URL}' | base64 -d)"`
 - [ ] You: add the action to `ntfy_url` (6.8); send a test alert (`OBS-002` step 5); tap **Triage**.
 - [ ] Run the acceptance tests (section 8).

@@ -340,7 +340,8 @@ Two different problems show the same status, `error running Plan: ... exit statu
 
 - **Stuck state lock.** State is a Secret, the lock is the Lease `lock-tfstate-default-<resource>` in
   `flux-system`. If the `tf-runner` pod dies during a plan (node reboot, eviction, OOM), the lock stays and every
-  later run fails on it. Seen 2026-10-31, 2026-11-01 to 11-05 (6577 failed runs), 2026-11-12.
+  later run fails on it. Seen 2026-10-31, 2026-11-01 to 11-05 (6577 failed runs), 2026-11-12, 2026-11-14 (runner died on an
+  overloaded node5; force-unlock did not take, the Lease delete of step 5 did).
 - **Something the module talks to is down.** Elasticsearch, Kibana, Keycloak or Vault. Nothing is wrong with
   Terraform; fix the dependency. Seen 2026-11-12: Elasticsearch volume could not attach (`LONGHORN-002`).
 
@@ -395,12 +396,22 @@ if [ -z "$LOCK_ID" ]; then echo "NO LOCK ID FOUND: not a lock problem, go back t
   echo "=== lock info: who took it and when (keep it for step 7) ==="
   kubectl -n flux-system get lease lock-tfstate-default-$TF -o jsonpath='{.metadata.annotations.app\.terraform\.io/lock-info}{"\n"}'
   kubectl -n flux-system patch terraform $TF --type merge -p "{\"spec\":{\"tfstate\":{\"forceUnlock\":\"yes\",\"lockIdentifier\":\"${LOCK_ID}\"}}}"
-  echo "waiting 2 minutes for the unlock run..."; sleep 120
+  kubectl -n flux-system annotate terraform $TF reconcile.fluxcd.io/requestedAt="$(date +%s)" --overwrite
+  echo "waiting for a runner to run the unlock (up to 15 minutes)..."
+  for i in $(seq 1 30); do
+    LOCKED=$(kubectl -n flux-system get terraform $TF -o jsonpath='{.status.conditions[?(@.type=="StateLocked")].status}')
+    [ "$LOCKED" = "True" ] || break
+    echo "  $(date +%H:%M:%S) still locked; runner: $(kubectl -n flux-system get pods --no-headers 2>/dev/null | grep "$TF-tf-runner" | awk '{print $3}')"
+    sleep 30
+  done
   kubectl -n flux-system get terraform $TF -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}{"\n"}{end}'
 fi
 kubectl -n flux-system patch terraform $TF --type json -p '[{"op":"remove","path":"/spec/tfstate"}]'
 ```
 
+   - The unlock only happens when a `tf-runner` pod actually runs. On a busy node the runner can sit in
+     `ContainerCreating` for minutes; the loop waits for `StateLocked` to clear, not for a fixed time.
+     (2026-11-14: a fixed 2-minute wait removed the patch before the runner had started, and the lock stayed.)
    - Both fields are needed: `forceUnlock` without `lockIdentifier` silently does nothing.
    - The last command removes the patch so force-unlock does not stay armed. Flux does not remove it by
      itself. If it says `the server rejected our request ... /spec/tfstate`, there was nothing to remove.

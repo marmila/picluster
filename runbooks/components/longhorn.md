@@ -252,6 +252,60 @@ for v,n in sorted(c.items(), key=lambda x:-g[x[0]])[:8]: print(f"{v}  snaps {n} 
    One removed snapshot can stay: Longhorn cannot purge the snapshot directly under the live data until a
    newer snapshot exists (the next backup creates one).
 
+   To follow a long purge or rebuild (also during `make os-upgrade`), save two watch scripts once on node2,
+   in `~/bin` (not `/tmp`, which a reboot empties). Plain `%` formatting: node2's Python is older than 3.12.
+
+```bash
+mkdir -p ~/bin
+cat > ~/bin/lh-snaps.py <<'EOF'
+import json, sys, collections
+vols = {}
+for v in json.load(open("/tmp/lh-vols.json"))["items"]:
+    k = v.get("status", {}).get("kubernetesStatus") or {}
+    vols[v["metadata"]["name"]] = (k.get("namespace", "") + "/" + k.get("pvcName", ""),
+                                   v.get("status", {}).get("robustness", ""))
+c = collections.Counter(); r = collections.Counter(); g = collections.Counter()
+for s in json.load(sys.stdin)["items"]:
+    v = s["spec"]["volume"]; st = s.get("status", {})
+    c[v] += 1; g[v] += int(st.get("size") or 0); r[v] += 1 if st.get("markRemoved") else 0
+print("%-58s %5s %3s %7s   %s" % ("pvc", "snaps", "rm", "snapGB", "robust"))
+for v, n in sorted(c.items(), key=lambda x: -g[x[0]])[:10]:
+    name, rob = vols.get(v, (v, "?"))
+    print("%-58s %5d %3d %7.1f   %s" % (name[:58], n, r[v], g[v] / 1e9, rob))
+EOF
+cat > ~/bin/lh-snaps.sh <<'EOF'
+#!/bin/bash
+kubectl -n longhorn-system get jobs --no-headers 2>/dev/null | grep snapshot-cleanup
+J=$(kubectl -n longhorn-system get jobs -o name 2>/dev/null | grep snapshot-cleanup | tail -1)
+[ -n "$J" ] && kubectl -n longhorn-system logs "$J" --tail=3 2>/dev/null
+echo
+kubectl -n longhorn-system get volumes.longhorn.io -o json > /tmp/lh-vols.json
+kubectl -n longhorn-system get snapshots.longhorn.io -o json | python3 ~/bin/lh-snaps.py
+echo
+echo "degraded volumes: $(python3 -c 'import json;print(sum(1 for v in json.load(open("/tmp/lh-vols.json"))["items"] if v.get("status",{}).get("robustness")=="degraded"))')"
+EOF
+cat > ~/bin/lh-rebuild.py <<'EOF'
+import json, sys
+found = False
+for e in json.load(sys.stdin)["items"]:
+    for k, v in (e.get("status", {}).get("rebuildStatus") or {}).items():
+        if v.get("isRebuilding"):
+            found = True
+            print(e["spec"].get("volumeName"), v.get("progress"), "%")
+if not found:
+    print("no rebuild running")
+EOF
+cat > ~/bin/lh-rebuild.sh <<'EOF'
+#!/bin/bash
+kubectl -n longhorn-system get engines.longhorn.io -o json | python3 ~/bin/lh-rebuild.py
+EOF
+chmod +x ~/bin/lh-snaps.sh ~/bin/lh-rebuild.sh
+```
+
+   Then `watch -n 60 ~/bin/lh-snaps.sh` (job, snapshots per volume, degraded count) or
+   `watch -n 60 ~/bin/lh-rebuild.sh` (rebuild progress per volume). The second `postgres-keycloak-1` line with
+   `unknown` is an old detached volume, not a problem.
+
 4. Once no purge is running, delete the failed job so `KubeJobFailed` resolves:
 
 ```bash
