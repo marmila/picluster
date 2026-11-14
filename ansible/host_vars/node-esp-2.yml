@@ -1,4 +1,8 @@
 ---
+# k3s data (/var/lib/rancher: images, container layers) lives on the big lv-data, bind-mounted;
+# the root LV below is only 50G. Applied by nodes-setup (fresh node) or make move-rancher-to-storage.
+rancher_storage_dir: /storage/rancher
+
 autoinstall:
   network:
     version: 2

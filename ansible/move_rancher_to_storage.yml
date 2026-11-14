@@ -1,0 +1,325 @@
+---
+# Move /var/lib/rancher (k3s: container images, container layers, agent data)
+# from the 50 GB root LV to the big /storage LV, as a bind mount.
+# make move-rancher-to-storage (dry run: make move-rancher-to-storage-check).
+#
+# Why: on node-esp-1/2 the PXE layout gives / a fixed 50 GB; /var/lib/rancher is
+# ~27 GB of it, all images in use, so image GC frees nothing and the disk keeps
+# reaching the 85% eviction threshold (2026-09, 2026-11-07, 2026-11-14).
+# /storage (lv-data, ext4, ~412 GB) also holds the Longhorn data.
+#
+# Only hosts with rancher_storage_dir in host_vars, one node at a time. Per node:
+#   1. skip if /var/lib/rancher is already a mount point (moved before)
+#   2. pre-flight (all nodes Ready, no Longhorn volume degraded), enough space
+#   3. drain, k3s-killall.sh (stops k3s, containers, unmounts their layers)
+#   4. rsync -aHAX to rancher_storage_dir, verify with a second dry rsync
+#   5. mv /var/lib/rancher /var/lib/rancher.old (kept as rollback)
+#   6. bind mount + fstab + k3s drop-in RequiresMountsFor (tasks/rancher_bind_mount.yml)
+#   7. start k3s, wait Ready, uncordon, wait until no Longhorn volume is degraded
+#
+# The root disk only frees up once the old copy is deleted. After checking the
+# node (pods running, root disk usage), run make move-rancher-to-storage-cleanup
+# (-e remove_old=true): it deletes /var/lib/rancher.old on nodes already moved,
+# without draining. That run never moves a node.
+#
+# Any failure before step 6 puts /var/lib/rancher back as it was, starts k3s and
+# uncordons the node; the run stops. Rollback by hand: homelab-docs CLUSTER-012.
+
+- name: Move /var/lib/rancher to /storage
+  hosts: k3s_cluster
+  serial: 1
+  max_fail_percentage: 0
+  any_errors_fatal: true
+  become: true
+  gather_facts: false
+  vars:
+    rancher_old_dir: /var/lib/rancher.old
+    remove_old: false
+    # Free space needed on /storage beyond the copy itself.
+    rancher_storage_margin_bytes: "{{ 20 * 1024 * 1024 * 1024 }}"
+
+  tasks:
+    - name: Skip hosts without rancher_storage_dir
+      ansible.builtin.meta: end_host
+      when: rancher_storage_dir is not defined
+
+    - name: Set facts
+      ansible.builtin.set_fact:
+        k3s_maint_kubectl_host: "{{ groups['k3s_master'] | reject('equalto', inventory_hostname) | first }}"
+        k3s_maint_service: "{{ 'k3s' if inventory_hostname in groups['k3s_master'] else 'k3s-agent' }}"
+
+    # --- State --------------------------------------------------------------
+
+    - name: State | Is /var/lib/rancher already a mount point
+      ansible.builtin.command:
+        cmd: mountpoint -q /var/lib/rancher
+      register: rancher_is_mount
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: State | Is the target filesystem mounted
+      ansible.builtin.command:
+        cmd: "mountpoint -q {{ rancher_storage_dir | dirname }}"
+      register: rancher_target_fs
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: State | Old copy left from an earlier run
+      ansible.builtin.stat:
+        path: "{{ rancher_old_dir }}"
+        get_checksum: false
+      register: rancher_old
+
+    - name: State | Size of /var/lib/rancher and free space on the target
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          du -sxb /var/lib/rancher | cut -f1;
+          df -B1 --output=avail {{ rancher_storage_dir | dirname }} | tail -1;
+          df -h --output=pcent,used,size / | tail -1
+        executable: /bin/bash
+      register: rancher_sizes
+      changed_when: false
+      check_mode: false
+
+    - name: State | Set facts
+      ansible.builtin.set_fact:
+        rancher_moved: "{{ rancher_is_mount.rc == 0 }}"
+        rancher_used_bytes: "{{ rancher_sizes.stdout_lines[0] | int }}"
+        rancher_target_free_bytes: "{{ rancher_sizes.stdout_lines[1] | int }}"
+        rancher_root_usage: "{{ rancher_sizes.stdout_lines[2] | trim }}"
+
+    - name: State | Summary
+      ansible.builtin.debug:
+        msg:
+          - "{{ inventory_hostname }}: /var/lib/rancher {{ 'is already on ' ~ rancher_storage_dir if rancher_moved else 'is on the root disk' }}"
+          - "Size of /var/lib/rancher: {{ (rancher_used_bytes | int / 1024 ** 3) | round(1) }} GiB"
+          - "Free on {{ rancher_storage_dir | dirname }}: {{ (rancher_target_free_bytes | int / 1024 ** 3) | round(1) }} GiB"
+          - "Root disk (use%, used, size): {{ rancher_root_usage }}"
+          - "Old copy {{ rancher_old_dir }}: {{ 'present' if rancher_old.stat.exists else 'none' }}"
+          - >-
+            {{ 'Real run: nothing to move.' if rancher_moved else
+               ('Real run with remove_old=true: not moved (only deletes old copies).' if remove_old | bool else
+                'Real run: drain, stop k3s, copy, bind mount, start k3s, uncordon, wait for Longhorn.') }}
+            {{ 'This run deletes the old copy.'
+               if (rancher_moved and rancher_old.stat.exists and remove_old | bool) else '' }}
+
+    - name: State | Checks before moving
+      ansible.builtin.assert:
+        that:
+          - rancher_target_fs.rc == 0
+          - not rancher_old.stat.exists
+          - rancher_target_free_bytes | int > rancher_used_bytes | int + rancher_storage_margin_bytes | int
+        fail_msg: >-
+          Not moving {{ inventory_hostname }}: {{ rancher_storage_dir | dirname }} must be mounted,
+          {{ rancher_old_dir }} must not exist (left by an earlier failed run: check it by hand),
+          and the target needs the size of /var/lib/rancher plus 20 GiB free.
+        quiet: true
+      when: not rancher_moved and not remove_old | bool
+
+    # --- Move ---------------------------------------------------------------
+
+    - name: Move
+      when: not rancher_moved and not ansible_check_mode and not remove_old | bool
+      block:
+        - name: Pre-flight
+          ansible.builtin.include_tasks: tasks/k3s_preflight.yml
+
+        - name: Move | rsync is installed
+          ansible.builtin.apt:
+            name: rsync
+            state: present
+
+        # Set before the drain: a drain that times out has already cordoned the node.
+        - name: Move | Remember the node gets cordoned
+          ansible.builtin.set_fact:
+            rancher_drained: true
+
+        - name: Move | Drain the node
+          ansible.builtin.command:
+            argv:
+              - k3s
+              - kubectl
+              - drain
+              - "{{ inventory_hostname }}"
+              - --ignore-daemonsets
+              - --delete-emptydir-data
+              - --grace-period=60
+              - --timeout=300s
+          delegate_to: "{{ k3s_maint_kubectl_host }}"
+          changed_when: true
+
+        # Stops the k3s service and all containers, and unmounts the container
+        # layers and pod mounts under /var/lib/rancher and /var/lib/kubelet.
+        - name: Move | Stop k3s and all containers
+          ansible.builtin.command:
+            cmd: /usr/local/bin/k3s-killall.sh
+          changed_when: true
+
+        - name: Move | Remember k3s is stopped
+          ansible.builtin.set_fact:
+            rancher_stopped: true
+
+        - name: Move | Nothing mounted below /var/lib/rancher any more
+          ansible.builtin.shell:
+            cmd: findmnt -rn -o TARGET | grep '^/var/lib/rancher/' || true
+            executable: /bin/bash
+          register: rancher_leftover_mounts
+          changed_when: false
+          failed_when: rancher_leftover_mounts.stdout | length > 0
+
+        - name: Move | Copy to {{ rancher_storage_dir }}
+          ansible.builtin.command:
+            argv: [rsync, -aHAX, --numeric-ids, --delete, /var/lib/rancher/, "{{ rancher_storage_dir }}/"]
+          async: 7200
+          poll: 30
+          changed_when: true
+
+        - name: Move | Verify the copy (dry run must list nothing)
+          ansible.builtin.command:
+            argv: [rsync, -aHAXn, --numeric-ids, --delete, --itemize-changes, /var/lib/rancher/, "{{ rancher_storage_dir }}/"]
+          register: rancher_verify
+          changed_when: false
+          failed_when: rancher_verify.rc != 0 or rancher_verify.stdout | length > 0
+
+        - name: Move | Keep the original as {{ rancher_old_dir }}
+          ansible.builtin.command:
+            argv: [mv, /var/lib/rancher, "{{ rancher_old_dir }}"]
+            creates: "{{ rancher_old_dir }}"
+
+        - name: Bind mount
+          ansible.builtin.include_tasks: tasks/rancher_bind_mount.yml
+
+        - name: Move | /var/lib/rancher is now the bind mount
+          ansible.builtin.command:
+            cmd: mountpoint -q /var/lib/rancher
+          changed_when: false
+
+        - name: Move | Start k3s
+          ansible.builtin.systemd_service:
+            name: "{{ k3s_maint_service }}"
+            state: started
+
+        - name: Move | Wait for the node to be Ready
+          ansible.builtin.command:
+            argv:
+              - k3s
+              - kubectl
+              - get
+              - node
+              - "{{ inventory_hostname }}"
+              - -o
+              - 'jsonpath={.status.conditions[?(@.type=="Ready")].status}'
+          delegate_to: "{{ k3s_maint_kubectl_host }}"
+          register: rancher_node_ready
+          until: rancher_node_ready.stdout == "True"
+          retries: 30
+          delay: 10
+          changed_when: false
+
+        - name: Move | Uncordon the node
+          ansible.builtin.command:
+            argv: [k3s, kubectl, uncordon, "{{ inventory_hostname }}"]
+          delegate_to: "{{ k3s_maint_kubectl_host }}"
+          changed_when: true
+
+        - name: Wait for Longhorn
+          ansible.builtin.include_tasks: tasks/k3s_wait_longhorn.yml
+
+        - name: Move | Root disk now
+          ansible.builtin.command:
+            cmd: df -h --output=pcent,used,size /
+          register: rancher_root_after
+          changed_when: false
+
+        - name: Move | Done
+          ansible.builtin.debug:
+            msg:
+              - "{{ inventory_hostname }}: /var/lib/rancher now on {{ rancher_storage_dir }}."
+              - "Root disk: {{ rancher_root_after.stdout_lines[-1] | trim }} (the old copy still uses it)."
+              - "Check the node, then free the space: make move-rancher-to-storage-cleanup"
+
+      rescue:
+        - name: Rescue | Is /var/lib/rancher mounted
+          ansible.builtin.command:
+            cmd: mountpoint -q /var/lib/rancher
+          register: rancher_rescue_mount
+          changed_when: false
+          failed_when: false
+
+        - name: Rescue | Is the original already renamed
+          ansible.builtin.stat:
+            path: "{{ rancher_old_dir }}"
+            get_checksum: false
+          register: rancher_rescue_old
+
+        - name: Rescue | Put the original back (renamed, but not mounted yet)
+          when: rancher_rescue_mount.rc != 0 and rancher_rescue_old.stat.exists
+          block:
+            - name: Rescue | Stop k3s
+              ansible.builtin.command:
+                cmd: /usr/local/bin/k3s-killall.sh
+              changed_when: true
+              failed_when: false
+
+            - name: Rescue | Remove the fstab entry
+              ansible.posix.mount:
+                path: /var/lib/rancher
+                state: absent
+
+            - name: Rescue | Remove the k3s drop-in
+              ansible.builtin.file:
+                path: "/etc/systemd/system/{{ k3s_maint_service }}.service.d/10-rancher-on-storage.conf"
+                state: absent
+
+            - name: Rescue | Remove the empty mount point
+              ansible.builtin.command:
+                argv: [rmdir, /var/lib/rancher]
+                removes: "{{ rancher_old_dir }}"
+              failed_when: false
+
+            # -T: fail instead of moving it INTO /var/lib/rancher if rmdir left it there
+            - name: Rescue | Move the original back
+              ansible.builtin.command:
+                argv: [mv, -T, "{{ rancher_old_dir }}", /var/lib/rancher]
+                removes: "{{ rancher_old_dir }}"
+
+            - name: Rescue | Reload systemd
+              ansible.builtin.systemd_service:
+                daemon_reload: true
+
+        - name: Rescue | Start k3s
+          ansible.builtin.systemd_service:
+            name: "{{ k3s_maint_service }}"
+            state: started
+          failed_when: false
+          when: rancher_stopped | default(false)
+
+        - name: Rescue | Uncordon the node
+          ansible.builtin.command:
+            argv: [k3s, kubectl, uncordon, "{{ inventory_hostname }}"]
+          delegate_to: "{{ k3s_maint_kubectl_host }}"
+          changed_when: true
+          failed_when: false
+          when: rancher_drained | default(false)
+
+        - name: Rescue | Stop the run
+          ansible.builtin.fail:
+            msg: >-
+              Moving /var/lib/rancher on {{ inventory_hostname }} failed at "{{ ansible_failed_task.name }}".
+              {{ 'Nothing was changed on the node.' if not (rancher_drained | default(false)) else
+                 ('The original was put back, ' if (rancher_rescue_mount.rc != 0 and rancher_rescue_old.stat.exists) else
+                  ('/var/lib/rancher was not touched, ' if rancher_rescue_mount.rc != 0 else 'the bind mount is in place, '))
+                 ~ 'k3s was started and the node uncordoned.' }}
+              Check the node before running again (CLUSTER-012 in runbooks/cluster). A partial copy in
+              {{ rancher_storage_dir }} is harmless: the next run overwrites it.
+
+    # --- Free the space -----------------------------------------------------
+
+    - name: Free | Delete the old copy {{ rancher_old_dir }}
+      ansible.builtin.file:
+        path: "{{ rancher_old_dir }}"
+        state: absent
+      when: rancher_moved and remove_old | bool and rancher_old.stat.exists

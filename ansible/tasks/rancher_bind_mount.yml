@@ -1,0 +1,61 @@
+---
+# Bind-mount /var/lib/rancher from rancher_storage_dir (on the big /storage LV).
+# Does not copy anything: on a running node the copy is done first by
+# move_rancher_to_storage.yml; on a fresh node (nodes-setup, before k3s is
+# installed) the directory is simply empty.
+#
+# - fstab entry with x-systemd.requires-mounts-for, so /storage is mounted first
+# - k3s-agent / k3s drop-in with RequiresMountsFor=/var/lib/rancher, so k3s never
+#   starts on the empty directory of the root disk if the bind mount failed
+#
+# Input: rancher_storage_dir (host_vars), k3s_maint_service (k3s or k3s-agent).
+
+- name: Rancher mount | Create the directory on /storage
+  ansible.builtin.file:
+    path: "{{ rancher_storage_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Rancher mount | Create the mount point
+  ansible.builtin.file:
+    path: /var/lib/rancher
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Rancher mount | Bind-mount it and add it to fstab
+  ansible.posix.mount:
+    path: /var/lib/rancher
+    src: "{{ rancher_storage_dir }}"
+    fstype: none
+    opts: "bind,x-systemd.requires-mounts-for={{ rancher_storage_dir | dirname }}"
+    state: mounted
+
+- name: Rancher mount | Create the k3s drop-in directory
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ k3s_maint_service }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Rancher mount | Make k3s wait for the mount
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ k3s_maint_service }}.service.d/10-rancher-on-storage.conf"
+    content: |
+      # Managed by Ansible (tasks/rancher_bind_mount.yml).
+      # /var/lib/rancher is a bind mount of {{ rancher_storage_dir }}; never start k3s without it.
+      [Unit]
+      RequiresMountsFor=/var/lib/rancher
+    owner: root
+    group: root
+    mode: "0644"
+  register: rancher_mount_dropin
+
+- name: Rancher mount | Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: rancher_mount_dropin.changed

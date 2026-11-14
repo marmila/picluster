@@ -1,0 +1,59 @@
+---
+# Pre-flight before taking a k3s node out of service (drain, k3s stop, reboot).
+# Read-only, also runs in check mode. Fails unless every node is Ready and
+# schedulable and no Longhorn volume is degraded or faulted.
+#
+# Input: k3s_maint_kubectl_host (a master that is not the node being worked on).
+# Used by move_rancher_to_storage.yml. os_upgrade_node.yml has the same checks
+# inline; it will switch to this file with the os-upgrade improvements.
+
+- name: Pre-flight | Read node status
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - kubectl
+      - get
+      - nodes
+      - -o
+      - 'jsonpath={range .items[*]}{.metadata.name} {.status.conditions[?(@.type=="Ready")].status} {.spec.unschedulable}{"\n"}{end}'
+  delegate_to: "{{ k3s_maint_kubectl_host }}"
+  register: k3s_maint_nodes
+  changed_when: false
+  check_mode: false
+
+- name: Pre-flight | All nodes Ready and schedulable
+  ansible.builtin.assert:
+    that:
+      - k3s_maint_nodes.stdout_lines | reject('match', '^[^ ]+ True ?$') | list | length == 0
+    fail_msg: >-
+      Not starting {{ inventory_hostname }}: nodes not Ready or still cordoned:
+      {{ k3s_maint_nodes.stdout_lines | reject('match', '^[^ ]+ True ?$') | list }}.
+      Line format is "name ready unschedulable". A node left cordoned by an earlier
+      failed run must be checked and uncordoned by hand first.
+    quiet: true
+
+- name: Pre-flight | Read Longhorn volume robustness
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - kubectl
+      - -n
+      - longhorn-system
+      - get
+      - volumes.longhorn.io
+      - -o
+      - 'jsonpath={range .items[*]}{.metadata.name} {.status.robustness}{"\n"}{end}'
+  delegate_to: "{{ k3s_maint_kubectl_host }}"
+  register: k3s_maint_volumes
+  changed_when: false
+  check_mode: false
+
+- name: Pre-flight | No Longhorn volume degraded or faulted
+  ansible.builtin.assert:
+    that:
+      - k3s_maint_volumes.stdout_lines | select('match', '.* (degraded|faulted)$') | list | length == 0
+    fail_msg: >-
+      Not starting {{ inventory_hostname }}: Longhorn volumes not healthy:
+      {{ k3s_maint_volumes.stdout_lines | select('match', '.* (degraded|faulted)$') | list }}.
+      Wait for the rebuild (or fix them, runbook LONGHORN-001) and run again.
+    quiet: true

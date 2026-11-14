@@ -108,7 +108,9 @@ Thresholds (`k3s_kubelet_config` in `ansible/vars/picluster.yml`):
 | 85% | DiskPressure: node tainted `disk-pressure:NoSchedule`, pods evicted (`imagefs.available<15%`) |
 
 Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
-is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here.
+is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2 the
+permanent fix is moving `/var/lib/rancher` to `/storage` (step 6); once done, images no longer count here
+either.
 
 Procedure:
 
@@ -172,6 +174,39 @@ kubectl get pods -A --field-selector status.phase=Failed -o json \
 5. If the journal limit or image GC thresholds are missing on the node (fresh config not applied), run
    `make node-config-update` on pimaster. It restarts k3s only where the kubelet config changed, one node at
    a time.
+
+6. node-esp-1/2, permanent fix: move `/var/lib/rancher` (about 27G of images and container layers on
+   2026-11-14, all in use, so steps 2–3 cannot help) to the `/storage` LV, as a bind mount. k3s keeps the same
+   path. On pimaster, with 0 degraded Longhorn volumes and not close to the 02:00 backup:
+
+```bash
+make move-rancher-to-storage-check     # dry run: sizes, free space, what it would do
+./ansible-runner/ansible-runner.sh ansible-playbook move_rancher_to_storage.yml --limit node-esp-2
+# check the node: pods Running, `df -h /` and `findmnt /var/lib/rancher` on it; then node-esp-1:
+make move-rancher-to-storage           # nodes already moved are skipped
+make move-rancher-to-storage-cleanup   # delete /var/lib/rancher.old: this is what frees the root disk
+```
+
+   Per node it drains, stops k3s (`k3s-killall.sh`), copies with `rsync -aHAX`, renames the original to
+   `/var/lib/rancher.old`, adds the bind mount to `/etc/fstab` and a k3s drop-in `RequiresMountsFor`
+   (k3s never starts on the empty root-disk directory), starts k3s, uncordons and waits for Longhorn. About 10
+   minutes of copy and restart, plus the rebuild of the node's replicas, as after a reboot. If a step fails
+   before the mount, the playbook puts the original back, starts k3s and uncordons. Fresh nodes get the bind
+   mount from `make nodes-setup` before k3s is installed (`rancher_storage_dir` in their host_vars).
+
+   Rollback by hand on the node, while `/var/lib/rancher.old` still exists (drain it first on node2):
+
+```bash
+sudo /usr/local/bin/k3s-killall.sh
+sudo umount /var/lib/rancher
+sudo sed -i '\|^/storage/rancher /var/lib/rancher |d' /etc/fstab
+sudo rm /etc/systemd/system/k3s-agent.service.d/10-rancher-on-storage.conf
+sudo rmdir /var/lib/rancher && sudo mv -T /var/lib/rancher.old /var/lib/rancher
+sudo systemctl daemon-reload && sudo systemctl start k3s-agent
+```
+
+   Remove `rancher_storage_dir` from the node's host_vars too, or the next `make move-rancher-to-storage`
+   moves it again.
 
 Verify:
 

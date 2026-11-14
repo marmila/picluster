@@ -81,3 +81,38 @@
             open_iscsi_initiator_name: "iqn.2021-07.com.ricsanfre.homelab:{{ ansible_facts['nodename'] }}"
             open_iscsi_automatic_startup: true
       tags: [storage]
+
+    # k3s data on /storage (hosts with rancher_storage_dir: node-esp-1/2, whose root LV is only 50G).
+    # Fresh node only: bind-mount the empty directory before k3s is installed. A node that already
+    # runs k3s with /var/lib/rancher on the root disk is NOT touched here (mounting over live data
+    # would hide it); it needs make move-rancher-to-storage, which drains and copies first.
+    - name: k3s data on /storage
+      when: rancher_storage_dir is defined
+      tags: [storage]
+      block:
+        - name: k3s data on /storage | Is k3s installed
+          ansible.builtin.stat:
+            path: /usr/local/bin/k3s
+            get_checksum: false
+          register: rancher_k3s_binary
+
+        - name: k3s data on /storage | Is /var/lib/rancher already a mount point
+          ansible.builtin.command:
+            cmd: mountpoint -q /var/lib/rancher
+          register: rancher_mount_state
+          changed_when: false
+          failed_when: false
+          check_mode: false
+
+        - name: k3s data on /storage | Bind-mount it
+          ansible.builtin.include_tasks: tasks/rancher_bind_mount.yml
+          vars:
+            k3s_maint_service: "{{ 'k3s' if inventory_hostname in groups['k3s_master'] else 'k3s-agent' }}"
+          when: rancher_mount_state.rc == 0 or not rancher_k3s_binary.stat.exists
+
+        - name: k3s data on /storage | Running node not moved yet
+          ansible.builtin.debug:
+            msg: >-
+              {{ inventory_hostname }} runs k3s with /var/lib/rancher on the root disk: not changed here.
+              Run make move-rancher-to-storage (drains the node and copies the data first).
+          when: rancher_mount_state.rc != 0 and rancher_k3s_binary.stat.exists

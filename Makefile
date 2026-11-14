@@ -27,6 +27,9 @@ ANSIBLE_LOCAL_COLLECTIONS_DIR := $(HOME)/.ansible/collections
 	os-upgrade \
 	os-upgrade-check \
 	node-config-update \
+	move-rancher-to-storage \
+	move-rancher-to-storage-check \
+	move-rancher-to-storage-cleanup \
 	external-setup \
 	nodes-setup \
 	dns-setup \
@@ -110,6 +113,15 @@ os-upgrade-check: ## Dry run of os-upgrade: pending packages and what would be d
 
 node-config-update: ## Apply journald limit and kubelet config to running nodes (restarts k3s one node at a time if changed)
 	$(RUNNER) ansible-playbook update_node_config.yml
+
+move-rancher-to-storage: ## Move /var/lib/rancher to /storage on node-esp-1/2, one node at a time (drain, stop k3s, copy, bind mount)
+	$(RUNNER) ansible-playbook move_rancher_to_storage.yml
+
+move-rancher-to-storage-check: ## Dry run of move-rancher-to-storage: sizes, free space, what would be done (changes nothing)
+	$(RUNNER) ansible-playbook move_rancher_to_storage.yml --check --diff
+
+move-rancher-to-storage-cleanup: ## After checking the moved nodes: delete /var/lib/rancher.old to free the root disk (no drain)
+	$(RUNNER) ansible-playbook move_rancher_to_storage.yml -e remove_old=true
 
 external-setup: ## Configure external services host prerequisites
 	$(RUNNER) ansible-playbook setup_picluster.yml --tags "external"
