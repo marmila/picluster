@@ -7,7 +7,9 @@
       "fileMatch": [
         "(^|/).+\\.env(?:\\.j2)?$",
         "(^|/).+\\.sh(?:\\.j2)?$",
-        "(^|/).+\\.ya?ml(?:\\.j2)?$"
+        "(^|/).+\\.ya?ml(?:\\.j2)?$",
+        // ARG pins in docker/*/Dockerfile (e.g. docker/sre-triage)
+        "(^|/)Dockerfile$"
       ],
       "matchStrings": [
         // # renovate: datasource=github-releases depName=k3s-io/k3s

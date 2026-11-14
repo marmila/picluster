@@ -321,8 +321,8 @@ review and approve the push.
 
 ### Phase 1: image
 
-- [ ] Claude: `docker/sre-triage/` (Dockerfile, listener.sh, agents.json, settings.json).
-- [ ] Claude: `.github/workflows/build-sre-triage.yml`.
+- [x] Claude: `docker/sre-triage/` (Dockerfile, listener.sh, agents.json, settings.json).
+- [x] Claude: `.github/workflows/build-sre-triage.yml` (and Dockerfiles added to the Renovate regex manager).
 - [ ] You: approve, push; check the image exists for both architectures on ghcr.io.
 
 ### Phase 2: secrets
