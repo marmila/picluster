@@ -1,7 +1,7 @@
 # SRE triage agent from a ntfy button (implementation plan)
 
-Status: **planned**, not built yet (written 2026-11-13). Each phase below has a checklist; tick it in Git as the
-work lands.
+Status: **in progress** (written 2026-11-13; phase 0 done 2026-11-14, results in
+[section 10](#10-phase-0-results)). Each phase below has a checklist; tick it in Git as the work lands.
 
 ## Contents
 
@@ -14,7 +14,7 @@ work lands.
 - [7. Implementation phases](#7-implementation-phases)
 - [8. Acceptance tests](#8-acceptance-tests)
 - [9. Operations](#9-operations)
-- [10. Open points to verify in phase 0](#10-open-points-to-verify-in-phase-0)
+- [10. Phase 0 results](#10-phase-0-results)
 
 ## 1. Goal
 
@@ -83,7 +83,7 @@ one of them is enough to stop a change; together they also limit what a wrong or
 | Layer | What it does |
 | --- | --- |
 | 1. Kubernetes RBAC | The ServiceAccount can only `get`, `list`, `watch`. Built-in `view` ClusterRole (no Secrets) plus read access to the CRD groups used here, plus `get` on `services/proxy` for Prometheus and Alertmanager only. No `create`, `patch`, `delete`, no `pods/exec`, no Secrets. This is the real boundary. |
-| 2. Claude Code permissions | `--permission-mode dontAsk` with an allow list: `Read`, `Grep`, `Glob`, `Skill` and a few command prefixes (`kubectl get/describe/logs/top/events`, `flux get/events/logs/tree`, `jq`). Everything else is denied without asking. `Edit`, `Write`, `WebFetch`, `WebSearch` are denied explicitly. |
+| 2. Claude Code permissions | `--permission-mode dontAsk` with an allow list: `Read`, `Grep`, `Glob`, `Skill` and a few command prefixes (`kubectl get/describe/logs/top/events`, `flux get/events/logs/tree`, `jq`). Everything else is denied without asking. `Edit`, `Write`, `WebFetch`, `WebSearch` are denied explicitly. Claude Code also lets through some commands it recognises as read-only (for example `git log`) without an allow rule, so this layer is not a full list of what can run: layer 1 is. |
 | 3. Network | CiliumNetworkPolicy: egress only to DNS, the Kubernetes API, and by FQDN to `api.anthropic.com`, `claude.ai` / `console.anthropic.com` (auth), `ntfy.sh`, `github.com`. No other in-cluster service, no other internet host. |
 | 4. Pod | Non-root, read-only root filesystem (emptyDir for `$HOME` and the clone), no host mounts, no privilege escalation, all capabilities dropped. |
 
@@ -163,8 +163,8 @@ Generate the command topic name with `openssl rand -hex 16`.
 `docker/sre-triage/Dockerfile`, versions pinned (Renovate can update them later):
 
 - base `node:22-bookworm-slim` (multi-arch)
-- Claude Code at a pinned version (npm `@anthropic-ai/claude-code@<version>`, or the native installer with a
-  pinned version: decide in phase 0)
+- Claude Code at a pinned version from npm (`@anthropic-ai/claude-code@<version>`), decided in phase 0: Renovate
+  tracks npm versions, the native installer it cannot follow
 - kubectl and flux at the versions in `.mise.toml`
 - `git`, `jq`, `curl`, `ca-certificates`, `bash`, `coreutils` (`timeout`)
 - user `triage` (uid 10001), `WORKDIR /work`
@@ -180,7 +180,9 @@ Behaviour, in order:
 1. **Start:** clone the repo into `/work/picluster` (emptyDir). Copy `.opencode/skills/` to
    `/work/picluster/.claude/skills/`.
 2. **Subscribe:** `curl -sN "$NTFY_COMMAND_URL/json"` (ntfy JSON stream). Reconnect with a short back-off if the
-   stream drops. Ignore events other than `message`.
+   stream drops. Ignore events other than `message`. Never ask for older messages (`since=all`, or `poll=1`
+   without `since`): ntfy.sh keeps messages for 12 hours, so a pod restart would replay old taps and start
+   triages nobody asked for. A plain stream starts from "now".
 3. **Gate:** if a triage is running → reply "already running". If within the 5 minute cooldown or over 20 today
    → reply with the reason. Otherwise continue.
 4. **Prepare:** `git -C /work/picluster pull --ff-only`, refresh the skills copy. Reply "Triage started".
@@ -271,7 +273,8 @@ Check after deploy that a Secret is **not** readable:
   `TRIAGE_MODEL=sonnet`, `TRIAGE_DAILY_LIMIT=20`, `TRIAGE_COOLDOWN_SECONDS=300`.
 - `securityContext`: `runAsNonRoot`, `runAsUser: 10001`, `readOnlyRootFilesystem: true`,
   `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `seccompProfile: RuntimeDefault`.
-- emptyDir volumes for `/work` and `/home/triage`.
+- emptyDir volumes for `/work` and `/home/triage`. Claude Code writes its config and state on every run, so set
+  `HOME=/home/triage` and `CLAUDE_CONFIG_DIR=/home/triage/.claude` (both on the emptyDir).
 - Liveness: the listener touches `/tmp/alive` every minute while the stream is open; `exec` probe checks it is
   younger than 3 minutes.
 - CiliumNetworkPolicy: egress to `kube-dns` (port 53, with a DNS rule so FQDN policies work), `kube-apiserver`
@@ -306,14 +309,15 @@ review and approve the push.
 
 ### Phase 0: spike, on the workstation (about 1 hour)
 
-- [ ] You: run `claude setup-token`, keep the token in a password manager for now.
-- [ ] Claude: with `CLAUDE_CODE_OAUTH_TOKEN` set and no other login, confirm `claude -p` works headless.
-- [ ] Claude: confirm `--agents <file> --agent sre-triage`, `--settings`, `--permission-mode dontAsk` behave as
-  in 6.4: an allowed `kubectl get` runs, `Edit` and `kubectl delete` are refused without a prompt.
-- [ ] Claude: confirm skills copied to `.claude/skills/` are picked up in `-p` mode.
-- [ ] Claude: test the ntfy pieces with curl: a message with the `actions` query parameter on a templated
-  webhook shows the button, and the button's POST arrives on a test command topic.
-- [ ] Decide npm vs native installer for the image.
+- [x] You: run `claude setup-token`, keep the token in a password manager for now.
+- [x] Claude: with `CLAUDE_CODE_OAUTH_TOKEN` set and no other login, confirm `claude -p` works headless.
+- [x] Claude: confirm `--agents <file> --agent sre-triage`, `--settings`, `--permission-mode dontAsk` behave as
+  in 6.4: an allowed command runs, `Edit` and `kubectl delete` are refused without a prompt.
+- [x] Claude: confirm skills copied to `.claude/skills/` are picked up in `-p` mode.
+- [x] Claude: test the ntfy pieces with curl: a message with the `actions` query parameter on a templated
+  webhook shows the button, and the button's POST arrives on a test command topic. (Tapping the button on the
+  phone is part of phase 4.)
+- [x] Decide npm vs native installer for the image: npm, pinned.
 
 ### Phase 1: image
 
@@ -377,22 +381,35 @@ next tap.
 ### 9.3 Quota and cost
 
 No separate bill: each triage uses the Claude subscription quota, shared with interactive sessions. With
-`sonnet`, a triage is a few minutes of agent work. If quota gets tight, lower `TRIAGE_DAILY_LIMIT`.
+`sonnet`, a triage is a few minutes of agent work. If quota gets tight, lower `TRIAGE_DAILY_LIMIT`. For scale: in
+phase 0 a trivial run (4–10 turns, no kubectl) took 4–20 seconds and Claude Code reported an equivalent cost of
+$0.06–0.14; a real triage will be several times that.
 
 ### 9.4 Logs
 
 Full reports and errors: `kubectl -n sre-triage logs deploy/sre-triage`, also in Loki (namespace
 `sre-triage`).
 
-## 10. Open points to verify in phase 0
+## 10. Phase 0 results
 
-- `CLAUDE_CODE_OAUTH_TOKEN` is the variable Claude Code reads for a `setup-token` token in headless mode, and
-  how long the token is valid.
-- `--permission-mode dontAsk` denies every tool that is not in the allow list, in `-p` mode, without hanging.
-- `--agent` together with `--agents <file>` in `-p` mode selects the agent and applies its prompt.
-- Skills under `.claude/skills/` of the working directory load in `-p` mode.
-- The exact auth host names Claude Code contacts, for the FQDN NetworkPolicy (watch Hubble drops on the first
-  run and add any that are missing).
-- ntfy: `actions` as a query parameter together with `template=alertmanager` on ntfy.sh.
+Tested 2026-11-14 on the workstation with Claude Code 2.1.322, a scratch git repo, a test agent and a test
+skill, `--setting-sources project` (so no personal settings leak in, as in the pod).
+
+| Point | Result |
+| --- | --- |
+| `CLAUDE_CODE_OAUTH_TOKEN` alone, headless | Works: empty `CLAUDE_CONFIG_DIR`, no other login, `claude -p` authenticated with the `setup-token` token. Validity: see the date shown by `setup-token` (9.2). |
+| `--agents <file> --agent sre-triage` in `-p` | The agent's prompt is applied. |
+| `--settings` + `--permission-mode dontAsk` | Commands outside the allow list are refused at once, no hang, the run ends normally (exit 0). Refused: `touch`, `rm`, redirects (`git status > f`), chains (`git status && mkdir d`), `git commit`, `kubectl delete`, and `kubectl get` when it was not in the list. Refusals are listed in `permission_denials` of `--output-format json`. |
+| Deny list with `Edit` / `Write` | The agent does not get those tools at all. |
+| Commands not in the allow list but read-only | Some run anyway (`git log`): Claude Code allows commands it recognises as read-only. RBAC stays the real boundary (layer 1). |
+| Skills in `.claude/skills/` in `-p` | Loaded and used. |
+| Config directory | Claude Code writes several files to `CLAUDE_CONFIG_DIR` on every run: it must be writable (6.6). |
+| ntfy `actions` + `template=alertmanager` | The message keeps the templated text and gets the **Triage** button; a POST to the command topic arrives as a `message` event. |
+
+Still open, checked in later phases:
+
+- The exact host names Claude Code contacts, for the FQDN NetworkPolicy: watch Hubble drops on the first run in
+  the cluster (phase 4) and add any that are missing.
 - Whether `kubectl get --raw` through `services/proxy` works with only the Role in 6.5, or needs `services`
-  `get` too.
+  `get` too (phase 3).
+- Tapping the button on the phone (phase 4).
