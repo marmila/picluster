@@ -30,7 +30,7 @@ spec:
       containers:
         - name: listener
           # Built by .github/workflows/build-sre-triage.yml from docker/sre-triage/
-          image: ghcr.io/marmila/sre-triage:sha-ffab15c
+          image: ghcr.io/marmila/sre-triage:sha-62d9869
           env:
             - name: TRIAGE_MODEL
               value: sonnet
