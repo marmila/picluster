@@ -12,10 +12,12 @@ metadata:
 spec:
   # Fallback only. Since 2026-11-14 Longhorn deletes the snapshot of each Velero backup as soon as
   # its upload finishes (autoCleanupSnapshotAfterOnDemandBackupCompleted in longhorn/app values).
-  # This job removes whatever that missed (older than RETAIN_DAYS) and runs a purge.
-  # Runs at 3:30, after the 2:00 Velero backup. It exits 1 when any API call fails, so the job
-  # shows Failed and KubeJobFailed fires: before, purge errors (HTTP 500) were only printed and
-  # snapshots piled up unnoticed.
+  # This job deletes whatever that missed (older than RETAIN_DAYS), then purges every volume that
+  # has removed snapshots: deleting only marks them, the purge frees the space.
+  # Purges run one volume at a time: Longhorn refuses more than snapshot-heavy-task-concurrent-limit
+  # (5) at once with HTTP 500 "concurrent snapshot purge limit reached"; firing them all together
+  # left 110 GB unpurged on Prometheus (2026-11-14).
+  # It exits 1 on any other API error, a purge error or a timeout, so KubeJobFailed fires.
   schedule: "30 3 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -23,6 +25,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 1
+      activeDeadlineSeconds: 21600
       template:
         metadata:
           labels:
@@ -43,71 +46,114 @@ spec:
             - -u
             - -c
             - |
-              import urllib.request, urllib.error, socket, json, os, sys
+              import urllib.request, urllib.error, json, os, sys, time
               from datetime import datetime, timezone, timedelta
 
               BASE = os.environ['LONGHORN_URL']
               retain_days = int(os.environ.get('RETAIN_DAYS', '3'))
+              LIMIT_WAIT = 30 * 60      # max wait for a free purge slot, per volume
+              PURGE_TIMEOUT = 2 * 3600  # max purge time, per volume
+              POLL = 30
               cutoff = (datetime.now(timezone.utc) - timedelta(days=retain_days)).strftime('%Y-%m-%d')
-              print(f"Longhorn snapshot cleanup — purging older than {cutoff} (retain {retain_days} days)")
+              print(f"Longhorn snapshot cleanup — deleting older than {cutoff} (retain {retain_days} days)")
 
               errors = []
 
-              def api(url, data=None, timeout=30, timeout_ok=False):
+              def now():
+                  return datetime.now(timezone.utc).strftime('%H:%M:%S')
+
+              def call(url, data=None, timeout=30):
+                  # Returns (json, None) or (None, error text).
                   req = urllib.request.Request(url,
                       data=json.dumps(data).encode() if data is not None else None,
                       headers={'Content-Type': 'application/json'} if data is not None else {},
                       method='POST' if data is not None else 'GET')
                   try:
                       with urllib.request.urlopen(req, timeout=timeout) as r:
-                          return json.loads(r.read())
-                  except (socket.timeout, TimeoutError) as e:
-                      if timeout_ok:
-                          return {}
-                      errors.append(f"{url.split('/')[-1]}: {e}")
-                  except urllib.error.URLError as e:
-                      if timeout_ok and isinstance(getattr(e, 'reason', None), (socket.timeout, TimeoutError)):
-                          return {}
-                      errors.append(f"{url.split('/')[-1]}: {e}")
+                          return json.loads(r.read() or b'{}'), None
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode(errors='replace')[:300]
+                      return None, f"HTTP {e.code}: {body}"
                   except Exception as e:
-                      errors.append(f"{url.split('/')[-1]}: {e}")
-                  print(f"  ERROR {errors[-1]}")
-                  return None
+                      return None, str(e)
 
-              vols = (api(f"{BASE}/volumes") or {}).get('data', [])
-              if not vols:
-                  print("ERROR: could not reach Longhorn API or no volumes found", file=sys.stderr)
+              def fail(msg):
+                  errors.append(msg)
+                  print(f"  ERROR {msg}")
+
+              def purge_state(vid):
+                  vol, err = call(f"{BASE}/volumes/{vid}")
+                  if err:
+                      return None, err
+                  st = vol.get('purgeStatus') or []
+                  bad = [s.get('error') for s in st if s.get('error')]
+                  busy = [s for s in st if s.get('isPurging') or s.get('state') == 'in_progress']
+                  prog = min((int(s.get('progress') or 0) for s in busy), default=100)
+                  return (bool(busy), prog, bad), None
+
+              def purge(vid):
+                  # 1. start the purge, waiting for a free slot while Longhorn is at its limit
+                  start = time.time()
+                  while True:
+                      _, err = call(f"{BASE}/volumes/{vid}?action=snapshotPurge", {}, timeout=60)
+                      if not err or 'timed out' in err:
+                          break  # a timeout is fine: the engine keeps purging
+                      if 'concurrent snapshot purge limit reached' in err and time.time() - start < LIMIT_WAIT:
+                          print(f"  {now()} purge limit reached, retry in {POLL}s")
+                          time.sleep(POLL)
+                          continue
+                      return fail(f"{vid}: snapshotPurge: {err}")
+                  # 2. wait until no replica is purging any more
+                  start = time.time()
+                  time.sleep(POLL)
+                  while True:
+                      st, err = purge_state(vid)
+                      if err:
+                          return fail(f"{vid}: read purge status: {err}")
+                      busy, prog, bad = st
+                      if bad:
+                          return fail(f"{vid}: purge error: {bad[0]}")
+                      if not busy:
+                          print(f"  {now()} purge done after {int(time.time() - start) + POLL}s")
+                          return
+                      if time.time() - start > PURGE_TIMEOUT:
+                          return fail(f"{vid}: purge still running after {PURGE_TIMEOUT}s")
+                      print(f"  {now()} purging {prog}%")
+                      time.sleep(POLL)
+
+              vols, err = call(f"{BASE}/volumes")
+              if err or not vols.get('data'):
+                  print(f"ERROR: could not reach Longhorn API or no volumes found: {err}", file=sys.stderr)
                   sys.exit(1)
-
+              vols = vols['data']
               print(f"Found {len(vols)} volumes")
-              deleted_total = 0
+              deleted_total = purged = 0
 
               for vol in vols:
                   vid = vol['id']
                   # Snapshot calls need a running engine: a detached volume answers 500.
                   if vol.get('state') != 'attached':
-                      print(f"{vid[:40]}: skipped ({vol.get('state')})")
+                      print(f"{vid}: skipped ({vol.get('state')})")
                       continue
-                  snaps = api(f"{BASE}/volumes/{vid}?action=snapshotList", {})
-                  if snaps is None:
+                  snaps, err = call(f"{BASE}/volumes/{vid}?action=snapshotList", {})
+                  if err:
+                      fail(f"{vid}: snapshotList: {err}")
                       continue
-                  to_del = [s for s in snaps.get('data', [])
-                            if s['name'] != 'volume-head'
-                            and not s.get('removed')
-                            and s.get('created', '')[:10] < cutoff]
-                  if to_del:
-                      print(f"{vid[:40]}: {len(to_del)} snapshots to delete")
-                      for s in to_del:
-                          api(f"{BASE}/volumes/{vid}?action=snapshotDelete", {"name": s['name']})
-                      deleted_total += len(to_del)
-                  elif not any(s.get('removed') for s in snaps.get('data', [])):
+                  snaps = [s for s in snaps.get('data', []) if s['name'] != 'volume-head']
+                  to_del = [s for s in snaps if not s.get('removed') and s.get('created', '')[:10] < cutoff]
+                  removed = sum(1 for s in snaps if s.get('removed'))
+                  if not to_del and not removed:
                       continue
+                  print(f"{now()} {vid}: delete {len(to_del)}, already removed {removed}")
+                  for s in to_del:
+                      _, err = call(f"{BASE}/volumes/{vid}?action=snapshotDelete", {"name": s['name']})
+                      if err:
+                          fail(f"{vid}: snapshotDelete {s['name']}: {err}")
+                  deleted_total += len(to_del)
+                  purge(vid)
+                  purged += 1
 
-                  # Purge frees the space of deleted snapshots (also ones a previous run left behind).
-                  # Short timeout: the engine keeps purging after the HTTP call returns.
-                  api(f"{BASE}/volumes/{vid}?action=snapshotPurge", {}, timeout=5, timeout_ok=True)
-
-              print(f"Done. Marked {deleted_total} snapshots for deletion across {len(vols)} volumes.")
+              print(f"Done. Deleted {deleted_total} snapshots, purged {purged} of {len(vols)} volumes.")
               if errors:
-                  print(f"FAILED: {len(errors)} Longhorn API call(s) failed, see ERROR lines above", file=sys.stderr)
+                  print(f"FAILED: {len(errors)} error(s), see ERROR lines above", file=sys.stderr)
                   sys.exit(1)
