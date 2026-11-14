@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-triage
+  namespace: sre-triage
+  labels:
+    app.kubernetes.io/name: sre-triage
+spec:
+  replicas: 1
+  # Never two listeners on the same ntfy topic.
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sre-triage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sre-triage
+    spec:
+      serviceAccountName: sre-triage
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: listener
+          # Built by .github/workflows/build-sre-triage.yml from docker/sre-triage/
+          image: ghcr.io/marmila/sre-triage:sha-ffab15c
+          env:
+            - name: TRIAGE_MODEL
+              value: sonnet
+            - name: TRIAGE_DAILY_LIMIT
+              value: "20"
+            - name: TRIAGE_COOLDOWN_SECONDS
+              value: "300"
+            - name: TRIAGE_TIMEOUT_SECONDS
+              value: "600"
+          envFrom:
+            # CLAUDE_CODE_OAUTH_TOKEN, NTFY_COMMAND_URL, NTFY_REPLY_URL
+            - secretRef:
+                name: sre-triage
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # The listener touches this file on every ntfy event; ntfy sends a keepalive about every 45 s.
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - test $(( $(date +%s) - $(stat -c %Y /home/triage/state/alive) )) -lt 180
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 2
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: home
+              mountPath: /home/triage
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: work
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: home
+          emptyDir:
+            sizeLimit: 512Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi

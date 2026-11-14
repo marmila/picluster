@@ -25,6 +25,7 @@ resources:
   - longhorn-config.yaml
   - metrics-server-app.yaml
   - otel-collector-app.yaml
+  - sre-triage-app.yaml
   - system-upgrade-app.yaml
   - tempo-app.yaml
   - vault-app.yaml

@@ -1,0 +1,17 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: sre-triage-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    # ClusterSecretStore vault-backend
+    - name: external-secrets-config
+  path: ./kubernetes/platform/sre-triage/app/overlays/prod
+  prune: true
+  wait: true

@@ -1,0 +1,105 @@
+# Read-only access for the triage agent (homelab-docs/sre-triage-agent.md 6.5). This is the real boundary:
+# get/list/watch only, no Secrets, no pods/exec, no writes. Check after deploy:
+#   kubectl auth can-i get secrets -A --as=system:serviceaccount:sre-triage:sre-triage   → no
+---
+# Built-in "view": core and apps resources, pods/log, events; no Secrets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sre-triage-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: sre-triage
+    namespace: sre-triage
+---
+# What "view" leaves out: cluster-scoped resources and CRD groups not aggregated into it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sre-triage-read
+rules:
+  - apiGroups: [""]
+    resources: [nodes, persistentvolumes, namespaces, events]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses, volumeattachments, csinodes, csidrivers]
+    verbs: [get, list, watch]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch]
+  - apiGroups: [metrics.k8s.io]
+    resources: [nodes, pods]
+    verbs: [get, list]
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [get, list, watch]
+  - apiGroups:
+      - helm.toolkit.fluxcd.io
+      - kustomize.toolkit.fluxcd.io
+      - source.toolkit.fluxcd.io
+      - notification.toolkit.fluxcd.io
+      - infra.contrib.fluxcd.io
+      - longhorn.io
+      - cert-manager.io
+      - acme.cert-manager.io
+      - postgresql.cnpg.io
+      - external-secrets.io
+      - velero.io
+      - monitoring.coreos.com
+      - gateway.networking.k8s.io
+      - upgrade.cattle.io
+      - snapshot.storage.k8s.io
+      - cilium.io
+    resources: ["*"]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sre-triage-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: sre-triage-read
+subjects:
+  - kind: ServiceAccount
+    name: sre-triage
+    namespace: sre-triage
+---
+# Prometheus and Alertmanager APIs through the API server proxy, GET only: read alerts and query
+# metrics, but no silences (POST). The proxy name is "<service>:<port>"; both forms used in the
+# runbooks are listed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sre-triage-prometheus-proxy
+  namespace: kube-prom-stack
+rules:
+  - apiGroups: [""]
+    resources: [services/proxy]
+    resourceNames:
+      - kube-prometheus-stack-alertmanager
+      - kube-prometheus-stack-alertmanager:http-web
+      - kube-prometheus-stack-alertmanager:9093
+      - kube-prometheus-stack-prometheus
+      - kube-prometheus-stack-prometheus:http-web
+      - kube-prometheus-stack-prometheus:9090
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sre-triage-prometheus-proxy
+  namespace: kube-prom-stack
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sre-triage-prometheus-proxy
+subjects:
+  - kind: ServiceAccount
+    name: sre-triage
+    namespace: sre-triage

@@ -1,0 +1,39 @@
+# Egress allow list for the triage agent (homelab-docs/sre-triage-agent.md 6.6). With this policy the pod
+# can reach only DNS, the Kubernetes API and the listed hosts on 443. FQDN rules need the DNS rule below
+# (Cilium DNS proxy). If a host is missing, Hubble shows the drop:
+#   hubble observe -n sre-triage --verdict DROPPED
+# No ingress rule: the pod listens on nothing.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sre-triage-egress
+  namespace: sre-triage
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: sre-triage
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+    - toFQDNs:
+        - matchName: api.anthropic.com
+        - matchName: claude.ai
+        - matchName: console.anthropic.com
+        - matchName: platform.claude.com
+        - matchName: ntfy.sh
+        - matchName: github.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

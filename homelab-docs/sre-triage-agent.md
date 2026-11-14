@@ -333,8 +333,8 @@ review and approve the push.
 
 ### Phase 3: Kubernetes manifests
 
-- [ ] Claude: `kubernetes/platform/sre-triage/` and the Flux Kustomization.
-- [ ] Claude: `kubectl kustomize` build check and lint before the push.
+- [x] Claude: `kubernetes/platform/sre-triage/` and the Flux Kustomization.
+- [x] Claude: `kubectl kustomize` build check before the push (kubeconform runs in CI).
 - [ ] You: approve, push, check on node2: pod Running, logs show "subscribed".
 - [ ] You: run the RBAC check from 6.5 (`no` for Secrets).
 
