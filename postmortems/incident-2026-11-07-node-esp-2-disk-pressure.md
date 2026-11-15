@@ -115,7 +115,7 @@ HelmRelease. The rollout then completed on all 7 nodes. `CLUSTER-012` now warns 
 | # | Action | Status |
 |---|---|---|
 | 6 | Warn in `CLUSTER-012` not to delete old k3s data folders while a shim uses them, with the check and the `runc` link fix | Done |
-| 7 | Move `/var/lib/rancher` to `/storage` on node-esp-2 (and node-esp-1) when the root disk passes 83% | Open |
+| 7 | Move `/var/lib/rancher` to `/storage` on node-esp-2 (and node-esp-1) when the root disk passes 83% | Done 2026-11-15 on both nodes (`move_rancher_to_storage.yml`, `04251c0f`); root LV 80G for future PXE installs (`ac19f095`) |
 
 ---
 

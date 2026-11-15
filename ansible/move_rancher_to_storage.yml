@@ -8,7 +8,8 @@
 # filling up (2026-09, 2026-11-07, 2026-11-14; k3s evicts at 95%, image pulls add GBs at once).
 # /storage (lv-data, ext4, ~412 GB) also holds the Longhorn data.
 #
-# Only hosts with rancher_storage_dir in host_vars, one node at a time. Per node:
+# Runs on the x86 group (node-esp-1/2) only, and of those only hosts with
+# rancher_storage_dir in host_vars, one node at a time. Both moved 2026-11-15. Per node:
 #   1. skip if /var/lib/rancher is already a mount point (moved before)
 #   2. pre-flight (all nodes Ready, no Longhorn volume degraded), enough space
 #   3. drain, k3s-killall.sh (stops k3s, containers, unmounts their layers)
@@ -26,7 +27,8 @@
 # uncordons the node; the run stops. Rollback by hand: homelab-docs CLUSTER-012.
 
 - name: Move /var/lib/rancher to /storage
-  hosts: k3s_cluster
+  # Not k3s_cluster: with serial 1 every other node printed an empty PLAY batch.
+  hosts: x86
   serial: 1
   max_fail_percentage: 0
   any_errors_fatal: true

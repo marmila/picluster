@@ -117,9 +117,9 @@ kubectl get --raw /api/v1/nodes/<node-name>/proxy/configz | jq -c '.kubeletconfi
 ```
 
 Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
-is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2 the
-permanent fix is moving `/var/lib/rancher` to `/storage` (step 6); once done, images no longer count here
-either.
+is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2
+`/var/lib/rancher` has been bind-mounted from `/storage` since 2026-11-15 (step 6), so images no longer count
+here either: their root disk holds only the OS, logs and the journal.
 
 Procedure:
 
@@ -186,8 +186,15 @@ kubectl get pods -A --field-selector status.phase=Failed -o json \
 
 6. node-esp-1/2, permanent fix: move `/var/lib/rancher` (about 27G of images and container layers on
    2026-11-14, all in use, so steps 2–3 cannot help) to the `/storage` LV, as a bind mount. k3s keeps the same
-   path. Start with the fuller node (node-esp-1 on 2026-11-15: 88%, node-esp-2 46%). On pimaster, with 0
-   degraded Longhorn volumes, after a completed Velero backup and not close to the 02:00 backup:
+   path. **Done on both nodes on 2026-11-15** (node-esp-1 first at 88%, then node-esp-2, reboot-tested,
+   `.old` copies removed). Check a node with `findmnt /var/lib/rancher` (source `...lv--data[/rancher]`).
+   The steps below are for a reinstalled node, or a new x86 node with `rancher_storage_dir`.
+
+   Draining one node-esp moves its pods to the other, which pulls their images: on 2026-11-15 node-esp-2 went
+   from 46% to 87% while node-esp-1 was moved. Check the other node's root disk before a drain.
+
+   On pimaster, with 0 degraded Longhorn volumes, after a completed Velero backup and not close to the 02:00
+   backup:
 
 ```bash
 make move-rancher-to-storage-check     # dry run: sizes, free space, what it would do
