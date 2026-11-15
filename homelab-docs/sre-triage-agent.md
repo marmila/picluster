@@ -1,9 +1,8 @@
 # SRE triage agent from a ntfy button (implementation plan)
 
-Status: **live, without the button yet** (written 2026-11-13). Phases 0–3 done on 2026-11-14: the pod runs and
-answers `triage` sent to the command topic. Still to do: the Triage button in the alert notifications and the
-acceptance tests (phase 4), docs and runbook (phase 5). Findings in [section 10](#10-phase-0-results). Each
-phase below has a checklist; tick it in Git as the work lands.
+Status: **live** (written 2026-11-13). Phases 0–3 done on 2026-11-14, phases 4–5 on 2026-11-15: every alert
+notification has a **Triage** button, the acceptance tests passed, and runbook `OBS-006` covers a silent agent.
+Findings in [section 10](#10-phase-0-results).
 
 ## Contents
 
@@ -361,14 +360,19 @@ review and approve the push.
 - [x] Send `triage` to the command topic: a report arrives (2026-11-14, first with curl from node2, then from
   the ntfy app after subscribing to the Vault command topic, see section 2). To send it without the app:
   `curl -d triage "$(kubectl -n sre-triage get secret sre-triage -o jsonpath='{.data.NTFY_COMMAND_URL}' | base64 -d)"`
-- [ ] You: add the action to `ntfy_url` (6.8); send a test alert (`OBS-002` step 5); tap **Triage**.
-- [ ] Run the acceptance tests (section 8).
+- [x] You: add the action to `ntfy_url` (6.8); send a test alert (`OBS-002` step 5); tap **Triage**
+  (2026-11-15). Stage 5 now adds the action itself (`594f2167`), checked: same URL hash as the manual value.
+- [x] Run the acceptance tests (section 8), 2026-11-15: report, "already running", free-text disk question,
+  `delete pod` refused (pod unchanged), `no` for Secrets, `yes` for Leases.
 
 ### Phase 5: docs
 
-- [ ] Claude: runbook `OBS-006` "Triage agent does not answer" (pod, logs, token expired, quota, ntfy).
-- [ ] Claude: update `alerting.md` (diagram and "Alerts and the sre agent"), `homelab-docs/README.md`, and this
+- [x] Claude: runbook `OBS-006` "Triage agent does not answer" (pod, logs, token expired, quota, ntfy).
+- [x] Claude: update `alerting.md` (diagram and "Alerts and the sre agent"), `homelab-docs/README.md`, and this
   file's status to "live".
+- [x] Claude: `cluster-triage` skill, from the first real reports (2026-11-15): host disks including node1 from
+  Prometheus (step 10), Velero with `backups.velero.io` and the `kubectl exec` commands for a person (step 7),
+  eviction at 95% and the finished `/var/lib/rancher` move in the runbook map.
 
 ## 8. Acceptance tests
 
@@ -381,6 +385,7 @@ review and approve the push.
 | Tap twice quickly | Second reply "already running" |
 | Ask in free text "delete pod X" | The agent refuses or the tool is denied; the pod still exists |
 | `kubectl auth can-i get secrets -A --as=system:serviceaccount:sre-triage:sre-triage` | `no` |
+| `kubectl auth can-i list leases -n flux-system --as=system:serviceaccount:sre-triage:sre-triage` | `yes` (added 2026-11-15) |
 | Token replaced with a wrong value | "Triage failed: authentication" with high priority |
 
 ## 9. Operations
@@ -396,7 +401,8 @@ The `setup-token` token is long-lived but expires (check the validity shown when
 date in `claude_token_created`). Put a calendar reminder two weeks before. To renew: run `claude setup-token`
 again, `vault kv patch secret/sre-triage claude_oauth_token=... claude_token_created=$(date +%F)`, then force the
 ExternalSecret to sync and restart the pod. An expired token shows up as "Triage failed: authentication" on the
-next tap.
+next tap. Also update `~/.secrets/sre-triage.ini` on pimaster, or `make external-services` writes the old token
+back. Troubleshooting: runbook `OBS-006`.
 
 ### 9.3 Quota and cost
 
@@ -438,4 +444,4 @@ Found while deploying (phases 3–4, 2026-11-14):
 | ntfy stream | One reconnect after `curl: (7) Failed to connect to ntfy.sh port 443`, recovered after 10 s. If it happens often, force IPv4 (`curl -4`) in `listener.sh`. |
 | Permissions | See 6.4: the namespace flag before the verb needed wildcard rules plus deny rules. |
 
-Still open: tapping the button on the phone (phase 4).
+Tapping the button on the phone: works (2026-11-15).

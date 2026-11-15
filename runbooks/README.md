@@ -38,7 +38,7 @@ If no runbook covers the situation, start from a triage runbook (`GITOPS-002`, `
 | Vault and External Secrets | [`components/vault.md`](components/vault.md) | `VAULT-001` … `VAULT-006` |
 | S3 Storage (RustFS) | [`components/s3-storage.md`](components/s3-storage.md) | `MINIO-001` (backlog: `MINIO-002` … `MINIO-005`) |
 | Elastic and Logging | [`components/elastic-logging.md`](components/elastic-logging.md) | `ELASTIC-001` (backlog: `ELASTIC-002` … `ELASTIC-005`) |
-| Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004` (backlog: `OBS-003`, `OBS-005`) |
+| Monitoring and Tracing | [`components/observability.md`](components/observability.md) | `OBS-001`, `OBS-002`, `OBS-004`, `OBS-006` (backlog: `OBS-003`, `OBS-005`) |
 | Service Mesh and Ingress | [`components/networking-ingress.md`](components/networking-ingress.md) | `NET-004` … `NET-010` (backlog: `NET-001` … `NET-003`) |
 | Longhorn Storage | [`components/longhorn.md`](components/longhorn.md) | `LONGHORN-001`, `LONGHORN-002`, `LONGHORN-003` |
 | Kafka and Data Services | [`components/data-services.md`](components/data-services.md) | `PG-001` (backlog: `KAFKA-001`, `KAFKA-002`, `MONGO-001`) |
@@ -201,6 +201,7 @@ References:
 - `OBS-003` Grafana Data Source and Auth Recovery
 - [`OBS-004` Loki Ingestion and Retention Issues](components/observability.md#runbook-obs-004)
 - `OBS-005` Tempo Tracing Pipeline Outage
+- [`OBS-006` Triage Agent Does Not Answer](components/observability.md#runbook-obs-006)
 
 #### Kafka and Data Services
 

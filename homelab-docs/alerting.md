@@ -41,7 +41,7 @@ flowchart LR
     hc["healthchecks.io"]
     phone["Phone"]
     rb["runbooks/"]
-    agent["OpenCode sre agent<br/>(cluster-triage)"]
+    agent["sre-triage agent (in cluster)<br/>or OpenCode sre agent<br/>(cluster-triage skill)"]
   end
 
   bb -- "TLS probe every 1m" --> vault
@@ -57,14 +57,15 @@ flowchart LR
   ntfy --> phone
   hc -- "alarm when pings stop" --> phone
   phone -- "runbook ID in the message" --> rb
-  phone -- "paste the alert" --> agent
+  phone -- "Triage button,<br/>or paste the alert" --> agent
+  agent -- "report via ntfy" --> ntfy
   agent -- "reads firing alerts<br/>and metrics" --> am
   agent -- "follows" --> rb
 ```
 
 - **Rules** live next to what they watch: `k3s-mixins` (Kubernetes, nodes, Prometheus), `general` (Watchdog), `certificates-external` and `vault` (blackbox exporter), `cert-manager`, the Flux and Terraform rules in `flux-monitoring`, and per-service rules for External Secrets, Velero, Longhorn and Keycloak Postgres. See [Backup, secrets, storage and scrape alerts](#backup-secrets-storage-and-scrape-alerts).
 - **Routing:** `severity=warning|critical` goes to ntfy, `Watchdog` goes to healthchecks.io as a dead-man's switch, `severity=info` is dropped. See [Alert notifications](#alert-notifications-ntfy-and-healthchecksio).
-- **Runbooks:** every alert defined in this repository carries a runbook ID in its `runbook` annotation and at the end of its description, so it shows up in the ntfy message. The [OpenCode sre agent](#alerts-and-the-sre-agent) uses the same IDs.
+- **Runbooks:** every alert defined in this repository carries a runbook ID in its `runbook` annotation and at the end of its description, so it shows up in the ntfy message. The [triage agents](#alerts-and-the-sre-agent) use the same IDs.
 - **The weak point is Vault:** the notification URLs come from Vault. If Vault is unreachable, already-running Alertmanager keeps working with the mounted secret, but a new deployment of the alerting config cannot sync it. healthchecks.io is the independent check that catches a silent Alertmanager.
 
 ## Alert notifications (ntfy and healthchecks.io)
@@ -362,7 +363,10 @@ kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rul
 <a id="alerts-and-the-sre-agent"></a>
 Alerts reach a phone through ntfy (see [Alerting overview](#alerting-overview)). The agent is not started automatically by an alert: a person reads the alert and decides whether to hand it to the agent. That keeps a human in the loop for anything the agent would run against the live cluster.
 
-Live since 2026-11-14: a read-only triage agent runs in the cluster (namespace `sre-triage`). Send `triage` (or a question) to its secret ntfy command topic and it posts a report back to the alerts topic. Still planned: a **Triage** button on each alert notification. Fixes stay manual. See [sre-triage-agent.md](sre-triage-agent.md).
+Two agents use the same skill and runbooks:
+
+- **In the cluster (live since 2026-11-14, button since 2026-11-15):** every ntfy alert has a **Triage** button. A tap (or `triage`, or a question, sent to the secret command topic) starts a read-only triage in namespace `sre-triage`; the report comes back to the alerts topic within a few minutes. It cannot change anything: fixes stay manual. Design: [sre-triage-agent.md](sre-triage-agent.md); when it does not answer: runbook `OBS-006`.
+- **OpenCode `sre` agent** on the workstation: paste the alert, it triages with your kubeconfig and can propose a change for you to approve (the sequence below).
 
 ```mermaid
 sequenceDiagram
@@ -393,7 +397,8 @@ How the pieces connect:
 | `runbook` annotation on each alert | PrometheusRules in `kubernetes/` | The runbook ID, also shown at the end of the ntfy message |
 | Step 0 of `cluster-triage` | `.opencode/skills/cluster-triage/SKILL.md` | Starts every triage from the firing alerts instead of a blind sweep |
 | Alert → runbook table | `.opencode/skills/cluster-triage/references/runbook-map.md` | Maps alert names, including chart and mixin alerts without an annotation, to runbook IDs |
-| Step 10 of `cluster-triage` | same skill | Certificate days left and reachability for Vault, RustFS and the gateway from the blackbox exporter |
+| Step 10 of `cluster-triage` | same skill | Certificate days left and reachability for Vault, RustFS and the gateway from the blackbox exporter; root and `/storage` usage of every host, node1 included, from node-exporter |
+| Step 7 of `cluster-triage` | same skill | Velero backups (`backups.velero.io`) and the commands a person runs for error details |
 
 When adding an alert, give it a `runbook` annotation and end its description with `Runbook <ID>.` (no colon: an unquoted `: ` breaks the YAML). If no runbook fits yet, add a row to the alert table with the first check to run, and add the runbook ID to the backlog in `runbooks/README.md`.
 

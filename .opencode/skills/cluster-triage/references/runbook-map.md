@@ -25,14 +25,14 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
-| `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, eviction at 85%. node-esp-1/2: `/` is only 50 GB and the images are all in use, so GC frees nothing; the fix is moving `/var/lib/rancher` to `/storage` (planned) |
+| `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, k3s evicts at 95%. node-esp-1/2: images are on `/storage` (bind mount of `/var/lib/rancher`, done 2026-11-15), so `/` holds only the OS and logs. node1 (not a cluster node): RustFS buckets fill `/`, urgent, step 7 |
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
 | `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |
 | `KubePodCrashLooping`, `KubePodNotReady`, `KubeDeploymentReplicasMismatch`, `KubeStatefulSetReplicasMismatch` | sweep step 6, then `GITOPS-003` if the workload belongs to a HelmRelease | |
 | `K3sUpgradePlanStuck`, `K3sNodeVersionDrift` | `CLUSTER-015` | A failed upgrade job is never retried. A node can also be marked done but still run the old version until k3s is restarted |
 | `KubeVersionMismatch` | `CLUSTER-015` | Normal for about an hour during every k3s upgrade; act only if it lasts longer |
 | `KubeJobFailed` | `LONGHORN-003` for `*snapshot-cleanup*` jobs in `longhorn-system`, otherwise none yet | Old failed jobs keep firing until deleted |
-| `VeleroBackupFailed`, `VeleroNoRecentBackup` | `BACKUP-004` | Nightly `full` schedule at 02:00. Check the BackupStorageLocation (RustFS) first |
+| `VeleroBackupFailed`, `VeleroNoRecentBackup` | `BACKUP-004` | Nightly `full` schedule at 02:00. Check the BackupStorageLocation (RustFS) first. Use `backups.velero.io`, not `backups`; error details need `kubectl exec` (skill step 7) |
 | `LonghornVolumeDegraded`, `LonghornVolumeFaulted` | `LONGHORN-001` | Degraded is normal for a while after a node reboot (replica rebuild) |
 | `LonghornVolumeStuckAttaching`, `LonghornInstanceManagerNotRunning` | `LONGHORN-002` | Usually an instance-manager rejected with `OutOfcpu` after a Longhorn upgrade (node-esp-2). Do not cordon the node |
 | `ElasticsearchNotHealthy` | `ELASTIC-001` | Pod in `Init` = volume cannot attach (`LONGHORN-002`). `CLUSTER_RECOVERED` shards after a restart: wait |
@@ -167,6 +167,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `OBS-001` | Prometheus target down or scrape failing (`ScrapeTargetDown`) |
 | `OBS-002` | Alert notifications not arriving (ntfy, healthchecks.io) |
 | `OBS-004` | Loki ingestion or retention problems |
+| `OBS-006` | Triage agent (ntfy **Triage** button) does not answer |
 
 ### Service mesh and ingress — `runbooks/components/networking-ingress.md`
 

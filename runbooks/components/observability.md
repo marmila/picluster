@@ -230,3 +230,104 @@ References:
 
 - `kubernetes/platform/kube-prometheus-stack/app/components/alertmanager-notifications/`
 - `homelab-docs/alerting.md`, section "Alert notifications (ntfy and healthchecks.io)"
+
+## OBS-006 Triage Agent Does Not Answer
+
+<a id="runbook-obs-006"></a>
+Runbook ID: `OBS-006`
+Owner: Platform Observability
+Severity: `SEV-4` (alerts still arrive; only the on-demand triage is missing)
+
+Objective: Get the read-only triage agent (namespace `sre-triage`) answering again when a tap on **Triage**, or
+a message to its command topic, brings no "Triage started" or no report.
+
+How it works: the pod listens on a secret ntfy command topic, runs one Claude Code triage per request and posts
+"Triage started", then "Triage report" (or "Triage failed: ...") to the alerts topic. Topics and the Claude
+token come from Vault `secret/sre-triage` through the ExternalSecret `sre-triage`. Details:
+`homelab-docs/sre-triage-agent.md`.
+
+Triggered by: no reply within about 2 minutes, or a "Triage failed" / "Triage not started" message.
+
+Preconditions:
+
+- `kubectl` on node2; `vault` on node1 for the token.
+
+Procedure:
+
+1. Read what the agent replied, if anything. Those replies are expected and need no fix:
+
+   | Reply | Meaning |
+   |---|---|
+   | `Triage not started` — a triage is already running | One at a time; wait for the report |
+   | `Triage not started` — cooldown | 5 minutes between triages (`TRIAGE_COOLDOWN_SECONDS`) |
+   | `Triage not started` — daily limit | 20 per UTC day (`TRIAGE_DAILY_LIMIT`); a pod restart resets it |
+   | `Triage failed: timeout` | No answer within 600 s; the partial output is in the pod log |
+
+2. Check the pod and the secret:
+
+```bash
+kubectl -n sre-triage get pods -o wide
+kubectl -n sre-triage get externalsecret sre-triage
+flux get kustomizations sre-triage-app -n flux-system
+```
+
+   - `ContainerCreating` for a long time on a Pi: the first image pull takes about 15 minutes there. Wait.
+   - `CrashLoopBackOff` with `... is not set` in the log: a Vault value is empty or a placeholder. Check the
+     value lengths on node1 (token about 108, command URL 59, reply URL about 49):
+
+```bash
+vault kv get -format=json secret/sre-triage | jq -r '.data.data | to_entries[] | "\(.key) \(.value | length)"'
+```
+
+   - ExternalSecret not `SecretSynced`: Vault or the ClusterSecretStore, `VAULT-001`.
+
+3. Read the log:
+
+```bash
+kubectl -n sre-triage logs deploy/sre-triage --since=1h | grep -vE "^\s*$" | tail -40
+```
+
+   | Log line | Cause | Fix |
+   |---|---|---|
+   | No `subscribed to the command topic`, or `stream closed, reconnecting` repeating | Cannot reach ntfy.sh (network, NetworkPolicy, ntfy outage) | Check egress (`kubectl -n sre-triage get ciliumnetworkpolicy`), Hubble drops; if `curl: (7) Failed to connect` repeats, force IPv4 in `listener.sh` |
+   | `subscribed` but no `request:` line after a tap | The tap went to another topic | The button reads `ntfy_url` in `secret/alertmanager/notifications`; `make load-external-services-keys` rebuilds it from the ini files (`sre-triage-agent.md` 6.8) |
+   | `request:` but `WARN could not post reply` | Reply topic wrong or ntfy refuses | Compare `ntfy_reply_url` with the alerts topic (without the query string) |
+   | `Triage failed: git` | GitHub clone or fetch fails | Egress to github.com; GitHub status |
+   | `Triage failed: authentication` | Claude token expired or revoked | Renew it, step 4 |
+   | `rate limit` / `usage limit` / `overloaded` in `stderr:` | Subscription quota used up, or API overloaded | Wait for the quota window; lower `TRIAGE_DAILY_LIMIT` if it happens often |
+
+4. Token renewal (only for `Triage failed: authentication`). On the workstation run `claude setup-token`, then
+   on node1:
+
+```bash
+vault kv patch secret/sre-triage claude_oauth_token='<new token>' claude_token_created=$(date +%F)
+```
+
+   Also update `~/.secrets/sre-triage.ini` on pimaster, or the next `make external-services` writes the old
+   token back. Then on node2:
+
+```bash
+kubectl -n sre-triage annotate externalsecret sre-triage force-sync=$(date +%s) --overwrite
+kubectl -n sre-triage rollout restart deploy/sre-triage
+```
+
+5. Send a test request without the phone:
+
+```bash
+curl -s -o /dev/null -d triage "$(kubectl -n sre-triage get secret sre-triage -o jsonpath='{.data.NTFY_COMMAND_URL}' | base64 -d)"
+kubectl -n sre-triage logs deploy/sre-triage -f --since=1m
+```
+
+Verify:
+
+- "Triage started" and then a "Triage report" arrive on the phone within about 3 minutes.
+- The log shows `triage end: rc=0 is_error=false`.
+
+Rollback / turn it off: `kubectl -n sre-triage scale deploy/sre-triage --replicas=0` (Flux restores it on the
+next reconcile; to keep it off, set `replicas: 0` in Git or suspend `sre-triage-app`).
+
+References:
+
+- `homelab-docs/sre-triage-agent.md` (design, 9.2 token renewal, 9.3 quota)
+- `docker/sre-triage/listener.sh` (all reply texts)
+- `kubernetes/platform/sre-triage/`

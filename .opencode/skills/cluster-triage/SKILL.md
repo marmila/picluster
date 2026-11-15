@@ -123,6 +123,26 @@ kubectl get nodes.longhorn.io -n longhorn-system
 Healthy: Longhorn manager/engine pods running, every PVC `Bound`, every volume `healthy` with the
 expected replica count. Degraded replicas often surface as an app pod stuck `ContainerCreating`.
 
+Velero backups (runbook `BACKUP-004`). Use the full resource name: plain `backups` resolves to
+another CRD and returns nothing.
+
+```bash
+kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp \
+  -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERRORS:.status.errors,WARNINGS:.status.warnings,START:.status.startTimestamp | tail -5
+kubectl -n velero get backupstoragelocations.velero.io
+```
+
+The error details need the Velero CLI, which runs only through `kubectl exec` (not allowed for a
+read-only agent, and not installed on node2). Give a person these commands instead:
+
+```bash
+kubectl -n velero exec deploy/velero -c velero -- /velero backup describe <name> --details
+kubectl -n velero exec deploy/velero -c velero -- /velero backup logs <name> | grep -i "level=error"
+```
+
+A single `PartiallyFailed` with one `connection reset by peer` error is usually transient: the next
+nightly run decides.
+
 ### 8. Gateway, TLS and DNS
 
 ```bash
@@ -168,6 +188,22 @@ Healthy: `reachable=1` and `days_left` above 14 for `vault`, `object-store` and 
 
 - `days_left` below 14, or negative: certificate renewal, runbook `NET-009`.
 - `reachable=0` with a valid certificate: the service is down. Vault `VAULT-001`, RustFS `MINIO-001`.
+
+Host disks, including node1 (Vault, RustFS, DNS: not a cluster node, so `kubectl` shows nothing
+about it and there is no shell access). node-exporter runs on every host, so Prometheus has the
+numbers. Root and `/storage` usage in percent, fullest first:
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+kubectl get --raw "${P}sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%7D%29" \
+  | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.mountpoint) \(.value[1] | tonumber | floor)%"'
+```
+
+- On node1, `/storage` is a folder on `/`, so only `/` is listed; it holds the RustFS buckets (Longhorn
+  and Velero backups, Loki, Tempo). Above 80% it is urgent: no eviction there, the disk fills until
+  Vault and RustFS stop. Runbook `CLUSTER-012` step 7 has the commands for a person to run on node1.
+- Cluster nodes: k3s evicts at 95%. On node-esp-1/2 container images are on `/storage` (bind mount
+  since 2026-11-15), so their `/` holds only the OS and logs.
 
 A reachable Vault can still be sealed. Check its health endpoint from the runner:
 
