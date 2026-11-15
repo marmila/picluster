@@ -117,7 +117,7 @@ kubectl get --raw /api/v1/nodes/<node-name>/proxy/configz | jq -c '.kubeletconfi
 ```
 
 Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
-is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2
+is a 50G LV (80G after a PXE reinstall, `ac19f095`); Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2
 `/var/lib/rancher` has been bind-mounted from `/storage` since 2026-11-15 (step 6), so images no longer count
 here either: their root disk holds only the OS, logs and the journal.
 

@@ -135,7 +135,7 @@ separate disk for `/storage` if it goes above about 70% again.
 | 5 | Check live objects (with `xl.meta`) for extra data copies, and size them | Open |
 | 6 | Add the orphaned-copies check and cleanup to OBS-004 (Loki retention), and a node1 / RustFS section to CLUSTER-012 | Done: OBS-004 step 6, CLUSTER-012 step 7 |
 | 7 | Watch bucket growth: a daily per-bucket size on node1 (node-exporter textfile collector) with an alert on fast growth | Open, proposal |
-| 8 | Triage agent: query `node_filesystem_*` in Prometheus for external hosts such as node1; use `backups.velero.io` and `kubectl exec` for Velero | Open (triage phase 5) |
+| 8 | Triage agent: query `node_filesystem_*` in Prometheus for external hosts such as node1; use `backups.velero.io` and `kubectl exec` for Velero | Done (`d4bb25f7`, `cluster-triage` steps 7 and 10; query tested) |
 | 9 | Treat `NodeRootDiskFillingUp` on node1 as urgent: Vault and RustFS depend on it | Done: CLUSTER-012 step 7 |
 | 10 | Report the leftover data copies to RustFS upstream, with the folder layout as evidence | Open, optional |
 | 11 | Separate disk for `/storage` on node1 | Not needed now; revisit above about 70% |
