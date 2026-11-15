@@ -1,6 +1,8 @@
 ---
 # k3s data (/var/lib/rancher: images, container layers) lives on the big lv-data, bind-mounted;
-# the root LV below is only 50G. Applied by nodes-setup (fresh node) or make move-rancher-to-storage.
+# Applied by nodes-setup (fresh node) or make move-rancher-to-storage. The root LV below is 80G
+# (was 50G until 2026-11-15, and filled up with images): OS, logs and journal, with headroom if
+# the bind mount is ever missing. Takes effect only at the next PXE reinstall.
 rancher_storage_dir: /storage/rancher
 
 autoinstall:
@@ -78,7 +80,7 @@ autoinstall:
         id: lvm_volgroup-0
       - name: ubuntu-lv
         volgroup: lvm_volgroup-0
-        size: 50G
+        size: 80G
         wipe: superblock
         preserve: false
         path: /dev/ubuntu-vg/ubuntu-lv
