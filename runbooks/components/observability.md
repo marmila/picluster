@@ -79,23 +79,71 @@ Objective: Restore Loki ingestion/query health and retention behavior.
 
 Procedure:
 
-1. Check Loki and agent pod health.
+1. Check Loki and agent pod health. Loki runs in namespace `loki` (SimpleScalable: `loki-write-0`,
+   `loki-backend-0` with the compactor, `loki-read`):
 
 ```bash
-kubectl -n monitoring get pods | grep -i loki
-kubectl -n monitoring logs deploy/loki --tail=200
+kubectl -n loki get pods
+kubectl -n loki logs loki-write-0 --since=1h | grep -i "level=error" | tail -10
+kubectl -n loki logs loki-backend-0 -c loki --since=1h | grep -i "level=error" | tail -10
 ```
+
+   A `loki-write-0` with many restarts (OOMKilled, CPU throttled) re-uploads the same chunks on every restart:
+   fix it first (resources in `kubernetes/platform/loki/app/overlays/prod/values.yaml`), then check step 6.
 
 2. Validate ingest path from Fluent Bit/Promtail to Loki endpoint.
 3. Check object storage connectivity and auth for chunks/index.
-4. Verify retention/compaction settings and available storage.
+4. Check retention (7 days, `retention_period: 168h`, compactor on `loki-backend-0`). The index keeps one table
+   per day, so there should be about 8 (`loki_index_<day>`), plus `delete_requests`. On node1:
+
+```bash
+sudo sh -c 'ls /storage/rustfs/k3s-loki/index | sort | sed -n "1p;\$p"; ls /storage/rustfs/k3s-loki/index | wc -l'
+kubectl -n loki logs loki-backend-0 -c loki --since=24h | grep -iE "retention|mark file|delet" | tail -10   # on node2
+```
+
 5. Reconcile observability stack config if drift is suspected.
+6. Bucket `k3s-loki` much larger than the log volume (about 0.15 GB/day, so 1-2 GB in total): orphaned data
+   copies in RustFS. During a `loki-write` crash loop the same chunk keys are uploaded again and again; RustFS
+   kept a data folder per upload (`<key>/<uuid>/part.1`). When retention deletes the object, only `xl.meta` and
+   the current copy go; the other copies stay. S3 cannot see them (`rc object stat` says "Not found"), so
+   neither Loki nor `rc rm` can delete them. Found on 2026-11-15: 70 GB from 8-25 October.
+
+   On node1, measure by day first (read-only). Data older than about 8 days should be close to zero:
+
+```bash
+sudo sh -c 'cd /storage/rustfs/k3s-loki/fake && nice -n 19 ionice -c3 find . -type f -printf "%TY-%Tm-%Td %s\n"' \
+  | awk -v cut="$(date -d '-8 days' +%F)" '{ if ($1 < cut) old+=$2; else new+=$2 } END { printf "older than 8 days: %.1f GB | last 8 days: %.1f GB\n", old/1e9, new/1e9 }'
+```
+
+   If "older" is large, list the object folders that have no `xl.meta` (S3 treats them as non-existent) and
+   whose data is older than the cutoff, and check the list:
+
+```bash
+CUT=$(date -d '-9 days' +%F)
+sudo sh -c "find /storage/rustfs/k3s-loki/fake -mindepth 3 -maxdepth 3 -type d ! -newermt $CUT -printf '%h\n' | sort -u | while read o; do [ -e \"\$o/xl.meta\" ] || echo \"\$o\"; done" > ~/loki-dead-objects.txt
+wc -l < ~/loki-dead-objects.txt
+grep -vc '^/storage/rustfs/k3s-loki/fake/[0-9a-f]\{16\}/' ~/loki-dead-objects.txt     # must be 0
+sudo xargs -d '\n' -a ~/loki-dead-objects.txt du -sc | tail -1                        # size in KB
+```
+
+   Remove 5 as a test, check the Loki logs (step 1) for errors, then the rest in tmux. Each folder is checked
+   again for `xl.meta` right before removal:
+
+```bash
+head -5 ~/loki-dead-objects.txt | sudo sh -c 'while read o; do [ -e "$o/xl.meta" ] || rm -rf -- "$o"; done'
+tail -n +6 ~/loki-dead-objects.txt | sudo sh -c 'while read o; do [ -e "$o/xl.meta" ] || rm -rf -- "$o"; done'
+df -h /
+```
+
+   Never remove anything with an `xl.meta`, nor anything under `index/`: those are live objects. Deleting old
+   objects through S3 (`rc rm`) does not help here; it only removes the small live ones.
 
 Verify:
 
 - New logs appear in Grafana Explore.
 - Query latency/error rate returns to normal.
 - Retention jobs complete without errors.
+- `k3s-loki` size in line with the log volume (step 6), node1 root disk below 80%.
 
 Rollback:
 

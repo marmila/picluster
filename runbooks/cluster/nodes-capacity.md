@@ -107,6 +107,15 @@ Thresholds (`k3s_kubelet_config` in `ansible/vars/picluster.yml`):
 | 80% | `NodeRootDiskFillingUp` fires |
 | 85% | DiskPressure: node tainted `disk-pressure:NoSchedule`, pods evicted (`imagefs.available<15%`) |
 
+The 85% line is not settled: node-esp-2 went into DiskPressure at 84.8% (2026-11-07), but node-esp-1 stayed
+`DiskPressure=False` at 88.8% (2026-11-15). Read the thresholds the kubelet really uses (on node2):
+
+```bash
+kubectl get --raw /api/v1/nodes/<node-name>/proxy/configz | jq '.kubeletconfig.evictionHard'
+```
+
+Until that is confirmed for every node, treat 85% as the line to stay below.
+
 Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
 is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2 the
 permanent fix is moving `/var/lib/rancher` to `/storage` (step 6); once done, images no longer count here
@@ -177,12 +186,13 @@ kubectl get pods -A --field-selector status.phase=Failed -o json \
 
 6. node-esp-1/2, permanent fix: move `/var/lib/rancher` (about 27G of images and container layers on
    2026-11-14, all in use, so steps 2–3 cannot help) to the `/storage` LV, as a bind mount. k3s keeps the same
-   path. On pimaster, with 0 degraded Longhorn volumes and not close to the 02:00 backup:
+   path. Start with the fuller node (node-esp-1 on 2026-11-15: 88%, node-esp-2 46%). On pimaster, with 0
+   degraded Longhorn volumes, after a completed Velero backup and not close to the 02:00 backup:
 
 ```bash
 make move-rancher-to-storage-check     # dry run: sizes, free space, what it would do
-./ansible-runner/ansible-runner.sh ansible-playbook move_rancher_to_storage.yml --limit node-esp-2
-# check the node: pods Running, `df -h /` and `findmnt /var/lib/rancher` on it; then node-esp-1:
+./ansible-runner/ansible-runner.sh ansible-playbook move_rancher_to_storage.yml --limit <fuller node>
+# check the node: pods Running, `df -h /` and `findmnt /var/lib/rancher` on it; then the other one:
 make move-rancher-to-storage           # nodes already moved are skipped
 make move-rancher-to-storage-cleanup   # delete /var/lib/rancher.old: this is what frees the root disk
 ```
@@ -208,6 +218,31 @@ sudo systemctl daemon-reload && sudo systemctl start k3s-agent
    Remove `rancher_storage_dir` from the node's host_vars too, or the next `make move-rancher-to-storage`
    moves it again.
 
+7. node1 (external host, not a cluster node). **A disk alert on node1 is urgent**: no kubelet evicts anything
+   there, the disk simply fills, and then Vault and RustFS stop. That breaks external-secrets, Velero, CNPG
+   (barman) and Longhorn backups, and Loki and Tempo storage. node1 has one 220G disk; `/storage` is a folder on
+   `/`, not a separate mount, so RustFS data (`/storage/rustfs`, `rustfs_server_datadirs`) counts here. On node1:
+
+```bash
+df -h /
+findmnt /storage || echo "/storage is on the root disk"
+sudo du -xh --max-depth=1 --exclude=/storage / 2>/dev/null | sort -h | tail -8   # everything except RustFS
+sudo sh -c 'nice -n 19 ionice -c3 du -sh /storage/rustfs/* | sort -h'          # per bucket (slow, use tmux)
+```
+
+   `/storage` is `0750 rustfs`: run globs inside `sudo sh -c '...'`, otherwise your own shell expands `*`, sees
+   nothing and `du` prints nothing. Then by bucket:
+
+   | Bucket | Usual size | If it grows |
+   | --- | --- | --- |
+   | `k3s-longhorn` | tens of GB | Velero CSI backups, 3 per volume (72h TTL). Count per volume with `kubectl -n longhorn-system get backups.longhorn.io`; check which volumes are big (`BACKUP-004`) |
+   | `k3s-loki` | about 1-2 GB (0.15 GB/day, 7 days) | Orphaned data copies after a `loki-write` crash loop: `OBS-004` step 6 |
+   | `k3s-velero`, `k3s-tempo`, `k3s-barman`, `restic` | a few GB in total | Check the tool's own retention |
+
+   Logs and journal: `sudo journalctl --vacuum-size=500M`, as in step 2. Do not delete anything inside
+   `/storage/rustfs` by hand except with the `OBS-004` step 6 procedure. History:
+   `postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md` (86% → 53%).
+
 Verify:
 
 - `df -h /` below 80% on the node.
@@ -225,6 +260,7 @@ References:
   `ansible/update_node_config.yml`.
 - `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-disk-rules.yaml`.
 - `postmortems/incident-2026-11-07-node-esp-2-disk-pressure.md`.
+- `postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md`.
 
 ## CLUSTER-014 Hung Node and etcd Quorum Loss Recovery
 
