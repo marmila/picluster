@@ -112,7 +112,9 @@ Both URLs contain the secret part (the ntfy topic name and the healthchecks.io c
 > 1. `make secret-files` asks for both URLs and saves them to `~/.secrets/alertmanager-notifications.ini` (mode 0600).
 > 2. `make external-services` (Stage 5, `load_external_services_keys.yml`) writes them to Vault at `secret/alertmanager/notifications`.
 >
-> Keep a backup of `~/.secrets`: a rebuild reads the URLs from that file. To change a URL later, edit the file and run `make load-external-services-keys`, or write it to Vault directly:
+> Keep a backup of `~/.secrets`: a rebuild reads the URLs from that file. Keep `ntfy_url` there without the
+> Triage button: Stage 5 appends it from `~/.secrets/sre-triage.ini` ([sre-triage-agent.md](sre-triage-agent.md#68-the-triage-button-in-ntfy) 6.8),
+> so a direct `vault kv put` with the plain URL below removes the button until the next run. To change a URL later, edit the file and run `make load-external-services-keys`, or write it to Vault directly:
 >
 > ```shell
 > vault kv put secret/alertmanager/notifications \

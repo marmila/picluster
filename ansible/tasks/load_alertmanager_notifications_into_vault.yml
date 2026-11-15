@@ -30,6 +30,36 @@
         healthchecks_url = https://hc-ping.com/<check-uuid>
     quiet: true
 
+# Triage button (homelab-docs/sre-triage-agent.md 6.8): ntfy takes publish options as query
+# parameters, so the button is an 'actions=' parameter on ntfy_url, pointing at the agent's
+# command topic from sre-triage.ini. Added here, not in the ini, so the command topic is kept
+# in one place. Skipped when there is no sre-triage.ini (no agent) or the URL has actions already.
+- name: Check SRE triage file for the Triage button
+  ansible.builtin.stat:
+    path: "{{ sre_triage_file }}"
+  register: alertmanager_sre_triage_stat
+
+- name: Read the triage command topic
+  ansible.builtin.set_fact:
+    alertmanager_triage_command_url: >-
+      {{ lookup('file', sre_triage_file)
+         | regex_findall('(?m)^\s*ntfy_command_url\s*=\s*(https://\S+)\s*$')
+         | default([''], true) | first }}
+  when: alertmanager_sre_triage_stat.stat.exists
+  no_log: true
+
+# Same encoding as urllib.parse.quote(safe=''): Jinja's urlencode leaves '/' as is.
+- name: Add the Triage button to the ntfy URL
+  ansible.builtin.set_fact:
+    alertmanager_ntfy_url: >-
+      {{ alertmanager_ntfy_url ~ ('&' if '?' in alertmanager_ntfy_url else '?') ~ 'actions='
+         ~ (('http, Triage, ' ~ alertmanager_triage_command_url ~ ', method=POST, body=triage')
+            | urlencode | replace('/', '%2F')) }}
+  when:
+    - alertmanager_triage_command_url | default('') is match('https://')
+    - "'actions=' not in alertmanager_ntfy_url"
+  no_log: true
+
 - name: Create/update alertmanager/notifications in Vault
   community.hashi_vault.vault_write:
     url: "{{ vault_addr }}"

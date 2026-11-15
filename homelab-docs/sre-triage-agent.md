@@ -306,9 +306,18 @@ https://ntfy.sh/<alerts-topic>?template=alertmanager&actions=<url-encoded action
 action: http, Triage, https://ntfy.sh/<command-topic>, method=POST, body=triage
 ```
 
-Every alert then shows a **Triage** button; the "resolved" messages get it too, which is harmless. Update the
-value with `vault kv patch secret/alertmanager/notifications ntfy_url=...`, force the ExternalSecret to sync
-(`OBS-002` rollback step 2), and restart Alertmanager if it does not pick up the new file.
+Every alert then shows a **Triage** button; the "resolved" messages get it too, which is harmless.
+
+`make external-services` (or `make load-external-services-keys`) adds the action automatically
+(`tasks/load_alertmanager_notifications_into_vault.yml`): it reads `ntfy_command_url` from
+`~/.secrets/sre-triage.ini` and appends the encoded action to the plain `ntfy_url` from
+`~/.secrets/alertmanager-notifications.ini`. So the ini keeps the URL without the button, the command topic lives
+only in `sre-triage.ini`, and a rebuild or a rotated command topic gets the right button. No `sre-triage.ini`
+means no button. Live since 2026-11-15.
+
+By hand (same result): `vault kv patch secret/alertmanager/notifications ntfy_url=...`, force the ExternalSecret
+to sync (`OBS-002` rollback step 2), and restart Alertmanager if it does not pick up the new file. A later
+`make external-services` writes the value again from the ini files.
 
 ## 7. Implementation phases
 
