@@ -1,11 +1,18 @@
 ---
 # Pre-flight before taking a k3s node out of service (drain, k3s stop, reboot).
-# Read-only, also runs in check mode. Fails unless every node is Ready and
-# schedulable and no Longhorn volume is degraded or faulted.
+# Read-only, also runs in check mode. Fails unless:
+#   - every node is Ready and schedulable, and no Longhorn volume is degraded or faulted;
+#   - capacity (k3s_maint_check_capacity, default true): the OTHER nodes, which take
+#     the drained pods, are not overloaded and have room for their images. Lessons:
+#     2026-11-14 node6 (a Pi) went NotReady under the pods drained from node-esp-1/2
+#     (load 55); 2026-11-15 node-esp-2 went from 46% to 87% root disk pulling the images
+#     of the pods drained from node-esp-1 (k3s evicts at 95%).
 #
 # Input: k3s_maint_kubectl_host (a master that is not the node being worked on).
-# Used by move_rancher_to_storage.yml. os_upgrade_node.yml has the same checks
-# inline; it will switch to this file with the os-upgrade improvements.
+# Tunables (-e): k3s_maint_max_cpu_percent (80), k3s_maint_max_mem_percent (90),
+#   k3s_maint_load_wait_minutes (10: how long to wait for the load to drop),
+#   k3s_maint_max_disk_percent (85: root and image filesystem, as the kubelet sees them).
+# Used by update.yml (tasks/os_upgrade_node.yml) and move_rancher_to_storage.yml.
 
 - name: Pre-flight | Read node status
   ansible.builtin.command:
@@ -57,3 +64,84 @@
       {{ k3s_maint_volumes.stdout_lines | select('match', '.* (degraded|faulted)$') | list }}.
       Wait for the rebuild (or fix them, runbook LONGHORN-001) and run again.
     quiet: true
+
+# --- Capacity of the other nodes ---------------------------------------------
+
+# kubectl top: CPU and memory in percent of allocatable. Waits for a busy node to
+# calm down (a rebuild or a restart storm after the previous node), then fails.
+- name: Pre-flight | Read CPU and memory of the other nodes (waits while one is busy)
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      k3s kubectl top nodes --no-headers
+      | awk -v me={{ inventory_hostname | quote }} -v c={{ k3s_maint_max_cpu_percent | default(80) | int }}
+      -v m={{ k3s_maint_max_mem_percent | default(90) | int }}
+      '$1 != me { cpu=$3; mem=$5; sub("%", "", cpu); sub("%", "", mem);
+      if ((cpu ~ /^[0-9]+$/ && cpu+0 > c) || (mem ~ /^[0-9]+$/ && mem+0 > m)) print $1 " cpu " $3 " mem " $5 }'
+    executable: /bin/bash
+  delegate_to: "{{ k3s_maint_kubectl_host }}"
+  register: k3s_maint_load
+  until: k3s_maint_load.rc != 0 or k3s_maint_load.stdout == ''
+  retries: "{{ ((k3s_maint_load_wait_minutes | default(10) | int) * 2) }}"
+  delay: 30
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: k3s_maint_check_capacity | default(true) | bool
+
+- name: Pre-flight | Other nodes not overloaded
+  ansible.builtin.assert:
+    that:
+      - k3s_maint_load.rc != 0 or k3s_maint_load.stdout == ''
+    fail_msg: >-
+      Not starting {{ inventory_hostname }}: still busy after {{ k3s_maint_load_wait_minutes | default(10) }} min
+      (limits cpu {{ k3s_maint_max_cpu_percent | default(80) }}%, memory {{ k3s_maint_max_mem_percent | default(90) }}%):
+      {{ k3s_maint_load.stdout_lines }}. The drained pods would land there (node6, 2026-11-14).
+      Wait, or check what runs there (node-os-maintenance.md, "A node goes NotReady after a drain").
+    quiet: true
+  when: k3s_maint_check_capacity | default(true) | bool
+
+- name: Pre-flight | Metrics not available
+  ansible.builtin.debug:
+    msg: "kubectl top failed ({{ k3s_maint_load.stderr | default('') | trim }}): CPU and memory not checked."
+  when: (k3s_maint_check_capacity | default(true) | bool) and k3s_maint_load.rc != 0
+
+# Kubelet stats: "fs" is the kubelet's filesystem (the root disk), "imageFs" where the
+# images are (the root disk too, except on node-esp-1/2 since the move to /storage).
+- name: Pre-flight | Read root and image disk usage of the other nodes
+  ansible.builtin.shell:
+    cmd: |
+      set -u
+      out=$(for n in {{ groups['k3s_cluster'] | difference([inventory_hostname]) | map('quote') | join(' ') }}; do
+        k3s kubectl get --raw "/api/v1/nodes/$n/proxy/stats/summary" 2>/dev/null | python3 -c '
+      import json, sys
+      n = sys.argv[1]
+      try:
+          d = json.load(sys.stdin)["node"]
+      except Exception:
+          print(n, "?", "?"); sys.exit()
+      def pct(f):
+          return str(round(100 * f["usedBytes"] / f["capacityBytes"])) if f and f.get("capacityBytes") else "?"
+      print(n, pct(d.get("fs")), pct((d.get("runtime") or {}).get("imageFs")))' "$n"
+      done)
+      printf '%s\n' "$out"
+      printf '%s\n' "$out" | awk -v t={{ k3s_maint_max_disk_percent | default(85) | int }} '($2 ~ /^[0-9]+$/ && $2+0 > t) || ($3 ~ /^[0-9]+$/ && $3+0 > t) { print "OVER " $0 }'
+    executable: /bin/bash
+  delegate_to: "{{ k3s_maint_kubectl_host }}"
+  register: k3s_maint_disks
+  changed_when: false
+  check_mode: false
+  when: k3s_maint_check_capacity | default(true) | bool
+
+- name: Pre-flight | Other nodes have disk room for the drained pods' images
+  ansible.builtin.assert:
+    that:
+      - k3s_maint_disks.stdout_lines | select('match', '^OVER ') | list | length == 0
+    fail_msg: >-
+      Not starting {{ inventory_hostname }}: disk above {{ k3s_maint_max_disk_percent | default(85) }}% on
+      {{ k3s_maint_disks.stdout_lines | select('match', '^OVER ') | map('regex_replace', '^OVER ', '') | list }}
+      (format "node root% image%"). Image pulls of the drained pods can add several GB; k3s evicts at 95%.
+      Free space first (runbook CLUSTER-012), or raise -e k3s_maint_max_disk_percent if it is safe.
+    success_msg: "Disk usage of the other nodes (node root% image%): {{ k3s_maint_disks.stdout_lines }}"
+    quiet: false
+  when: k3s_maint_check_capacity | default(true) | bool

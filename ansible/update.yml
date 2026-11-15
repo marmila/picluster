@@ -7,9 +7,11 @@
 #
 # When a node needs a reboot (/var/run/reboot-required), a k3s node is drained
 # first, uncordoned once it is Ready again, and the run waits until no Longhorn
-# volume is degraded before the next node. Before every node, all nodes must be
-# Ready and schedulable and no Longhorn volume degraded or faulted. Details in
-# tasks/os_upgrade_node.yml and homelab-docs/node-os-maintenance.md.
+# volume is degraded before the next node (following rebuild progress, fails when
+# it stalls). Before every node, all nodes must be Ready and schedulable, no
+# Longhorn volume degraded or faulted, and before a k3s node the other nodes must
+# have CPU, memory and disk room for its pods. Durations are printed per node.
+# Details in tasks/os_upgrade_node.yml and homelab-docs/node-os-maintenance.md.
 #
 # Dry run: make os-upgrade-check (--check --diff). Upgrades nothing, drains and
 # reboots nothing; runs the read-only checks and reports per node what a real

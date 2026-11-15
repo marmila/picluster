@@ -1,11 +1,16 @@
 ---
 # Upgrade one node and, if it needs a reboot, reboot it safely.
 # Included by update.yml (serial: 1). Steps:
-#   1. Pre-flight: all nodes Ready and schedulable, no Longhorn volume degraded/faulted.
+#   1. Pre-flight (tasks/k3s_preflight.yml): all nodes Ready and schedulable, no
+#      Longhorn volume degraded/faulted; for k3s nodes also the capacity of the
+#      other nodes, which take the drained pods: CPU/memory (waits up to 10 min
+#      while one is busy) and root/image disk below 85%.
 #   2. apt dist-upgrade.
 #   3. If /var/run/reboot-required exists: drain (k3s nodes), reboot, wait Ready,
-#      30 s etcd re-sync (masters), uncordon, wait until no Longhorn volume is degraded.
+#      30 s etcd re-sync (masters), uncordon, wait for Longhorn
+#      (tasks/k3s_wait_longhorn.yml: follows rebuild progress, fails when it stalls).
 #      Any failure in step 3 uncordons the node and stops the whole run.
+#      Prints how long the drain, the reboot and the Longhorn wait took.
 #
 # kubectl runs as "k3s kubectl" on a master that is not this node, never on the
 # node being rebooted: the first master in the inventory order, so node2 for
@@ -17,20 +22,20 @@
 #
 # Before k3s is installed (make init runs os-upgrade first), there is no
 # cluster to check: pre-flight, drain and Longhorn steps are skipped and a node
-# that needs it is simply rebooted, as the playbook did before.
+# that needs it is simply rebooted.
 #
-# Tunables (-e): os_upgrade_drain_timeout (default 300s),
-# os_upgrade_longhorn_retries (default 360, x 20 s = 2 h: Longhorn here rebuilds
-# one replica per node at a time, as full copies, so 30 min was too short).
+# Tunables (-e): os_upgrade_drain_timeout (default 300s); the k3s_maint_* ones of
+# tasks/k3s_preflight.yml and tasks/k3s_wait_longhorn.yml (load and disk limits,
+# Longhorn stall minutes and maximum hours).
 
 - name: Pick the master that runs kubectl for this node
   ansible.builtin.set_fact:
-    os_upgrade_kubectl_host: "{{ groups['k3s_master'] | reject('equalto', inventory_hostname) | first }}"
+    k3s_maint_kubectl_host: "{{ groups['k3s_master'] | reject('equalto', inventory_hostname) | first }}"
 
 - name: Check whether k3s is installed on the kubectl host
   ansible.builtin.command:
     cmd: sh -c 'command -v k3s'
-  delegate_to: "{{ os_upgrade_kubectl_host }}"
+  delegate_to: "{{ k3s_maint_kubectl_host }}"
   register: os_upgrade_k3s_binary
   changed_when: false
   failed_when: false
@@ -44,59 +49,11 @@
 
 # --- 1. Pre-flight ---------------------------------------------------------
 
-- name: Pre-flight | Read node status
-  ansible.builtin.command:
-    argv:
-      - k3s
-      - kubectl
-      - get
-      - nodes
-      - -o
-      - 'jsonpath={range .items[*]}{.metadata.name} {.status.conditions[?(@.type=="Ready")].status} {.spec.unschedulable}{"\n"}{end}'
-  delegate_to: "{{ os_upgrade_kubectl_host }}"
-  register: os_upgrade_nodes
-  changed_when: false
-  check_mode: false
-  when: os_upgrade_cluster
-
-- name: Pre-flight | All nodes Ready and schedulable
-  ansible.builtin.assert:
-    that:
-      - os_upgrade_nodes.stdout_lines | reject('match', '^[^ ]+ True ?$') | list | length == 0
-    fail_msg: >-
-      Not starting {{ inventory_hostname }}: nodes not Ready or still cordoned:
-      {{ os_upgrade_nodes.stdout_lines | reject('match', '^[^ ]+ True ?$') | list }}.
-      Line format is "name ready unschedulable". A node left cordoned by an earlier
-      failed run must be checked and uncordoned by hand first.
-    quiet: true
-  when: os_upgrade_cluster
-
-- name: Pre-flight | Read Longhorn volume robustness
-  ansible.builtin.command:
-    argv:
-      - k3s
-      - kubectl
-      - -n
-      - longhorn-system
-      - get
-      - volumes.longhorn.io
-      - -o
-      - 'jsonpath={range .items[*]}{.metadata.name} {.status.robustness}{"\n"}{end}'
-  delegate_to: "{{ os_upgrade_kubectl_host }}"
-  register: os_upgrade_volumes
-  changed_when: false
-  check_mode: false
-  when: os_upgrade_cluster
-
-- name: Pre-flight | No Longhorn volume degraded or faulted
-  ansible.builtin.assert:
-    that:
-      - os_upgrade_volumes.stdout_lines | select('match', '.* (degraded|faulted)$') | list | length == 0
-    fail_msg: >-
-      Not starting {{ inventory_hostname }}: Longhorn volumes not healthy:
-      {{ os_upgrade_volumes.stdout_lines | select('match', '.* (degraded|faulted)$') | list }}.
-      Wait for the rebuild (or fix them, runbook LONGHORN-001) and run again.
-    quiet: true
+# Capacity checks only for k3s nodes: rebooting node1 drains nothing.
+- name: Pre-flight
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/k3s_preflight.yml"
+  vars:
+    k3s_maint_check_capacity: "{{ os_upgrade_is_k3s }}"
   when: os_upgrade_cluster
 
 # --- 2. Upgrade ------------------------------------------------------------
@@ -137,7 +94,7 @@
       - "Reboot already pending: {{ os_upgrade_reboot_required.stat.exists }}"
       - >-
         Real run: upgrade, then if /var/run/reboot-required exists
-        {{ 'drain (from ' ~ os_upgrade_kubectl_host ~ '), reboot, wait Ready, '
+        {{ 'drain (from ' ~ k3s_maint_kubectl_host ~ '), reboot, wait Ready, '
            ~ ('wait 30 s for etcd, ' if os_upgrade_is_master else '')
            ~ 'uncordon, wait for Longhorn' if os_upgrade_is_k3s else 'reboot (no drain, not a k3s node)' }}.
   vars:
@@ -160,7 +117,8 @@
           - --delete-emptydir-data
           - --grace-period=60
           - "--timeout={{ os_upgrade_drain_timeout | default('300s') }}"
-      delegate_to: "{{ os_upgrade_kubectl_host }}"
+      delegate_to: "{{ k3s_maint_kubectl_host }}"
+      register: os_upgrade_drain
       changed_when: true
       when: os_upgrade_is_k3s
 
@@ -171,6 +129,7 @@
         reboot_timeout: 600
         post_reboot_delay: 30
         test_command: uptime
+      register: os_upgrade_reboot
 
     - name: Reboot | Wait for the node to be Ready
       ansible.builtin.command:
@@ -182,7 +141,7 @@
           - "{{ inventory_hostname }}"
           - -o
           - 'jsonpath={.status.conditions[?(@.type=="Ready")].status}'
-      delegate_to: "{{ os_upgrade_kubectl_host }}"
+      delegate_to: "{{ k3s_maint_kubectl_host }}"
       register: os_upgrade_node_ready
       until: os_upgrade_node_ready.stdout == "True"
       retries: 30
@@ -198,28 +157,20 @@
     - name: Reboot | Uncordon the node
       ansible.builtin.command:
         argv: [k3s, kubectl, uncordon, "{{ inventory_hostname }}"]
-      delegate_to: "{{ os_upgrade_kubectl_host }}"
+      delegate_to: "{{ k3s_maint_kubectl_host }}"
       changed_when: true
       when: os_upgrade_is_k3s
 
-    - name: Reboot | Wait until no Longhorn volume is degraded
-      ansible.builtin.command:
-        argv:
-          - k3s
-          - kubectl
-          - -n
-          - longhorn-system
-          - get
-          - volumes.longhorn.io
-          - -o
-          - 'jsonpath={range .items[*]}{.metadata.name} {.status.robustness}{"\n"}{end}'
-      delegate_to: "{{ os_upgrade_kubectl_host }}"
-      register: os_upgrade_volumes_after
-      until: os_upgrade_volumes_after.stdout_lines | select('match', '.* (degraded|faulted)$') | list | length == 0
-      retries: "{{ os_upgrade_longhorn_retries | default(360) }}"
-      delay: 20
-      changed_when: false
+    - name: Reboot | Wait for Longhorn
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/k3s_wait_longhorn.yml"
       when: os_upgrade_is_k3s
+
+    - name: Reboot | How long it took
+      ansible.builtin.debug:
+        msg:
+          - "{{ inventory_hostname }}: drain {{ os_upgrade_drain.delta | default('-') }},
+            reboot {{ os_upgrade_reboot.elapsed | default('-') }} s,
+            Longhorn: {{ (k3s_maint_longhorn_wait.stdout_lines | default(['-']))[-1] if os_upgrade_is_k3s else '-' }}"
 
     - name: Reboot | Remind to check Vault (outside k3s)
       ansible.builtin.debug:
@@ -232,7 +183,7 @@
     - name: Rescue | Uncordon the node
       ansible.builtin.command:
         argv: [k3s, kubectl, uncordon, "{{ inventory_hostname }}"]
-      delegate_to: "{{ os_upgrade_kubectl_host }}"
+      delegate_to: "{{ k3s_maint_kubectl_host }}"
       changed_when: true
       failed_when: false
       when: os_upgrade_is_k3s

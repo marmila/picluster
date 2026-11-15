@@ -1,25 +1,73 @@
 ---
 # Wait until no Longhorn volume is degraded or faulted (after a node came back).
 #
-# Input: k3s_maint_kubectl_host; k3s_maint_longhorn_retries (default 360 x 20 s
-# = 2 h: Longhorn here rebuilds one replica per node at a time, as full copies).
-# Used by move_rancher_to_storage.yml. os_upgrade_node.yml has the same wait
-# inline; it will switch to this file with the os-upgrade improvements.
+# Follows progress instead of counting retries: a rebuild here can take more than
+# an hour (one replica per node at a time, full copies, snapshot purges first; the
+# rancher move on 2026-11-15 waited over 70 minutes), so a fixed limit either
+# stops a healthy rebuild or waits hours for a stuck one. The wait fails when:
+#   - nothing changed for k3s_maint_longhorn_stall_minutes (default 30): the same
+#     volumes degraded, no rebuild or purge progress, no replica state change;
+#   - or after k3s_maint_longhorn_max_hours (default 4) in any case.
+# Prints how long it waited and each change of the degraded count.
+#
+# Input: k3s_maint_kubectl_host. Used by update.yml (tasks/os_upgrade_node.yml)
+# and move_rancher_to_storage.yml.
 
-- name: Longhorn | Wait until no volume is degraded
-  ansible.builtin.command:
-    argv:
-      - k3s
-      - kubectl
-      - -n
-      - longhorn-system
-      - get
-      - volumes.longhorn.io
-      - -o
-      - 'jsonpath={range .items[*]}{.metadata.name} {.status.robustness}{"\n"}{end}'
+- name: Longhorn | Wait until no volume is degraded (fails only when the rebuild stalls)
+  ansible.builtin.shell:
+    cmd: |
+      set -u
+      stall=$(( {{ k3s_maint_longhorn_stall_minutes | default(30) | int }} * 60 ))
+      max=$(( {{ k3s_maint_longhorn_max_hours | default(4) | int }} * 3600 ))
+      start=$(date +%s); changed=$start; prev=""; lastbad=""
+      ns="-n longhorn-system"
+      while :; do
+        now=$(date +%s)
+        if vols=$(k3s kubectl $ns get volumes.longhorn.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.robustness}{"\n"}{end}' 2>/dev/null); then
+          bad=$(printf '%s\n' "$vols" | grep -E ' (degraded|faulted)$' || true)
+          n=$(printf '%s' "$bad" | grep -c . || true)
+          if [ "$n" -eq 0 ]; then
+            echo "$(date -u +%H:%M) Longhorn healthy after $(( (now - start) / 60 )) min"
+            exit 0
+          fi
+          [ "$n" != "$lastbad" ] && echo "$(date -u +%H:%M) degraded or faulted: $n" && lastbad=$n
+          eng=$(k3s kubectl $ns get engines.longhorn.io -o jsonpath='{range .items[*]}{.status.rebuildStatus}{.status.purgeStatus}{"\n"}{end}' 2>/dev/null)
+          rep=$(k3s kubectl $ns get replicas.longhorn.io -o jsonpath='{range .items[*]}{.metadata.name} {.status.currentState}{"\n"}{end}' 2>/dev/null)
+          fp=$(printf '%s\n%s\n%s' "$bad" "$eng" "$rep" | md5sum)
+          if [ "$fp" != "$prev" ]; then prev=$fp; changed=$now; fi
+        fi
+        if [ $(( now - changed )) -ge "$stall" ]; then
+          echo "STALLED: no Longhorn progress for $(( stall / 60 )) min (waited $(( (now - start) / 60 )) min). Still degraded or faulted:"
+          printf '%s\n' "${bad:-unknown}"
+          exit 2
+        fi
+        if [ $(( now - start )) -ge "$max" ]; then
+          echo "TIMEOUT: still not healthy after $(( max / 3600 )) h, although it was progressing. Still degraded or faulted:"
+          printf '%s\n' "${bad:-unknown}"
+          exit 3
+        fi
+        sleep 20
+      done
+    executable: /bin/bash
   delegate_to: "{{ k3s_maint_kubectl_host }}"
-  register: k3s_maint_volumes_after
-  until: k3s_maint_volumes_after.stdout_lines | select('match', '.* (degraded|faulted)$') | list | length == 0
-  retries: "{{ k3s_maint_longhorn_retries | default(360) }}"
-  delay: 20
+  register: k3s_maint_longhorn_wait
+  # async + poll: survives SSH hiccups during a long wait
+  async: "{{ (k3s_maint_longhorn_max_hours | default(4) | int) * 3600 + 600 }}"
+  poll: 30
   changed_when: false
+  failed_when: false
+
+- name: Longhorn | How the wait went
+  ansible.builtin.debug:
+    msg: "{{ k3s_maint_longhorn_wait.stdout_lines | default(['no output']) }}"
+  when: k3s_maint_longhorn_wait is not skipped
+
+- name: Longhorn | Stop when the rebuild did not finish
+  ansible.builtin.fail:
+    msg: >-
+      Longhorn did not get healthy: {{ (k3s_maint_longhorn_wait.stdout_lines | default(['no output']))[-2:] | join(' ') }}
+      Check the volumes (runbook LONGHORN-001, node-os-maintenance.md "Volume stuck in degraded"); tunables
+      -e k3s_maint_longhorn_stall_minutes / k3s_maint_longhorn_max_hours.
+  when:
+    - k3s_maint_longhorn_wait is not skipped
+    - k3s_maint_longhorn_wait.rc | default(1) != 0
