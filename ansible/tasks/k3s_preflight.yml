@@ -107,7 +107,9 @@
   when: (k3s_maint_check_capacity | default(true) | bool) and k3s_maint_load.rc != 0
 
 # Kubelet stats: "fs" is the kubelet's filesystem (the root disk), "imageFs" where the
-# images are (the root disk too, except on node-esp-1/2 since the move to /storage).
+# images are (/storage on node-esp-1/2 since the move, and on the Pis). Usage is computed
+# from availableBytes, as the eviction does: imageFs usedBytes counts only the images, not
+# the Longhorn data on the same filesystem (node-esp-2: 3% by usedBytes, 43% really used).
 - name: Pre-flight | Read root and image disk usage of the other nodes
   ansible.builtin.shell:
     cmd: |
@@ -121,7 +123,7 @@
       except Exception:
           print(n, "?", "?"); sys.exit()
       def pct(f):
-          return str(round(100 * f["usedBytes"] / f["capacityBytes"])) if f and f.get("capacityBytes") else "?"
+          return str(round(100 - 100 * f["availableBytes"] / f["capacityBytes"])) if f and f.get("capacityBytes") and "availableBytes" in f else "?"
       print(n, pct(d.get("fs")), pct((d.get("runtime") or {}).get("imageFs")))' "$n"
       done)
       printf '%s\n' "$out"
