@@ -337,3 +337,93 @@ References:
 - `kubernetes/platform/longhorn/app/base/values.yaml` (`autoCleanupSnapshotAfterOnDemandBackupCompleted`)
 - `kubernetes/platform/velero/config/base/` (schedule and VolumeSnapshotClass)
 - `homelab-docs/node-os-maintenance.md` (slow rebuilds caused by snapshot purges)
+
+## LONGHORN-004 Orphaned Volumes (Released PVs)
+
+<a id="runbook-longhorn-004"></a>
+Runbook ID: `LONGHORN-004`
+Owner: Platform
+Severity: `SEV-4` (wasted replica space, no outage)
+
+Objective: Find Longhorn volumes that no PVC uses any more and delete them safely, so their replicas stop using
+disk space on the nodes.
+
+Triggered by: a `detached` volume with robustness `unknown` in the Longhorn UI or in `kubectl get
+volumes.longhorn.io`, two volumes showing the same PVC name, or a periodic check (after recreating CNPG
+instances, removing an app, or when `/storage` usage looks high).
+
+Background: both StorageClasses (`longhorn`, `longhorn-static`) use reclaim policy `Delete`, so deleting a PVC
+normally deletes its volume too. A PV whose own policy is `Retain` (patched by hand, or set during a restore)
+stays `Released` with its Longhorn volume after the PVC is gone, and nothing cleans it up. On 2026-11-15 an old
+`postgres-keycloak-1` volume (10 GiB, 5 snapshots) was left like that from an earlier recreation of CNPG
+instance 1; it was the only one. Check the policies (on node2):
+
+```bash
+kubectl get storageclass -o custom-columns=NAME:.metadata.name,RECLAIM:.reclaimPolicy,PROVISIONER:.provisioner
+kubectl get pv -o custom-columns=NAME:.metadata.name,RECLAIM:.spec.persistentVolumeReclaimPolicy,CLASS:.spec.storageClassName --no-headers | awk '{print $2, $3}' | sort | uniq -c
+```
+
+Procedure:
+
+1. List candidates (on node2). Released PVs, and Longhorn volumes whose PV is gone:
+
+```bash
+echo "== Released PVs =="; kubectl get pv --no-headers | awk '$5=="Released" {print $1, $2, $6}'
+echo "== Longhorn volumes without a PV =="
+for v in $(kubectl -n longhorn-system get volumes.longhorn.io -o jsonpath='{.items[*].metadata.name}'); do
+  kubectl get pv "$v" >/dev/null 2>&1 || echo "$v $(kubectl -n longhorn-system get volumes.longhorn.io "$v" -o jsonpath='{.status.state} {.status.kubernetesStatus.namespace}/{.status.kubernetesStatus.pvcName}')"
+done
+```
+
+   The second list only flags volumes created by hand or whose PV was deleted already; normally it is empty.
+
+2. Check each candidate before deleting. Set the volume name and the namespace and PVC name it shows:
+
+```bash
+VOL=pvc-...; NS=<namespace>; PVC=<pvc name>
+echo "== live PVC points to =="; kubectl -n "$NS" get pvc "$PVC" -o jsonpath='{.spec.volumeName}{"\n"}' 2>&1
+echo "== live PVC uid =="; kubectl -n "$NS" get pvc "$PVC" -o jsonpath='{.metadata.uid}{"\n"}' 2>&1
+echo "== PV of the candidate =="; kubectl get pv "$VOL" -o custom-columns=STATUS:.status.phase,CLAIM:.spec.claimRef.name,UID:.spec.claimRef.uid,RECLAIM:.spec.persistentVolumeReclaimPolicy 2>&1
+echo "== Longhorn volume =="; kubectl -n longhorn-system get volumes.longhorn.io "$VOL" -o custom-columns=STATE:.status.state,ROBUST:.status.robustness,SIZE:.spec.size
+echo "== pods using the PVC name =="; kubectl -n "$NS" get pods -o json | jq -r --arg p "$PVC" '.items[] | select([.spec.volumes[]?.persistentVolumeClaim.claimName] | index($p)) | .metadata.name + " " + .status.phase'
+```
+
+   Delete only when **all** of these hold:
+
+   - the live PVC points to a **different** volume (or no PVC of that name exists any more and the app is gone
+     on purpose);
+   - the PV is `Released` (or `NotFound`) and its claim UID is **not** the live PVC's UID;
+   - the Longhorn volume is `detached`;
+   - the workload owning the PVC name is healthy (for CNPG: `kubectl -n databases get pods -l cnpg.io/cluster=<cluster>`).
+
+   If the data might still be needed (app removed, not recreated), keep it: a Velero backup of the namespace
+   (`BACKUP-001`) or a Longhorn backup from the UI first.
+
+3. Delete the PV, then the Longhorn volume (removes its replicas and local snapshots):
+
+```bash
+kubectl delete pv "$VOL" --ignore-not-found
+kubectl -n longhorn-system delete volumes.longhorn.io "$VOL"
+```
+
+Verify:
+
+```bash
+kubectl -n longhorn-system get volumes.longhorn.io | grep -c "$VOL"    # 0
+kubectl -n longhorn-system get replicas.longhorn.io | grep -c "$VOL"   # 0 after about a minute
+kubectl get pv --no-headers | awk '$5=="Released"' | wc -l            # one less
+```
+
+And the owning workload still runs.
+
+Rollback:
+
+1. A deleted volume cannot be restored from the cluster. Its Longhorn backups in RustFS (bucket `k3s-longhorn`)
+   stay until Velero's retention deletes them (72 h); restore from there in the Longhorn UI (Backup → restore to
+   a new volume), or a namespace with Velero (`BACKUP-001`).
+
+References:
+
+- 2026-11-15: orphaned `postgres-keycloak-1` volume `pvc-07851821…` (PV `Released`, `Retain`), deleted with
+  these steps.
+- `kubernetes/platform/longhorn/app/base/values.yaml`

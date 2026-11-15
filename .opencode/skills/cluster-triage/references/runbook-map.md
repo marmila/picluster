@@ -139,6 +139,8 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | --- | --- |
 | `LONGHORN-001` | A Longhorn volume is degraded or faulted |
 | `LONGHORN-002` | A volume stays `attaching`, a pod is stuck in `Init` with `FailedAttachVolume`, an instance-manager is in `error` |
+| `LONGHORN-003` | Snapshot cleanup job failed, or snapshots piling up on volumes |
+| `LONGHORN-004` | A `detached` volume with robustness `unknown`, a `Released` PV, two volumes with the same PVC name |
 
 ### Data services — `runbooks/components/data-services.md`
 
