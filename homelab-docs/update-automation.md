@@ -143,8 +143,20 @@ The Flux operator only installs Flux versions it knows. Upgrade in two steps, on
    that Flux version. Otherwise the FluxInstance stalls (`FluxInstanceNotReady`, runbook GITOPS-008).
 
 Example: Flux 2.10 needs flux-operator 0.62.0 or later. On 2026-11-09 it was merged with operator 0.60 and
-stalled; Flux went back to 2.9.5, the operator went to 0.62.1 the same day, and **2.10 is the next manual
-update** (tick "fluxcd/flux2 to v2.10.0" in the Dependency Dashboard, issue #238).
+stalled; Flux went back to 2.9.5, the operator went to 0.62.1 the same day, and Flux 2.10.0 went in on
+2026-11-12.
+
+**After the distribution upgrade**, the `flux-instance` HelmRelease can stay `Failed` ("timeout waiting for
+FluxInstance … InProgress") while the FluxInstance itself is `Ready=True`: Flux replaced its own controllers,
+helm-controller included, in the middle of the upgrade. `tofu-controller` and everything that waits on it show
+not-ready too. Fix, on node2:
+
+```bash
+flux reconcile hr flux-instance -n flux-system --reset
+flux reconcile kustomization flux-operator-instance -n flux-system
+```
+
+Steps for any manual update: [cluster-maintenance.md section 5.1](cluster-maintenance.md#51-doing-a-manual-update-step-by-step).
 
 After a distribution upgrade, update the `flux` CLI on node2 to the same version: `make admin-cli` (it reads
 `fluxcd_version` from `ansible/vars/picluster.yml`, which Renovate updates in the same group).

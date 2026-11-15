@@ -203,6 +203,40 @@ Rules for the manual ones:
 | system-upgrade-controller | runs k3s upgrades; check the controller pod restarts cleanly | yes |
 | **k3s** | upgrades every node (see 7.1) | **no** |
 
+### 5.1 Doing a manual update, step by step
+
+One evening, about 30–60 minutes. The same steps for every manual component.
+
+1. **The PR is ready:** every check is green, including **Validate prod manifests** (required). If that check
+   is missing ("Expected — Waiting for status to be reported"), the PR is older than the check: tick
+   **"If you want to rebase/retry this PR"** at the bottom of the PR description and wait for Renovate (up to
+   about an hour; the box unticks itself). Faster: **Close pull request**, then **Reopen pull request**:
+   reopening starts the checks within a minute.
+2. **Before merging:** ntfy is quiet, the health check (4.3) is clean, and you skimmed the release notes in
+   the PR. If something is already broken, fix that first.
+3. **Merge.**
+4. **Apply it now** instead of waiting up to 10 minutes for Flux (on node2):
+
+   ```bash
+   flux reconcile kustomization <name> -n flux-system --with-source
+   ```
+
+   | Component | `<name>` |
+   |---|---|
+   | Longhorn | `longhorn-app` |
+   | Flux operator, instance, distribution | `flux-operator-instance` |
+   | system-upgrade-controller | `system-upgrade-app` (never `system-upgrade-config`: it holds the k3s plans) |
+   | Cilium | `cilium-app` |
+
+5. **Watch** until it's done (the table below says what "done" means), then run the health check (4.3).
+6. **Close:** no ntfy alert for 30 minutes, then tick the critical-update boxes in the weekly issue.
+
+| Component | Done when | Watch out for |
+|---|---|---|
+| Longhorn | HelmRelease `True` on the new chart, `longhorn-manager` image on the new version, no attached volume outside `healthy` | first: CPU room on every node ([update-automation.md](update-automation.md#longhorn-upgrades-check-cpu-room-first)). Volumes may show `degraded` while they rebuild. **Do not restart instance-manager pods**: they hold the disks of every volume on that node |
+| Flux distribution | FluxInstance `Ready=True`, controllers on the new images, nothing not-ready | the `flux-instance` HelmRelease can stay `Failed` (timeout) because Flux replaced its own controllers mid-upgrade. Once the FluxInstance is Ready: `flux reconcile hr flux-instance -n flux-system --reset`; the `tofu-controller` chain then follows |
+| system-upgrade-controller | deployment image on the new version, pod `Running`, **no jobs** in `system-upgrade` | jobs appearing means it started upgrading k3s on the nodes: stop and check `kubectl -n system-upgrade get plans,jobs`. One pod restart right after the upgrade is normal |
+
 ---
 
 ## 6. Monthly: first Monday
