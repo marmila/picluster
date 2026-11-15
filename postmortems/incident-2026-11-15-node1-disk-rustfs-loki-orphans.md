@@ -119,8 +119,8 @@ separate disk for `/storage` if it goes above about 70% again.
     use `sudo sh -c '...'`.
   - `sudo -v` asks for a password on nodes with passwordless sudo.
 - The triage agent could not look at node1 and repeated two runbook statements that no longer held: "move
-  node-esp-2 first", and DiskPressure at 85% (node-esp-1 stayed `DiskPressure=False` at 88.8%; CLUSTER-012 now
-  says how to read the real threshold).
+  node-esp-2 first", and DiskPressure at 85% (k3s actually evicts at 95%, `configz` checked; CLUSTER-012,
+  alerting.md and the `NodeRootDiskFillingUp` description corrected).
 
 ---
 

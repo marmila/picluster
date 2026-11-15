@@ -3,9 +3,10 @@
 #
 # The mixin filesystem alerts fire at 5% and 3% free, and KubeNodePressure is
 # severity info (not routed), so node-esp-2 reached DiskPressure and evicted
-# pods on 2026-11-07 without any notification. The kubelet evicts at 85% used
-# (imagefs.available<15%) and image GC starts at 70% (k3s_kubelet_config), so
-# 80% leaves time to act.
+# pods on 2026-11-07 without any notification. k3s evicts at 95% used
+# (imagefs/nodefs.available<5%, checked with configz 2026-11-15), image GC starts
+# at 70% (k3s_kubelet_config), and image pulls can add GBs at once, so 80% leaves
+# time to act.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -20,7 +21,7 @@ spec:
     - alert: NodeRootDiskFillingUp
       annotations:
         summary: Root disk on {{ $labels.nodename }} is over 80% full.
-        description: Root filesystem on {{ $labels.nodename }} is {{ printf "%.1f" $value }}% full. The kubelet evicts pods at 85%. Usually container images or the systemd journal. Runbook CLUSTER-012.
+        description: Root filesystem on {{ $labels.nodename }} is {{ printf "%.1f" $value }}% full. The kubelet evicts pods at 95%, and image pulls can add several GB at once. Usually container images or the systemd journal; on node1 (Vault, RustFS, no eviction) it is urgent. Runbook CLUSTER-012.
         runbook: CLUSTER-012
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
       expr: |

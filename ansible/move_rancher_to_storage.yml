@@ -5,7 +5,7 @@
 #
 # Why: on node-esp-1/2 the PXE layout gives / a fixed 50 GB; /var/lib/rancher is
 # ~27 GB of it, all images in use, so image GC frees nothing and the disk keeps
-# reaching the 85% eviction threshold (2026-09, 2026-11-07, 2026-11-14).
+# filling up (2026-09, 2026-11-07, 2026-11-14; k3s evicts at 95%, image pulls add GBs at once).
 # /storage (lv-data, ext4, ~412 GB) also holds the Longhorn data.
 #
 # Only hosts with rancher_storage_dir in host_vars, one node at a time. Per node:

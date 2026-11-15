@@ -105,16 +105,16 @@ Thresholds (`k3s_kubelet_config` in `ansible/vars/picluster.yml`):
 | --- | --- |
 | 70% | kubelet deletes unused images until 60% (`imageGCHighThresholdPercent`) |
 | 80% | `NodeRootDiskFillingUp` fires |
-| 85% | DiskPressure: node tainted `disk-pressure:NoSchedule`, pods evicted (`imagefs.available<15%`) |
+| 95% | DiskPressure: node tainted `disk-pressure:NoSchedule`, pods evicted (k3s default `imagefs.available<5%`, `nodefs.available<5%`) |
 
-The 85% line is not settled: node-esp-2 went into DiskPressure at 84.8% (2026-11-07), but node-esp-1 stayed
-`DiskPressure=False` at 88.8% (2026-11-15). Read the thresholds the kubelet really uses (on node2):
+k3s sets the eviction thresholds itself (5%), not the Kubernetes default (15% / 10%): checked on node-esp-1/2
+on 2026-11-15, when node-esp-1 stayed `DiskPressure=False` at 88.8%. The node-esp-2 DiskPressure of 2026-11-07
+(84.8% when looked at) was most likely a short peak during image pulls of the fluent-bit rollout. Image pulls
+can add several GB at once, so keep nodes below about 85%. Read the thresholds a kubelet really uses (on node2):
 
 ```bash
-kubectl get --raw /api/v1/nodes/<node-name>/proxy/configz | jq '.kubeletconfig.evictionHard'
+kubectl get --raw /api/v1/nodes/<node-name>/proxy/configz | jq -c '.kubeletconfig | {evictionHard, imageGCHighThresholdPercent}'
 ```
-
-Until that is confirmed for every node, treat 85% as the line to stay below.
 
 Container images (`/var/lib/rancher/k3s/agent/containerd`) and logs share the root disk. On the x86 nodes it
 is a 50G LV; Longhorn data is on a separate `/storage` LV and does not count here. On node-esp-1/2 the

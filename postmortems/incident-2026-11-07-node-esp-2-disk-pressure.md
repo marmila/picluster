@@ -11,6 +11,8 @@ A batch of upstream version bumps (kube-prometheus-stack 92.17, Elasticsearch 8.
 
 node-esp-2's root disk reached 84.8%. The kubelet's default eviction threshold (`imagefs.available<15%`, images live on the root disk) put the node into DiskPressure. The kubelet's default image garbage collection also only starts at 85%, so it could not help before eviction started.
 
+> **Correction (2026-11-15):** k3s does not use the Kubernetes default. `configz` on node-esp-1/2 shows `imagefs.available<5%` and `nodefs.available<5%`, so eviction starts at 95%. node-esp-1 stayed `DiskPressure=False` at 88.8%. The 84.8% above was read after the event; the disk most likely peaked near 95% while the rollout pulled the new images. The image GC conclusion still holds.
+
 No alert fired. The mixin filesystem alerts only fire at 5% and 3% free, and `KubeNodePressure` is severity `info`, which Alertmanager does not route.
 
 `journalctl --vacuum-size=500M` freed 3.4G (84.8% → 77%) and DiskPressure cleared. fluent-bit was then re-rolled successfully.

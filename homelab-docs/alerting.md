@@ -242,7 +242,7 @@ kubernetes/platform/kube-prometheus-stack/app/components/flux-monitoring/values.
 
 ## Node disk alerts
 
-The kubelet evicts pods once a node's root disk is 85% full (DiskPressure). The mixin filesystem alerts only fire at 5% and 3% free, and the mixin `KubeNodePressure` alert is severity `info`, which is not routed. On 2026-11-07 node-esp-2 reached DiskPressure and evicted fluent-bit without any notification.
+The kubelet evicts pods once a node's root disk is 95% full (DiskPressure; k3s sets `imagefs.available<5%` and `nodefs.available<5%`, checked with `configz` on 2026-11-15). Image pulls can add several GB at once, so the warning fires at 80%. The mixin filesystem alerts only fire at 5% and 3% free, and the mixin `KubeNodePressure` alert is severity `info`, which is not routed. On 2026-11-07 node-esp-2 reached DiskPressure and evicted fluent-bit without any notification.
 
 | Alert | Fires when | Severity |
 |---|---|---|
