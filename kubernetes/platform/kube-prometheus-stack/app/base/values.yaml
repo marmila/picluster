@@ -83,6 +83,12 @@ prometheus:
     ## POD Storage Spec
     storageSpec:
       volumeClaimTemplate:
+        ## Not backed up by Velero: metrics are disposable, and Prometheus rewrites its blocks, so each
+        ## nightly Longhorn backup was ~50 GB of new data on RustFS (node1 root disk 86%, 2026-11-15).
+        ## Only applies when the PVC is created; the live PVC was labelled by hand (BACKUP-004).
+        metadata:
+          labels:
+            velero.io/exclude-from-backup: "true"
         spec:
           storageClassName: ${STORAGE_CLASS:=longhorn}
           accessModes: ["ReadWriteOnce"]

@@ -154,6 +154,12 @@ kubectl get volumesnapshots -A | grep -v "true" | head
    backup is deleted right after the upload (`autoCleanupSnapshotAfterOnDemandBackupCompleted`); the backup in
    RustFS stays until the Velero TTL (72 h).
 
+   Prometheus is not backed up: its PVC has the label `velero.io/exclude-from-backup=true` (set in the
+   kube-prometheus-stack `volumeClaimTemplate`). Metrics are disposable, and Prometheus rewrites its blocks, so
+   each nightly backup was ~50 GB of new data on node1 (root disk 86%, 2026-11-15). On a PVC created before
+   that change, add the label by hand:
+   `kubectl -n kube-prom-stack label pvc <prometheus pvc> velero.io/exclude-from-backup=true`.
+
 4. Velero not running or schedule paused:
 
 ```bash

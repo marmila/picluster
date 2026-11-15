@@ -37,6 +37,10 @@ rules:
   - apiGroups: [events.k8s.io]
     resources: [events]
     verbs: [get, list, watch]
+  # Lock holders and renew times only (tofu-controller state locks, GITOPS-007; leader election).
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch]
   - apiGroups:
       - helm.toolkit.fluxcd.io
       - kustomize.toolkit.fluxcd.io
