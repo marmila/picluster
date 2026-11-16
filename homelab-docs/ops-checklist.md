@@ -39,26 +39,16 @@ RustFS disk and `rc` on **node1**.
   `make os-upgrade-check`: all OK, 0 packages pending.
 - [x] **Docs consistency check** (`acbd2330`).
 
+### 16 Nov 2026
+- [x] **Morning checks (node2), all OK:**
+  - Nightly Velero backup `full-20261116020024` Completed, empty ERR.
+  - Newest Prometheus backup (`pvc-e1c0c8e4`) still 2026-11-15T03:27, so the exclusion works.
+  - 0 degraded Longhorn volumes, all 7 nodes Ready, all Kustomizations True.
+  - Disks: node1 `/` at 43% (was 54%), highest is node5 `/storage` at 67%; no disk alerts.
+
 ---
 
 ## 1. Checks over the next days
-
-### 16 Nov morning (node2)
-- [ ] Nightly Velero backup Completed, empty ERR
-- [ ] Newest Prometheus backup (`pvc-e1c0c8e4`) still 2026-11-15T03:27
-- [ ] 0 degraded Longhorn volumes, all nodes Ready, all Kustomizations True
-- [ ] node1 about 54%, no disk alerts
-
-```bash
-echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors | tail -3
-echo "== prometheus not backed up =="; kubectl -n longhorn-system get backups.longhorn.io -o custom-columns=VOL:.status.volumeName,CREATED:.status.backupCreatedAt | grep pvc-e1c0c8e4
-echo "== longhorn =="; ~/bin/lh-snaps.sh | tail -3
-echo "== nodes =="; kubectl get nodes
-echo "== flux =="; flux get kustomizations -A | grep -v True || echo "all True"
-echo "== disks =="; P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
-kubectl get --raw "${P}sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%7D%29" | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.mountpoint) \(.value[1] | tonumber | floor)%"' | head -6
-```
-Or tap **Triage** on an alert notification.
 
 ### 17 Nov (node1): Loki retention deletes current data
 - [ ] Count close to 0
