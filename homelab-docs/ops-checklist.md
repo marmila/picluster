@@ -44,10 +44,15 @@ RustFS disk and `rc` on **node1**.
 ## 1. Checks over the next days
 
 ### 16 Nov morning (node2)
-- [ ] Nightly Velero backup Completed, empty ERR
-- [ ] Newest Prometheus backup (`pvc-e1c0c8e4`) still 2026-11-15T03:27
-- [ ] 0 degraded Longhorn volumes, all nodes Ready, all Kustomizations True
-- [ ] node1 about 54%, no disk alerts
+- [x] Nightly Velero backup Completed, empty ERR
+- [x] Newest Prometheus backup (`pvc-e1c0c8e4`) still 2026-11-15T03:27
+- [x] 0 degraded Longhorn volumes, all nodes Ready, all Kustomizations True
+- [x] node1 about 54%, no disk alerts
+
+Outcome 2026-11-16: `full-20261116020024` Completed with no errors (the first nightly run since Prometheus was
+excluded). No new Prometheus backup after 15 Nov. 0 degraded volumes, 7/7 nodes Ready, no Kustomization
+not Ready. node1 `/` at 43%, below the expected 54%: the old backups are already expiring. Highest disk:
+node5 `/storage` 67% (section 3).
 
 ```bash
 echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors | tail -3
