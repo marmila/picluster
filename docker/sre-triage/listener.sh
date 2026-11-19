@@ -21,7 +21,10 @@ OPT="${OPT_DIR:-/opt/sre-triage}"
 REPO="${WORK_DIR:-/work}/picluster"
 STATE="${HOME}/state"           # emptyDir: lost on restart, which also resets the daily count
 ALIVE="${STATE}/alive"          # touched on every ntfy event (incl. keepalives): liveness probe
-REPORT_MAX_BYTES=3800           # ntfy message limit is 4096 bytes
+# Report parts: ntfy takes 4096 bytes, but Android push (FCM) cuts the whole JSON at 4000 bytes,
+# and newlines, quotes and <>& grow when escaped. 2500 bytes per part leaves room for that.
+REPORT_PART_BYTES=2500
+REPORT_MAX_PARTS=4
 mkdir -p "$STATE"
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*" >&2; }
@@ -43,6 +46,33 @@ sync_repo() {
   fi
   rm -rf "$REPO/.claude/skills" && mkdir -p "$REPO/.claude" \
     && cp -r "$REPO/.opencode/skills" "$REPO/.claude/skills"
+}
+
+# Posts a long text as numbered parts, split at blank lines (a paragraph longer than a part is
+# cut hard). awk runs in the C locale, so length() counts bytes; iconv drops a cut UTF-8 char.
+reply_parts() {
+  local title="$1" text="$2" total i body
+  rm -f "$STATE"/part.*
+  printf '%s\n' "$text" | LC_ALL=C awk -v max="$REPORT_PART_BYTES" -v dir="$STATE" '
+    function out() { if (cur == "") return; n++; f = dir "/part." n; printf "%s", cur > f; close(f); cur = "" }
+    BEGIN { RS = ""; n = 0; cur = "" }
+    {
+      p = $0
+      if (cur != "" && length(cur) + 2 + length(p) > max) out()
+      while (length(p) > max) { out(); cur = substr(p, 1, max); out(); p = substr(p, max + 1) }
+      cur = (cur == "" ? p : cur "\n\n" p)
+    }
+    END { out() }'
+  total=$(find "$STATE" -maxdepth 1 -name 'part.*' | wc -l)
+  (( total == 0 )) && { reply "$title" "<empty>"; return; }
+  for (( i = 1; i <= total && i <= REPORT_MAX_PARTS; i++ )); do
+    body=$(iconv -f utf-8 -t utf-8 -c "$STATE/part.$i")
+    if (( i == REPORT_MAX_PARTS && total > REPORT_MAX_PARTS )); then
+      body+=$'\n\n'"…$(( total - REPORT_MAX_PARTS )) more part(s). Full report: \`kubectl -n sre-triage logs deploy/sre-triage\`"
+    fi
+    if (( total == 1 )); then reply "$title" "$body"; else reply "$title $i/$total" "$body"; fi
+    sleep 1   # keep the parts in order on the phone
+  done
 }
 
 running() { [[ -f "$STATE/pid" ]] && kill -0 "$(cat "$STATE/pid")" 2>/dev/null; }
@@ -98,14 +128,9 @@ triage() {
   elif grep -qiE 'authenticat|unauthori[sz]ed|401|oauth|/login|invalid.*(token|api key)' "$STATE/err.log" "$out" 2>/dev/null && [[ $rc -ne 0 || "$is_error" == "true" ]]; then
     reply "Triage failed: authentication" "Claude Code rejected the token: renew it (sre-triage-agent.md, 9.2)." 4 warning
   elif (( rc != 0 )) || [[ "$is_error" == "true" || -z "$result" ]]; then
-    reply "Triage failed: exit ${rc}" "$(printf '%s\n\n%s' "${result:0:1500}" "$(tail -c 1000 "$STATE/err.log")")" 4 warning
+    reply "Triage failed: exit ${rc}" "$(printf '%s\n\n%s' "$(printf '%s' "$result" | head -c 1200 | iconv -f utf-8 -t utf-8 -c)" "$(tail -c 800 "$STATE/err.log" | iconv -f utf-8 -t utf-8 -c)")" 4 warning
   else
-    if (( ${#result} > REPORT_MAX_BYTES )); then
-      result="$(printf '%s' "$result" | head -c "$REPORT_MAX_BYTES" | iconv -f utf-8 -t utf-8 -c)
-
-…cut. Full report: \`kubectl -n sre-triage logs deploy/sre-triage\`"
-    fi
-    reply "Triage report" "$result"
+    reply_parts "Triage report" "$result"
   fi
 }
 

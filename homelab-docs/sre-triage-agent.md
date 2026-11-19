@@ -213,8 +213,11 @@ Behaviour, in order:
    `$PROMPT` is "Triage all firing alerts" for `triage`, otherwise "Triage all firing alerts, focusing on: <the
    message text>".
 6. **Reply:** POST the report to `$NTFY_REPLY_URL` with headers `Title: Triage report`, `Markdown: yes`,
-   `Tags: robot`. ntfy messages are limited to 4096 bytes: cut at about 3,800 and add "full report:
+   `Tags: robot`. ntfy takes 4096 bytes, but Android push cuts the notification JSON at 4000 bytes and
+   escaping makes Markdown grow, so a long report is sent in parts of at most 2,500 bytes, split at blank
+   lines ("Triage report 1/2", "2/2"). After 4 parts the last one ends with "full report:
    `kubectl -n sre-triage logs deploy/sre-triage`". The full report always goes to the pod log (and so to Loki).
+   (Before 2026-11-19 the report was cut at 3,800 bytes, which Android showed truncated.)
 7. **Errors:** timeout, authentication error (expired token) or any non-zero exit → reply "Triage failed:
    <reason>" with `Priority: high`. A failure never stays silent.
 
@@ -301,11 +304,13 @@ The alert notifications come from the Alertmanager webhook to `ntfy_url` in Vaul
 ntfy accepts publish options as query parameters, so the button is added to that URL, again only in Vault:
 
 ```text
-https://ntfy.sh/<alerts-topic>?template=alertmanager&actions=<url-encoded action>
+https://ntfy.sh/<alerts-topic>?actions=<url-encoded action>&tpl=yes&t=<title template>&m=<message template>
 action: http, Triage, https://ntfy.sh/<command-topic>, method=POST, body=triage
 ```
 
 Every alert then shows a **Triage** button; the "resolved" messages get it too, which is harmless.
+The `tpl`/`t`/`m` parameters are the compact alert template, also added by Stage 5
+([alerting.md](alerting.md#message-size), "Message size").
 
 `make external-services` (or `make load-external-services-keys`) adds the action automatically
 (`tasks/load_alertmanager_notifications_into_vault.yml`): it reads `ntfy_command_url` from

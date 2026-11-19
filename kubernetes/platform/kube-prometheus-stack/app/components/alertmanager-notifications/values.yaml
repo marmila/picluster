@@ -42,6 +42,11 @@ alertmanager:
         webhook_configs:
           - url_file: /etc/alertmanager/secrets/alertmanager-notifications/ntfy_url
             send_resolved: true
+            # ntfy rejects a message over 4096 bytes after templating (HTTP 400, not retried:
+            # the notification is lost). The compact template set by
+            # ansible/tasks/load_alertmanager_notifications_into_vault.yml keeps 5 alerts
+            # around 2 KB; the rest is shown as "+N more" (truncatedAlerts).
+            max_alerts: 5
       - name: healthchecks
         webhook_configs:
           - url_file: /etc/alertmanager/secrets/alertmanager-notifications/healthchecks_url

@@ -115,7 +115,8 @@ Both URLs contain the secret part (the ntfy topic name and the healthchecks.io c
 >
 > Keep a backup of `~/.secrets`: a rebuild reads the URLs from that file. Keep `ntfy_url` there without the
 > Triage button: Stage 5 appends it from `~/.secrets/sre-triage.ini` ([sre-triage-agent.md](sre-triage-agent.md#68-the-triage-button-in-ntfy) 6.8),
-> so a direct `vault kv put` with the plain URL below removes the button until the next run. To change a URL later, edit the file and run `make load-external-services-keys`, or write it to Vault directly:
+> and replaces `?template=alertmanager` with the compact template (see "Message size" below), so a direct
+> `vault kv put` with the plain URL below removes both until the next run. To change a URL later, edit the file and run `make load-external-services-keys`, or write it to Vault directly:
 >
 > ```shell
 > vault kv put secret/alertmanager/notifications \
@@ -124,8 +125,43 @@ Both URLs contain the secret part (the ntfy topic name and the healthchecks.io c
 > ```
 
 
-- **ntfy:** use a long random topic name. On ntfy.sh anyone who knows the name can read the topic. `?template=alertmanager` makes ntfy format the Alertmanager payload as a readable message.
+- **ntfy:** use a long random topic name. On ntfy.sh anyone who knows the name can read the topic. `?template=alertmanager` makes ntfy format the Alertmanager payload as a readable message; Stage 5 swaps it for the compact template below.
 - **healthchecks.io:** create a check with a 1 minute period and about 5 minutes grace time. Add a notification integration (for example ntfy on the same topic, or email), or nobody hears when the pings stop.
+
+### Message size
+
+ntfy limits a message to 4096 bytes, and Android push (Firebase) cuts the whole notification JSON at
+4000 bytes: the app then shows the cut text unless the subscription uses instant delivery. Two problems
+came from that (fixed 2026-11-19):
+
+- **Lost alerts.** ntfy's built-in `?template=alertmanager` prints receiver, start time and the long
+  Prometheus source URL for every alert. A group of 4 or more alerts went over 4096 bytes after
+  templating; ntfy answered HTTP 400 ("message or title is too large after replacing template") and
+  Alertmanager does not retry a 4xx, so the notification was dropped. Tested on ntfy.sh: 1 alert
+  1046 bytes, 3 alerts 3084, 4 alerts HTTP 400.
+- **Cut text.** Groups of 2–3 alerts landed near 4000 bytes and arrived cut on the phone.
+
+Fix:
+
+- `max_alerts: 5` on the ntfy webhook (`components/alertmanager-notifications/values.yaml`). Alertmanager
+  sends the number of left-out alerts as `truncatedAlerts`.
+- Stage 5 (`ansible/tasks/load_alertmanager_notifications_into_vault.yml`) replaces
+  `template=alertmanager` in `ntfy_url` with an inline ntfy template (`tpl=yes&t=…&m=…`). Per alert:
+  summary, namespace/node/pod/instance, the description cut to 300 characters and the runbook ID. The
+  title shows severity and count, for example `🚨 KubePodCrashLooping [warning] (5+7)`, and the message
+  ends with "+7 more not listed". 5 alerts with long descriptions come to about 2 KB.
+
+To change the template, edit that task and run `make load-external-services-keys`.
+
+To check whether notifications were lost, look for failed webhook calls on node2:
+
+```shell
+kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager | grep -iE 'notify.*(fail|error)|40041' | tail -5
+```
+
+On iOS the lock-screen notification shows only the first 100 characters (ntfy's APNs limit); open the
+app for the full text. On Android, enable **instant delivery** on the alerts topic so a message cut by
+Firebase is replaced by the full one.
 
 ### Watchdog rule
 

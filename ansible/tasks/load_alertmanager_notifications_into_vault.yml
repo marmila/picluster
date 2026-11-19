@@ -30,6 +30,37 @@
         healthchecks_url = https://hc-ping.com/<check-uuid>
     quiet: true
 
+# Compact alert template (homelab-docs/alerting.md "Message size"). ntfy's built-in
+# ?template=alertmanager prints receiver, start time and the long Prometheus source URL for
+# every alert: 4 alerts in one group pass 4096 bytes, ntfy answers HTTP 400 and Alertmanager
+# drops the notification; around 3 KB Android push already cuts the text. This inline template
+# (tpl=yes, t=title, m=message) prints summary, labels, the description cut to 300 characters
+# and the runbook ID; with max_alerts: 5 in Alertmanager a message stays around 2 KB.
+# Replaces any template/tpl/title/message parameter already in ntfy_url, so the ini can keep
+# ?template=alertmanager. !unsafe: the {{ }} are ntfy (Go) templates, not Jinja.
+- name: Use the compact alert template in the ntfy URL
+  ansible.builtin.set_fact:
+    alertmanager_ntfy_url: >-
+      {{ alertmanager_ntfy_url.split('?')[0] ~ '?' ~ (
+           ((alertmanager_ntfy_url.split('?', 1)[1].split('&') if '?' in alertmanager_ntfy_url else [])
+            | reject('match', '(template|tpl|title|message|t|m)=') | reject('equalto', '') | list)
+           + ['tpl=yes',
+              't=' ~ (alertmanager_ntfy_title_tpl | urlencode | replace('/', '%2F')),
+              'm=' ~ (alertmanager_ntfy_message_tpl | urlencode | replace('/', '%2F'))]
+         ) | join('&') }}
+  vars:
+    alertmanager_ntfy_title_tpl: !unsafe >-
+      {{if eq .status "resolved"}}✅ Resolved:{{else}}🚨{{end}} {{.commonLabels.alertname}}{{with .commonLabels.severity}} [{{.}}]{{end}}{{if or (gt (len .alerts) 1) .truncatedAlerts}} ({{len .alerts}}{{with .truncatedAlerts}}+{{.}}{{end}}){{end}}
+    alertmanager_ntfy_message_tpl: !unsafe |-
+      {{range .alerts}}{{if eq .status "firing"}}🔥{{else}}✅{{end}} {{with .annotations.summary}}{{.}}{{else}}{{.labels.alertname}}{{end}}
+      {{with .labels.namespace}}ns={{.}} {{end}}{{with .labels.node}}node={{.}} {{end}}{{with .labels.pod}}pod={{.}} {{end}}{{with .labels.instance}}instance={{.}}{{end}}
+      {{with .annotations.description}}{{trunc 300 .}}
+      {{end}}{{with .annotations.runbook}}Runbook: {{.}}
+      {{else}}{{with .annotations.runbook_url}}Runbook: {{.}}
+      {{end}}{{end}}
+      {{end}}{{with .truncatedAlerts}}+{{.}} more not listed (see Alertmanager).{{end}}
+  no_log: true
+
 # Triage button (homelab-docs/sre-triage-agent.md 6.8): ntfy takes publish options as query
 # parameters, so the button is an 'actions=' parameter on ntfy_url, pointing at the agent's
 # command topic from sre-triage.ini. Added here, not in the ini, so the command topic is kept
