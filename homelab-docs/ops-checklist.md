@@ -124,9 +124,15 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   ```
 - [x] **2c. node1 `/var/log` (2.7 GB):** 2 GB was `/var/log/fluentbit.log` (about 54k lines/day, no rotation),
   truncated 2026-11-19. The errors in it (syslog parse errors, mis-indented `Self_Hostname`) are fixed by
-  cherry-pick Batch A (`e513a832`, `6ae134a1`, `4d30396a`); no config change before that batch. Open: node1
-  logs `getaddrinfo(fluentd.homelab.marmilan.com): Domain name not found`, so its logs do not reach Fluentd.
-  Check `dig +short fluentd.homelab.marmilan.com` on node1 against `@1.1.1.1` (node1's own DNS?).
+  cherry-pick Batch A (`e513a832`, `6ae134a1`, `4d30396a`); no config change before that batch.
+- [ ] **2e. node1 logs never reach Fluentd** (found 2026-11-19): `getaddrinfo(fluentd.homelab.marmilan.com):
+  Domain name not found`. Inside the network the zone is served by bind9 on node1 (`host_vars/node1.yml`,
+  via gateway 10.0.0.1), which has no `fluentd` record (`dig @10.0.0.11` empty; the public IONOS record
+  `@1.1.1.1` = 10.0.0.66 is not used inside). external-dns (rfc2136 → node1 bind) should create it, but the
+  Fluentd Service uses `external-dns.alpha.kubernetes.io/hostname`, which external-dns v0.22 ignores.
+  Fix: upstream `89e0ced1`, so it is **required, not optional**: apply it with cherry-pick Batch A.
+  Verify after: `dig +short fluentd.homelab.marmilan.com @10.0.0.11` → 10.0.0.66, and the error stops in
+  `/var/log/fluentbit.log`.
 - [ ] **2d. Per-bucket size metric and growth alert** (postmortem action 7): proposal first.
 
 ---
