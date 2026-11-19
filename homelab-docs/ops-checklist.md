@@ -105,19 +105,28 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
 
 ## 2. node1 / RustFS follow-ups (read-only, node1)
 
-- [ ] **2a. Live Loki objects with extra copies** (postmortem action 5):
+- [x] **2a. Live Loki objects with extra copies** (postmortem action 5). 2026-11-19: 4 objects, negligible.
+  Fast check (one `find`, seconds; a loop with one `find` per object takes far too long):
   ```bash
-  sudo sh -c 'for o in /storage/rustfs/k3s-loki/fake/*/*/; do [ -e "$o/xl.meta" ] || continue; n=$(find "$o" -mindepth 1 -maxdepth 1 -type d | wc -l); [ "$n" -gt 1 ] && echo x; done' | wc -l
+  sudo sh -c 'cd /storage/rustfs/k3s-loki && find fake -mindepth 3 -maxdepth 3 -type d -printf "%h\n"' | sort | uniq -c | awk '$1>1' | wc -l
   ```
-- [ ] **2b. Orphaned objects in other buckets** (run in tmux):
+- [x] **2b. Orphaned objects in other buckets.** 2026-11-19: longhorn, tempo, barman 0. **velero 95**: the
+  `full-*.tar.gz` of every expired daily backup since 10 Aug (TTL 72h), 3.2 GB; same RustFS bug as Loki.
+  94 removed on disk (list in `~/velero-orphans.txt` on node1, `xl.meta` re-checked before each `rm`);
+  the 15 Nov `full-manual-qzwqh` archive left in place. node1 `/` 39% → 37%.
+  Check per bucket (objects with data but no `xl.meta`); expect about one new Velero orphan per day
+  until RustFS is fixed, so repeat now and then:
   ```bash
-  for b in k3s-longhorn k3s-tempo k3s-barman k3s-velero; do echo "== $b =="; sudo sh -c "find /storage/rustfs/$b -mindepth 1 -type d -name '*-*-*-*-*' -printf '%h\n' | sort -u | while read o; do [ -e \"\$o/xl.meta\" ] || echo \"\$o\"; done | wc -l"; done
+  b=k3s-velero; f=$(mktemp)
+  sudo find /storage/rustfs/$b -type f -name xl.meta -printf '%h\n' | sort -u > $f.m
+  sudo find /storage/rustfs/$b -type f -name 'part.1' -printf '%h\n' | sed 's|/[^/]*$||' | sort -u > $f.d
+  comm -13 $f.m $f.d | wc -l; rm -f $f $f.m $f.d
   ```
-  Expected for 2a and 2b: 0 or close.
-- [ ] **2c. node1 `/var/log` (2.7 GB):**
-  ```bash
-  sudo du -xh --max-depth=2 /var/log | sort -h | tail -10
-  ```
+- [x] **2c. node1 `/var/log` (2.7 GB):** 2 GB was `/var/log/fluentbit.log` (about 54k lines/day, no rotation),
+  truncated 2026-11-19. The errors in it (syslog parse errors, mis-indented `Self_Hostname`) are fixed by
+  cherry-pick Batch A (`e513a832`, `6ae134a1`, `4d30396a`); no config change before that batch. Open: node1
+  logs `getaddrinfo(fluentd.homelab.marmilan.com): Domain name not found`, so its logs do not reach Fluentd.
+  Check `dig +short fluentd.homelab.marmilan.com` on node1 against `@1.1.1.1` (node1's own DNS?).
 - [ ] **2d. Per-bucket size metric and growth alert** (postmortem action 7): proposal first.
 
 ---
