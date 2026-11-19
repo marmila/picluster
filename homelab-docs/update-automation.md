@@ -113,7 +113,7 @@ only on **weekdays between 10:00 and 18:00 Europe/Rome**. Renovate does the merg
 | Grafana dashboard revisions | any weekday 10:00–18:00 | — |
 | **Vault** (minor/patch) | Tuesday 10:00–18:00 | 7 days |
 | **CloudNativePG** operator (minor/patch) | Wednesday 10:00–18:00 | 7 days |
-| **Istio** (minor/patch) | Thursday 10:00–18:00 | 7 days |
+| **Istio** (patch only; minor versions are manual, one at a time) | Thursday 10:00–18:00 | 7 days |
 
 A PR whose check fails stays open, with the failure on it: nothing broken is merged. Renovate tries again
 on the next run, and the weekly issue lists it.

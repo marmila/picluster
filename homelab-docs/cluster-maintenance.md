@@ -181,7 +181,7 @@ Tick the checklist, add a comment if anything was unusual, close the issue. The 
 |---|---|
 | Tuesday | Vault |
 | Wednesday | CloudNativePG |
-| Thursday | Istio |
+| Thursday | Istio (patch only: a minor version like 1.31 is manual, one minor at a time, raise the cap in `automerge.json5`) |
 
 Nothing to do unless ntfy alerts. A failed Helm upgrade is rolled back by Flux on its own.
 

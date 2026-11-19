@@ -79,18 +79,18 @@
       automergeSchedule: ["* 10-17 * * 3"],
     },
     {
-      description: "Istio: automerge on Thursday",
+      description: "Istio: automerge patches on Thursday; minor versions are manual (rule below)",
       matchDepNames: ["istio/istio"],
-      matchUpdateTypes: ["minor", "patch", "digest"],
+      matchUpdateTypes: ["patch", "digest"],
       minimumReleaseAge: "7 days",
       minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 4"],
     },
     {
-      description: "Istio Helm charts: automerge on Thursday (same group as istio/istio)",
+      description: "Istio Helm charts: automerge patches on Thursday (same group as istio/istio)",
       matchDepNames: ["base", "cni", "istiod", "ztunnel"],
       matchFileNames: ["kubernetes/platform/istio/**"],
-      matchUpdateTypes: ["minor", "patch", "digest"],
+      matchUpdateTypes: ["patch", "digest"],
       minimumReleaseAge: "7 days",
       minimumReleaseAgeBehaviour: "timestamp-required",
       automergeSchedule: ["* 10-17 * * 4"],
@@ -140,6 +140,31 @@
       // (ansible-galaxy collection install). Raise this cap when a collection release supports the next version.
       matchDepNames: ["ansible-core"],
       allowedVersions: "<2.22",
+    },
+    {
+      description: "Istio minor versions are manual, one at a time",
+      // Istio supports upgrading one minor version at a time (1.30 -> 1.31 -> 1.32), and a .0 release
+      // deserves a watched evening. Patches still automerge on Thursday (rules above).
+      matchDepNames: ["istio/istio", "base", "cni", "istiod", "ztunnel"],
+      matchFileNames: ["kubernetes/platform/istio/**", "ansible/**"],
+      matchUpdateTypes: ["minor"],
+      automerge: false,
+    },
+    {
+      description: "Istio charts: cap below the next minor version",
+      // The cluster runs 1.30. Until 2026-11-17 the charts came from the retired GCS bucket, which stopped
+      // at 1.30, so Renovate jumped straight to 1.32. Raise this cap one minor version at a time:
+      // "<1.32" for the 1.31 upgrade, then "<1.33" for 1.32.
+      matchDepNames: ["base", "cni", "istiod", "ztunnel"],
+      matchFileNames: ["kubernetes/platform/istio/**"],
+      allowedVersions: "<1.31",
+    },
+    {
+      description: "istioctl (istio/istio) stays within one minor version of the cluster",
+      // istioctl is already on 1.31, one ahead of the cluster's 1.30, which istioctl supports.
+      // Raise together with the chart cap above.
+      matchDepNames: ["istio/istio"],
+      allowedVersions: "<1.32",
     },
   ],
 }
