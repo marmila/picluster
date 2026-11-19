@@ -133,7 +133,7 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   Fix: upstream `89e0ced1`, so it is **required, not optional**: apply it with cherry-pick Batch A.
   Verify after: `dig +short fluentd.homelab.marmilan.com @10.0.0.11` → 10.0.0.66, and the error stops in
   `/var/log/fluentbit.log`.
-- [ ] **2d. Per-bucket size metric and growth alert** (postmortem action 7): built 2026-11-19 (timer `rustfs-bucket-metrics` on node1, rules `rustfs-bucket-rules.yaml`, CLUSTER-012 step 7). Tick after the rollout check: metrics in Prometheus, no `RustFSBucketMetricsMissing`.
+- [x] **2d. Per-bucket size metric and growth alert** (postmortem action 7): live 2026-11-19 (`9faef903`). Hourly `rustfs-bucket-metrics` timer on node1 (first run 192 s), rules `rustfs-bucket-rules.yaml`, CLUSTER-012 step 7. Prometheus has all 6 buckets; no RustFS alert. First values: longhorn 70 GB, loki 1.5 GB, velero 0.36 GB (1 orphan, 51 MB: the 15 Nov manual backup).
 
 ---
 
@@ -170,3 +170,4 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
 - [ ] **Small items:** vendor the SUC files; check the Kafka 4.3.0/4.3.1 pin;
   `RaspberryPiUnderVoltage` alert only after 2 dips.
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
+- [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.
