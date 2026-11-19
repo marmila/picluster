@@ -136,18 +136,18 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
 node5 has 13 replicas and 67% of `/storage`; node6 has 9 and 16%; node-esp-1 has 7, node-esp-2 has 13.
 Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailablePercentage: 10`), so not urgent.
 
-- [ ] **Which volumes are on node5** (node2):
+- [x] **Which volumes are on node5** (node2): skipped, not needed after the I/O check.
   ```bash
   kubectl -n longhorn-system get replicas.longhorn.io -o custom-columns=NODE:.spec.nodeID,VOL:.spec.volumeName --no-headers | grep '^node5' | awk '{print $2}' | while read v; do kubectl -n longhorn-system get volumes.longhorn.io "$v" -o jsonpath='{.status.kubernetesStatus.pvcName}{" "}{.spec.size}{"\n"}'; done | awk '{printf "%-45s %.0f GiB\n",$1,$2/1073741824}' | sort -k2 -n
   ```
-- [ ] **node5 I/O** (node5): `iostat -x 5 3`
-- [ ] Decide whether to move a few big replicas by hand.
+- [x] **node5 I/O** (node5): `iostat -x 5 3`. 2026-11-19: sda 2–19 % util, write wait under 1 ms; sdb, sdc idle; iowait 0.3–2.5 %.
+- [x] Decide whether to move a few big replicas by hand: **no**, watch only (I/O fine, `/storage` 67 % < 90 % scheduling stop).
 
 ---
 
 ## 4. Quick items
-- [ ] Unsubscribe the old triage ntfy topic in the phone app (the one replaced on 15 Nov).
-- [ ] **Certificates:** `kubectl get certificate -A`. `pi-cluster-tls` renews around 7 Dec.
+- [x] Unsubscribe the old triage ntfy topic in the phone app (the one replaced on 15 Nov). Done 2026-11-19.
+- [x] **Certificates:** `kubectl get certificate -A`. `pi-cluster-tls` renews around 7 Dec. 2026-11-19: all 6 Ready.
 - [ ] **Let's Encrypt automation** before February 2027.
 
 ---
