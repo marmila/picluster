@@ -39,6 +39,21 @@ RustFS disk and `rc` on **node1**.
   `make os-upgrade-check`: all OK, 0 packages pending.
 - [x] **Docs consistency check** (`acbd2330`).
 
+### 19 Nov 2026
+- [x] **ntfy messages lost or cut on the phone** ([alerting.md](alerting.md#message-size) "Message size"):
+  - Alerts: ntfy's built-in `template=alertmanager` went over 4096 bytes with 4+ alerts in a group, so
+    ntfy answered HTTP 400 and Alertmanager dropped the notification; 2–3 alerts arrived cut by the
+    Android push limit. Now a compact inline template set by Stage 5 and `max_alerts: 5` (about 2 KB
+    for 5 alerts, "+N more") (`e036859d`, `afdfba3e`). Vault updated with `make load-external-services-keys`.
+  - Triage reports: were cut at 3,800 bytes; now sent as parts of at most 2,500 bytes ("1/2", "2/2"),
+    image `sha-e036859` (`3563b947`). Pod running the new image.
+- [x] **Flux blocked for about 20 min:** at 07:30 UTC the External Secrets validating webhook timed out
+  once, so `external-secrets-config` failed and almost every Kustomization waited on it. A manual
+  `flux reconcile kustomization external-secrets-config` went through; webhook healthy, Cilium health
+  1/1 on all nodes. `FluxKustomizationNotReady` did not fire because the block lasted under its 30 min.
+  No change needed; if it repeats, add a short `retryInterval` to `external-secrets-config`.
+- [ ] **Phone check:** next alert arrives in the compact format; a long triage report arrives in parts.
+
 ---
 
 ## 1. Checks over the next days
