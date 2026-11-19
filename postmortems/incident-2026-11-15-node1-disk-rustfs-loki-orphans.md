@@ -128,10 +128,10 @@ separate disk for `/storage` if it goes above about 70% again.
 
 | # | Action | Status |
 |---|---|---|
-| 1 | Exclude Prometheus from Velero backups | Done (`a939279d`); verify on 2026-11-16 that `pvc-e1c0c8e4` has no new Longhorn backup |
+| 1 | Exclude Prometheus from Velero backups | Done (`a939279d`). Verified 2026-11-16: no new `pvc-e1c0c8e4` backup after 2026-11-15T03:27; 2026-11-19: `k3s-longhorn` 97 → 67 GB, node1 `/` at 40% |
 | 2 | Remove the orphaned Loki data copies | Done: node1 86% → 53% |
 | 3 | Triage agent can read Leases (tofu-controller locks) | Done (`a939279d`) |
-| 4 | Verify Loki retention deletes current chunks: on 2026-11-17 no objects older than 2026-11-09 in `k3s-loki/fake` | Open |
+| 4 | Verify Loki retention deletes current chunks: on 2026-11-17 no objects older than 2026-11-09 in `k3s-loki/fake` | Done 2026-11-19: no objects left from 2026-11-09 to 11-12, compactor marks and deletes on schedule. 99 objects (412 KB) from 2026-09-26 remain: chunks written during the ungraceful shutdown that never reached the index, so retention cannot see them. Left in place (negligible) |
 | 5 | Check live objects (with `xl.meta`) for extra data copies, and size them | Open |
 | 6 | Add the orphaned-copies check and cleanup to OBS-004 (Loki retention), and a node1 / RustFS section to CLUSTER-012 | Done: OBS-004 step 6, CLUSTER-012 step 7 |
 | 7 | Watch bucket growth: a daily per-bucket size on node1 (node-exporter textfile collector) with an alert on fast growth | Open, proposal |

@@ -82,22 +82,23 @@ kubectl get --raw "${P}sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_
 Or tap **Triage** on an alert notification.
 
 ### 17 Nov (node1): Loki retention deletes current data
-- [ ] Count close to 0
+- [x] Count close to 0. Checked 2026-11-19: 99, all from 2026-09-26 (412 KB, chunks never indexed after the
+  ungraceful shutdown, out of retention's reach); 0 objects from 11-09 to 11-12, so retention works.
 
 ```bash
 sudo sh -c 'cd /storage/rustfs/k3s-loki && find fake -name xl.meta ! -newermt 2026-11-09 | wc -l'
 ```
 
 ### 18 Nov (node1): old Prometheus backups expired
-- [ ] `/` below 54%
-- [ ] `k3s-longhorn` well below 97 GB
+- [x] `/` below 54% (40% on 2026-11-19)
+- [x] `k3s-longhorn` well below 97 GB (67 GB on 2026-11-19)
 
 ```bash
 df -h /
 sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
 ```
 
-- [ ] **When all three days are OK:** close actions 1 and 4 in
+- [x] **When all three days are OK:** close actions 1 and 4 in
   [the node1 postmortem](../postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md).
 
 ---
