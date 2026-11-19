@@ -52,7 +52,8 @@ RustFS disk and `rc` on **node1**.
   `flux reconcile kustomization external-secrets-config` went through; webhook healthy, Cilium health
   1/1 on all nodes. `FluxKustomizationNotReady` did not fire because the block lasted under its 30 min.
   No change needed; if it repeats, add a short `retryInterval` to `external-secrets-config`.
-- [ ] **Phone check:** next alert arrives in the compact format; a long triage report arrives in parts.
+- [x] **Phone check:** next alert arrives in the compact format; a long triage report arrives in parts.
+  Both confirmed on the phone 2026-11-19.
 
 ---
 
