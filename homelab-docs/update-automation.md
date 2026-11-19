@@ -127,6 +127,7 @@ on the next run, and the weekly issue lists it.
 | **Cilium** | its chart comes from quay.io, which publishes no release dates, so the 7-day wait cannot be enforced |
 | **Flux** (operator, instance charts, and the **Flux distribution** group `fluxcd/flux2`) | if Flux breaks, it cannot roll anything back, itself included |
 | **system-upgrade-controller** | it runs the k3s node upgrades |
+| **Istio minor versions** (1.31, 1.32, …) | Istio upgrades one minor version at a time; Renovate is capped below the next one. Steps: [cluster-maintenance.md 7.6](cluster-maintenance.md#76-istio-minor-upgrade-130--131--132) |
 | every **major** version | release notes have to be read |
 | **blocked** packages | see the blocked list in [cluster-maintenance.md](cluster-maintenance.md#24-blocked-packages-and-caps) |
 

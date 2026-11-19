@@ -93,6 +93,7 @@ Automerge uses **branch automerge**: Renovate pushes straight to `master` once C
 | `python` | blocked | the runner image is `python:3.14-slim` and `ansible/pyproject.toml` requires `<3.15`; the 3.15 bump broke the runner and upstream reverted it | the Dockerfile base image, `.python-version`, `requires-python` and `uv.lock` move to 3.15 together |
 | `mongo` | capped `<8.1` | the seed job's `mongosh` must match the MongoDB **8.0.x** server (`mongodb-community.yaml`, not tracked by Renovate) | you upgrade the MongoDB server |
 | `ansible-core` | capped `<2.22` | the `prometheus.prometheus` collection (0.30.x) supports ansible-core only up to 2.21; 2.22 breaks the runner image build | a `prometheus.prometheus` release supports 2.22 (check `requires_ansible` on Galaxy) |
+| Istio charts (`base`, `cni`, `istiod`, `ztunnel`) | capped `<1.31`; istioctl (`istio/istio`) `<1.32` | the cluster runs 1.30 and Istio upgrades one minor version at a time; without the cap Renovate jumped 1.30 → 1.32 | you do the next minor: raise both caps by one ([7.6](#76-istio-minor-upgrade-130--131--132)) |
 
 Blocked packages never join a group and are never automerged. Their PRs get the `blocked` label automatically. **Blocking covers the whole package**, so Elasticsearch 8.x patches also come as separate blocked PRs.
 
@@ -347,6 +348,31 @@ kubectl -n $NS get hr $HR -w
 1. Wait 15 minutes, then run the health check (4.3).
 2. Check the k3s upgrade jobs (7.1, "If it gets stuck"), the tofu-controller Terraform CRs, and the Longhorn volumes. These are the things that got stuck in September 2026 (see the incident notes).
 3. Check that the Velero backup that night completed (section 6, step 3).
+
+
+### 7.6 Istio minor upgrade (1.30 → 1.31 → 1.32)
+
+Istio patches merge by themselves on Thursday. **Minor versions are manual and go one at a time**: Istio
+supports upgrading only one minor version per step. Renovate is held back by a cap in
+`.github/renovate/automerge.json5` (rule "Istio charts: cap below the next minor version").
+
+1. **Raise the cap by one minor:** `allowedVersions: "<1.31"` → `"<1.32"` (and the istioctl rule below it,
+   `"<1.32"` → `"<1.33"`). Push to `master`.
+2. Renovate opens an Istio PR to **1.31.x** without automerge (within a few hours; to hurry it, tick the box
+   at the bottom of the Dependency Dashboard, issue #238).
+3. Read the [Istio upgrade notes](https://istio.io/latest/news/releases/) for that minor version.
+4. Do it like any manual update ([5.1](#51-doing-a-manual-update-step-by-step)) with
+   `flux reconcile kustomization istio-app -n flux-system --with-source`.
+   Done when: the HelmReleases in `istio-system` are `True` on the new version, `istiod` and `ztunnel` pods
+   are `Running` on the new image, and every web UI answers (`probe_success{target=~"web-.*"}` = 1, no
+   `WebEndpointDown`).
+5. Repeat for the next minor another evening.
+
+**Chart source:** the charts come from `https://blob.istio.io/istio-release/charts`
+(`kubernetes/platform/istio/app/base/helm.yaml`). The old `istio-release.storage.googleapis.com` bucket
+answered 403 during Istio's "scream tests" and closes for good on 2026-12-16
+([Istio blog](https://istio.io/latest/blog/2026/retirement-of-gcp/)). A HelmRepository that fails with
+`403 Forbidden` on a Google bucket means the project moved its charts: look for the new address.
 
 ---
 
