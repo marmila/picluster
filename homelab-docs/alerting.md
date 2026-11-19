@@ -156,7 +156,7 @@ To change the template, edit that task and run `make load-external-services-keys
 To check whether notifications were lost, look for failed webhook calls on node2:
 
 ```shell
-kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager | grep -iE 'notify.*(fail|error)|40041' | tail -5
+kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-0 -c alertmanager | grep -iE 'notify.*(fail|error)|40041' | tail -5
 ```
 
 On iOS the lock-screen notification shows only the first 100 characters (ntfy's APNs limit); open the
@@ -184,7 +184,7 @@ The patch starts with a JSON patch `test` op on the rule name. If regenerating t
 Send a test alert through the whole chain. It should arrive on ntfy within about 30 seconds, followed by a "resolved" message about 5 minutes later:
 
 ```shell
-kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- \
+kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- \
   amtool alert add TestAlert severity=warning namespace=test --alertmanager.url=http://localhost:9093
 ```
 
@@ -202,7 +202,7 @@ kubectl -n kube-prom-stack get secret alertmanager-kube-prometheus-stack-alertma
   -o jsonpath='{.data.alertmanager\.yaml\.gz}' | base64 -d | gunzip
 
 # Notification errors
-kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager --since=1h | grep -iE 'level=(error|warn)'
+kubectl -n kube-prom-stack logs alertmanager-kube-prometheus-stack-0 -c alertmanager --since=1h | grep -iE 'level=(error|warn)'
 
 # Alerts currently firing and not silenced
 kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-alertmanager:http-web/proxy/api/v2/alerts?active=true&silenced=false&inhibited=false" \
