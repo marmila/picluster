@@ -25,6 +25,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
+| `RustFSBucketGrowingFast`, `RustFSOrphanedData`, `RustFSBucketMetricsMissing` | `CLUSTER-012` | node1 buckets (step 7). Growing fast: usually a backup that now includes a big volume. Orphaned data: RustFS left data without `xl.meta` after a delete (Loki, Velero archives); only the step 7 / `OBS-004` step 6 procedures remove it, on node1 by a person |
 | `NodeRootDiskFillingUp`, `KubeNodeDiskPressure` | `CLUSTER-012` | Usually the systemd journal or container images on the root disk. Image GC starts at 70%, k3s evicts at 95%. node-esp-1/2: images are on `/storage` (bind mount of `/var/lib/rancher`, done 2026-11-15), so `/` holds only the OS and logs. node1 (not a cluster node): RustFS buckets fill `/`, urgent, step 7 |
 | `NodeFilesystemAlmostOutOfSpace`, `NodeFilesystemSpaceFillingUp` | `CLUSTER-012` | |
 | `KubePersistentVolumeFillingUp` | `OBS-004` for Loki, otherwise none yet | StatefulSet volume sizes need the PVC patched and the StatefulSet orphan-deleted |

@@ -13,6 +13,7 @@ resources:
   - ./node-disk-rules.yaml
   - ./scrape-target-rules.yaml
   - ./rpi-throttle-rules.yaml
+  - ./rustfs-bucket-rules.yaml
 
 patches:
   - target:

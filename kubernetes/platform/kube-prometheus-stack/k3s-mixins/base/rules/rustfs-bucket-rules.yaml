@@ -1,0 +1,56 @@
+# RustFS buckets on node1. Not generated from the mixins
+# (generate.sh writes to build/src/templates, so this file is not overwritten).
+#
+# Metrics come from /var/lib/node_exporter/rustfs_buckets.prom, written every
+# hour on node1 by Ansible (basic_setup/tasks/rustfs_bucket_metrics.yml).
+# Two failure modes filled node1 before any disk alert said why:
+# - a bucket growing fast (Prometheus volume in the Velero backups, 2026-11-13);
+# - data RustFS leaves on disk after a delete, which no retention removes
+#   (70 GB of Loki chunks 2026-11-15, Velero archives 2026-11-19).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: rustfs-bucket
+  namespace: monitoring
+spec:
+  groups:
+  - name: rustfs-bucket.rules
+    rules:
+    - alert: RustFSBucketGrowingFast
+      annotations:
+        summary: RustFS bucket {{ $labels.bucket }} grew by {{ $value | humanize1024 }}B in 24 hours.
+        description: Bucket {{ $labels.bucket }} on node1 grew by {{ $value | humanize1024 }}B in the last 24 hours (now {{ with printf "rustfs_bucket_size_bytes{bucket='%s'}" $labels.bucket | query }}{{ . | first | value | humanize1024 }}B{{ end }}). node1 has one disk for Vault and RustFS. Usually a backup that now includes a big volume, or a retention that stopped. Runbook CLUSTER-012 step 7.
+        runbook: CLUSTER-012
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
+      expr: |
+        (rustfs_bucket_size_bytes - rustfs_bucket_size_bytes offset 1d) > 5e9
+      for: 1h
+      labels:
+        severity: warning
+    - alert: RustFSOrphanedData
+      annotations:
+        summary: RustFS bucket {{ $labels.bucket }} holds {{ $value | humanize1024 }}B of orphaned data.
+        description: Bucket {{ $labels.bucket }} on node1 has {{ with printf "rustfs_bucket_orphan_objects{bucket='%s'}" $labels.bucket | query }}{{ . | first | value | printf "%.0f" }}{{ end }} objects ({{ $value | humanize1024 }}B) with data but no xl.meta - deleted in S3, left on disk by RustFS. No retention removes them. Clean up with runbook CLUSTER-012 step 7 (OBS-004 step 6 for k3s-loki).
+        runbook: CLUSTER-012
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
+      expr: |
+        rustfs_bucket_orphan_bytes > 2e9
+      for: 6h
+      labels:
+        severity: warning
+    - alert: RustFSBucketMetricsMissing
+      annotations:
+        summary: No RustFS bucket metrics from node1.
+        description: The RustFS bucket metrics file on node1 is older than 3 hours or missing, so bucket growth and orphaned data would not be noticed. Check `systemctl status rustfs-bucket-metrics.service` on node1. Runbook CLUSTER-012 step 7.
+        runbook: CLUSTER-012
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
+      # Hourly timer: 3 hours = two missed runs.
+      expr: |
+        (time() - node_textfile_mtime_seconds{job="node-exporter",file=~".*rustfs_buckets.prom"} > 10800)
+        or
+        absent(node_textfile_mtime_seconds{job="node-exporter",file=~".*rustfs_buckets.prom"})
+      for: 30m
+      labels:
+        severity: warning

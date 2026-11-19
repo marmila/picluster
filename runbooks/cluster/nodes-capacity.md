@@ -244,11 +244,38 @@ sudo sh -c 'nice -n 19 ionice -c3 du -sh /storage/rustfs/* | sort -h'          #
    | --- | --- | --- |
    | `k3s-longhorn` | tens of GB | Velero CSI backups, 3 per volume (72h TTL). Count per volume with `kubectl -n longhorn-system get backups.longhorn.io`; check which volumes are big (`BACKUP-004`) |
    | `k3s-loki` | about 1-2 GB (0.15 GB/day, 7 days) | Orphaned data copies after a `loki-write` crash loop: `OBS-004` step 6 |
-   | `k3s-velero`, `k3s-tempo`, `k3s-barman`, `restic` | a few GB in total | Check the tool's own retention |
+   | `k3s-velero`, `k3s-tempo`, `k3s-barman`, `restic` | a few GB in total | Check the tool's own retention; for `k3s-velero` also orphaned archives (below) |
+
+   Per-bucket numbers without `du`: Prometheus has `rustfs_bucket_size_bytes`, `rustfs_bucket_orphan_objects` and
+   `rustfs_bucket_orphan_bytes` per bucket, written every hour by the `rustfs-bucket-metrics` timer on node1
+   (`ansible/roles/basic_setup/tasks/rustfs_bucket_metrics.yml`). Alerts: `RustFSBucketGrowingFast` (more than 5 GB
+   in 24h), `RustFSOrphanedData` (more than 2 GB orphaned for 6h), `RustFSBucketMetricsMissing`.
+
+   **Orphaned data** = object folders with data (`part.1`) but no `xl.meta`: deleted through S3, but RustFS left the
+   data on disk, so no retention ever removes it. Seen in `k3s-loki` (cleanup: `OBS-004` step 6) and in
+   `k3s-velero`: about one archive a day, the `full-<date>.tar.gz` of each expired daily backup (TTL 72h). Velero
+   cleanup on node1, read-only list first:
+
+```bash
+f=$(mktemp)
+sudo find /storage/rustfs/k3s-velero -type f -name xl.meta -printf '%h\n' | sort -u > $f.m
+sudo find /storage/rustfs/k3s-velero -type f -name 'part.1' -printf '%h\n' | sed 's|/[^/]*$||' | sort -u > $f.d
+comm -13 $f.m $f.d | grep -E '/backups/full-[0-9]+/full-[0-9]+\.tar\.gz$' > ~/velero-orphans.txt; rm -f $f $f.m $f.d
+echo "orphans: $(wc -l < ~/velero-orphans.txt)  newest: $(tail -1 ~/velero-orphans.txt | sed 's|.*/backups/||')"
+```
+
+   The newest one must be older than 3 days (the TTL); compare with `kubectl -n velero get backups.velero.io` on
+   node2: none of the listed backup names may still exist there. Then remove, checking `xl.meta` again per folder:
+
+```bash
+df -h / | tail -1
+while read o; do [ -e "$o/xl.meta" ] || sudo rm -rf -- "$o"; done < ~/velero-orphans.txt
+df -h / | tail -1
+```
 
    Logs and journal: `sudo journalctl --vacuum-size=500M`, as in step 2. Do not delete anything inside
-   `/storage/rustfs` by hand except with the `OBS-004` step 6 procedure. History:
-   `postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md` (86% → 53%).
+   `/storage/rustfs` by hand except with the `OBS-004` step 6 procedure or the Velero procedure above. History:
+   `postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md` (86% → 53%; Velero 2026-11-19, 3.2 GB).
 
 Verify:
 

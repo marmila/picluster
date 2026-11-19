@@ -1,0 +1,64 @@
+#!/bin/bash
+# Export RustFS bucket sizes and orphaned data for the node-exporter textfile
+# collector. Run every hour on node1 by rustfs-bucket-metrics.timer.
+# Usage: rustfs_bucket_metrics <rustfs data dir>   (default /storage/rustfs)
+#
+# Orphaned data = an object folder with data (a part.1 file) but no xl.meta.
+# RustFS sometimes deletes only the xl.meta and leaves the data on disk: 70 GB
+# of Loki chunks (2026-11-15) and 94 Velero archives, 3.2 GB (2026-11-19), all
+# invisible to the S3 API and to every retention. Postmortem:
+# postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md
+# Alerts: kube-prometheus-stack/k3s-mixins/base/rules/rustfs-bucket-rules.yaml
+#
+# If a step fails the script exits without touching the file, so the file goes
+# stale and RustFSBucketMetricsMissing fires.
+set -euo pipefail
+
+DATA="${1:-/storage/rustfs}"
+DIR=/var/lib/node_exporter
+OUT="$DIR/rustfs_buckets.prom"
+
+start=$(date +%s)
+work=$(mktemp -d)
+# Write to a temporary file in the same directory, then rename, so node-exporter
+# never reads a half-written file. Only *.prom files are read.
+tmp=$(mktemp "$DIR/.rustfs_buckets.XXXXXX")
+trap 'rm -rf "$work" "$tmp"' EXIT
+
+# One line per bucket and metric, printed grouped by metric at the end.
+: > "$work/size"; : > "$work/orphans"; : > "$work/orphan_bytes"
+# The glob skips dot folders such as .rustfs.sys (RustFS metadata).
+for path in "$DATA"/*/; do
+  path=${path%/}
+  bucket=${path##*/}
+  size=$(du -sb "$path" | cut -f1)
+  find "$path" -type f -name xl.meta -printf '%h\n' | sort -u > "$work/meta"
+  find "$path" -type f -name part.1 -printf '%h\n' | sed 's|/[^/]*$||' | sort -u > "$work/data"
+  comm -13 "$work/meta" "$work/data" > "$work/orphan_dirs"
+  n=$(wc -l < "$work/orphan_dirs")
+  bytes=0
+  if [ "$n" -gt 0 ]; then
+    bytes=$(tr '\n' '\0' < "$work/orphan_dirs" | du -scb --files0-from=- | tail -1 | cut -f1)
+  fi
+  echo "rustfs_bucket_size_bytes{bucket=\"$bucket\"} $size" >> "$work/size"
+  echo "rustfs_bucket_orphan_objects{bucket=\"$bucket\"} $n" >> "$work/orphans"
+  echo "rustfs_bucket_orphan_bytes{bucket=\"$bucket\"} $bytes" >> "$work/orphan_bytes"
+done
+
+{
+  echo "# HELP rustfs_bucket_size_bytes Size of the RustFS bucket folder on disk."
+  echo "# TYPE rustfs_bucket_size_bytes gauge"
+  cat "$work/size"
+  echo "# HELP rustfs_bucket_orphan_objects Object folders with data but no xl.meta (deleted in S3, data left on disk)."
+  echo "# TYPE rustfs_bucket_orphan_objects gauge"
+  cat "$work/orphans"
+  echo "# HELP rustfs_bucket_orphan_bytes Size of the orphaned object folders."
+  echo "# TYPE rustfs_bucket_orphan_bytes gauge"
+  cat "$work/orphan_bytes"
+  echo "# HELP rustfs_bucket_metrics_duration_seconds Run time of the last rustfs_bucket_metrics run."
+  echo "# TYPE rustfs_bucket_metrics_duration_seconds gauge"
+  echo "rustfs_bucket_metrics_duration_seconds $(( $(date +%s) - start ))"
+} > "$tmp"
+chmod 0644 "$tmp"
+mv "$tmp" "$OUT"
+trap 'rm -rf "$work"' EXIT

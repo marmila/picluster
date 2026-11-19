@@ -1,0 +1,66 @@
+---
+# Export RustFS bucket sizes and orphaned data (object data left on disk without
+# xl.meta) through the node-exporter textfile collector, every hour. node1 only.
+# Read by the host node_exporter (prometheus.prometheus.node_exporter role, whose
+# default textfile directory is /var/lib/node_exporter).
+# Alerts: kube-prometheus-stack/k3s-mixins/base/rules/rustfs-bucket-rules.yaml
+# Input: rustfs_server_datadirs (vars/picluster.yml), first entry.
+
+- name: Create node-exporter textfile directory
+  # No owner or mode: on node1 the node_exporter role owns this directory.
+  ansible.builtin.file:  # noqa risky-file-permissions
+    path: /var/lib/node_exporter
+    state: directory
+
+- name: Copy RustFS bucket metrics script
+  ansible.builtin.copy:
+    src: scripts/rustfs_bucket_metrics
+    dest: /usr/local/bin/rustfs_bucket_metrics
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create RustFS bucket metrics service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/rustfs-bucket-metrics.service
+    content: |
+      # Managed by Ansible (basic_setup/tasks/rustfs_bucket_metrics.yml)
+      [Unit]
+      Description=Export RustFS bucket sizes and orphaned data for node-exporter
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/rustfs_bucket_metrics {{ rustfs_server_datadirs | first }}
+      # Walks every bucket: lowest CPU and disk priority, so RustFS is not slowed down.
+      Nice=19
+      IOSchedulingClass=idle
+      TimeoutStartSec=30min
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create RustFS bucket metrics timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/rustfs-bucket-metrics.timer
+    content: |
+      # Managed by Ansible (basic_setup/tasks/rustfs_bucket_metrics.yml)
+      [Unit]
+      Description=Export RustFS bucket metrics every hour
+
+      [Timer]
+      OnBootSec=5min
+      OnUnitActiveSec=1h
+      RandomizedDelaySec=2min
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start RustFS bucket metrics timer
+  ansible.builtin.systemd_service:
+    name: rustfs-bucket-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true

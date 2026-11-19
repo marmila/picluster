@@ -133,7 +133,7 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   Fix: upstream `89e0ced1`, so it is **required, not optional**: apply it with cherry-pick Batch A.
   Verify after: `dig +short fluentd.homelab.marmilan.com @10.0.0.11` → 10.0.0.66, and the error stops in
   `/var/log/fluentbit.log`.
-- [ ] **2d. Per-bucket size metric and growth alert** (postmortem action 7): proposal first.
+- [ ] **2d. Per-bucket size metric and growth alert** (postmortem action 7): built 2026-11-19 (timer `rustfs-bucket-metrics` on node1, rules `rustfs-bucket-rules.yaml`, CLUSTER-012 step 7). Tick after the rollout check: metrics in Prometheus, no `RustFSBucketMetricsMissing`.
 
 ---
 
