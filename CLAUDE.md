@@ -198,17 +198,19 @@ When validating changes from a feature branch in the live cluster:
 1. Create branch `feature/<desc>` or `issue/<desc>` from master
 2. Edit `kubernetes/platform/flux-operator/instance/overlays/prod/values.yaml` → set `instance.sync.ref` to the branch
 3. Commit and push
-4. Patch in-cluster GitRepository to the same branch and reconcile:
+4. Patch in-cluster GitRepository to the same branch and reconcile. The Flux operator sets `spec.ref.name`, which takes precedence over `spec.ref.branch`, so patch `name` (patching only `branch` silently keeps syncing master):
    ```bash
    GR_NAME="$(kubectl -n flux-system get gitrepository -o jsonpath='{range .items[?(@.spec.url=="https://github.com/marmila/picluster")]}{.metadata.name}{"\n"}{end}' | head -n1)"
-   kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"branch":"<branch>"}}}'
+   kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"name":"refs/heads/<branch>","branch":null}}}'
    flux reconcile source git "${GR_NAME}" -n flux-system
    flux reconcile kustomization flux-system -n flux-system --with-source
+   flux get sources git -n flux-system   # revision must show refs/heads/<branch>
    ```
-5. After merge: revert `instance.sync.ref` to `refs/heads/master`, push, and patch in-cluster GitRepository back to `master`:
+5. Before merging: as the last commit on the branch, revert `instance.sync.ref` to `refs/heads/master` and push, so master never points at the branch. After merge, patch in-cluster GitRepository back to `master`:
    ```bash
-   kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"branch":"master","name":null}}}'
+   kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"name":"refs/heads/master","branch":null}}}'
    flux reconcile source git "${GR_NAME}" -n flux-system
+   flux reconcile kustomization flux-system -n flux-system --with-source
    ```
 
 ## Search strategy
