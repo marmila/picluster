@@ -70,6 +70,16 @@ RustFS disk and `rc` on **node1**.
   [quick-start.md](quick-start.md) (`9f130947`, `c737c7fd`).
 - [x] **Node temperature alerts and weekly ntfy digest** pushed ([alerting.md](alerting.md#weekly-digest),
   runbook CLUSTER-017). Baseline: Pis at most 51 °C in a week, HP CPUs at most 72 °C. Checks in section 1.
+  (`a45fef8f`). First test digest arrived on the phone; layout rewritten to "problems first", RustFS sizes and
+  Flux false positives fixed (`cb1ceac6`, `f9a48cf3`).
+- [x] **Found by the first digest:**
+  - **Tempo ingester OOMKilled every ~30 min** (256 restarts in 7 days): one ingester since replicas 3 → 1
+    (`2306a8f0f`) but still the 768Mi limit sized for 3; it sat at 767Mi and died at each block flush, losing
+    the traces in memory. Limit 1536Mi, request 1Gi (`4b7bdbfe`). Check in section 1.
+  - **Flux 48 not ready:** a cascade while `cilium-app` was mid-reconcile; recovered by itself within minutes,
+    no root left. No action.
+  - **Velero "1 failed/partial":** the 15 Nov API-reset failure, still in the 7-day window. The 18, 19 and 20 Nov
+    nightly backups are all Completed.
 
 ---
 
@@ -118,9 +128,10 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   [the node1 postmortem](../postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md).
 
 ### 20 Nov (node2): temperature alerts and weekly digest live
-- [ ] Rules loaded, nothing firing (all nodes far below the thresholds).
-- [ ] CronJob, Secret and ConfigMap exist; a test run sends the digest to the phone.
-- [ ] 20 Nov nightly Velero backup Completed (first since the 19 Nov orphan cleanup).
+- [ ] Rules loaded, nothing firing (all nodes far below the thresholds). Not checked yet: the mixins
+  Kustomization was in the Flux cascade during the test; run the `rules` and `firing` lines below.
+- [x] CronJob, Secret and ConfigMap exist; a test run sends the digest to the phone (2026-11-20, 18:49).
+- [x] 20 Nov nightly Velero backup Completed (first since the 19 Nov orphan cleanup), 18 and 19 Nov too.
 
 ```bash
 echo "== flux =="; flux get kustomizations -A | grep -E "sre-triage|kube-prometheus-stack|NAME"
@@ -131,8 +142,21 @@ echo "== test run =="; kubectl -n sre-triage create job --from=cronjob/weekly-di
 echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors | tail -3
 ```
 
+### 21 Nov (node2): Tempo ingester stable
+- [ ] Restart count unchanged since the new limit, memory well below 1536Mi, pod requests 1Gi.
+
+```bash
+kubectl -n tempo get pod tempo-ingester-0 -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount,NODE:.spec.nodeName,REQ:.spec.containers[0].resources.requests.memory,LIM:.spec.containers[0].resources.limits.memory
+kubectl -n tempo top pod tempo-ingester-0
+kubectl -n tempo describe pod tempo-ingester-0 | grep -A3 "Last State"
+```
+
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
+- [ ] It no longer lists `tempo-ingester-0`, and no Velero failure (the 15 Nov one is out of the window).
+
+### 27 Nov: RustFS growth in the digest
+- [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
 
 ---
 
