@@ -31,6 +31,9 @@ Rules:
 - In the inventory, `pimaster` is the runner container (local connection), not the VM. Apt does not update it;
   rebuilding the image does (`make ansible-runner-setup`).
 - Before running any target, `git pull` on pimaster so it uses the playbooks you just pushed.
+- The Galaxy roles and collections are baked into the runner image at build time. After a change to
+  `ansible/requirements.yml` (for example a Renovate bump or a cherry-pick), run `make ansible-runner-setup`
+  first, or the old role version keeps running.
 
 `make` or `make help` lists every target with its one-line description.
 
@@ -134,6 +137,23 @@ Run it after changing:
 
 It restarts k3s only on nodes whose kubelet config changed, one at a time, and waits for each to be Ready.
 
+### K3s server config changes
+
+```bash
+make k3s-config
+```
+
+This target came from upstream with the 2026-11 cherry-picks. Run it after changing `k3s_server_config` in
+`ansible/vars/picluster.yml`, for example the `disable:` add-on list. It renders `/etc/rancher/k3s/config.yaml` on the
+masters (node2–4) from the same template as the install. It restarts k3s only where the file changed, one master
+at a time so etcd keeps quorum, and waits for each master to be Ready. It never runs the installer.
+
+Don't use `make k3s-install` for this. In HA mode it runs the installer only on the first master, so the other
+masters would get the new file but never restart.
+
+The k3s **version** is upgraded by the system-upgrade-controller Plans (Flux), not by this target. Keep
+`k3s_version` in `vars/picluster.yml` and the Plans at the same version.
+
 ### Moving k3s data to /storage (fork, node-esp-1/2)
 
 Done on both nodes on 2026-11-15. You only need this again after a node-esp is reinstalled over an old layout.
@@ -172,7 +192,7 @@ make admin-cli
 | `make get-pi-status` | `pi_throttling` on every Pi (under-voltage, throttling). The same data is in Prometheus |
 | `make os-backup` | start a restic backup on all nodes now |
 | `make openwrt-certbot-tls` | renew the gateway TLS certificate with certbot and deploy it to OpenWRT (Let's Encrypt item in the [checklist](ops-checklist.md)) |
-| `make deploy-monitoring-agent` | monitoring agent on node1 (external services host) |
+| `make deploy-monitoring-agent` | Fluent Bit agent on node1, which sends node1's logs to Fluentd in the cluster. It works on node1 since the 2026-11 cherry-picks: the Vault lookup runs on the controller, `Self_Hostname` is indented, and role v1.0.6 is needed, so rebuild the runner first |
 | `make configure-vault` / `make configure-minio` | re-apply the Terraform for Vault / RustFS (these are `tofu apply`: ask first) |
 | `make lint-ci` | yamllint like CI does |
 | `make syntax-check-external-services` | Ansible syntax check |
@@ -232,10 +252,11 @@ Only run these on purpose, after a backup check:
 | `load-external-services-keys` | C | `load_external_services_keys.yml`, plus ThreatMap, Alertmanager and SRE triage secrets |
 | `configure-os-backup`, `os-backup` | | restic |
 | `k3s-install` | C | `k3s_install.yml` |
+| `k3s-config` | | `k3s_config.yml`: rolling apply of the k3s server config on the masters (cherry-picked from upstream 2026-11) |
 | `k3s-bootstrap`, `k3s-bootstrap-dev` | | Flux bootstrap |
 | `k3s-reset`, `external-services-reset`, `clean` | | **destructive** |
 | `openwrt-certbot-tls` | | gateway certificate |
-| `deploy-monitoring-agent` | | monitoring agent |
+| `deploy-monitoring-agent` | | `deploy_monitoring_agent.yml`: Fluent Bit agent on node1 |
 | `shutdown-k3s-worker`, `shutdown-k3s-master`, `shutdown-picluster` | | shutdown in 1 min |
 | `get-pi-status` | | `pi_throttling` on the Pis |
 | `admin-cli` | F | `install_admin_cli.yml` (flux CLI on node2) |
@@ -243,9 +264,16 @@ Only run these on purpose, after a backup check:
 
 ## 7. Fork differences from upstream
 
-- **Not in this fork yet:** upstream's `make k3s-config` (`k3s_config.yml`, rolling apply of the k3s server
-  config) and its split kubeconfig handling in `k3s_install.yml`. Check the cherry-pick report before you
-  copy anything from upstream.
+- **Cherry-picked from upstream (2026-11, PR #992):**
+  - `make k3s-config`;
+  - k3s `v1.37.2+k3s1` with the `gateway-api-crd` add-on disabled;
+  - the node1 Fluent Bit agent fixes and role `ricsanfre.fluentbit` v1.0.6;
+  - the external-dns annotation prefix, so `fluentd.homelab.marmilan.com` reaches node1's bind;
+  - the mixin pins and fixes.
+- **Not in this fork yet:** upstream's split kubeconfig handling in `k3s_install.yml`. In this fork the
+  kubeconfig is still written as one file. Check the cherry-pick report before you copy anything else from upstream.
+- **Upstream digest:** a monthly CI job opens an issue listing new upstream commits, as a starting point for the
+  next cherry-pick round.
 - **Removed:** the upstream `rpi_metrics` role. Its replacement is `basic_setup/tasks/rpi_throttle_metrics.yml`,
   installed by `nodes-setup` / `node-config-update`.
 - **New task files** (included by the playbooks above, not run on their own):
