@@ -419,26 +419,40 @@ File: `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-temp
 
 <a id="weekly-digest"></a>
 Every Monday at 08:00 (Europe/Rome) one ntfy message on the alerts topic sums up the week, so slow trends show
-up without opening Grafana. Title `Weekly digest <year>-W<week>: all good` (priority 3), or `: N to look at`
-(priority 4) when nodes are not Ready, alerts are firing, Velero had no successful backup for 30 hours or
-failed, a certificate is not ready, a Longhorn volume is degraded or faulted, or a Flux object is not ready.
+up without opening Grafana. Title `Weekly digest <year>-W<week>: all good` (priority 3) or `: N to look at`
+(priority 4). Problems come first, one line each; everything normal is summed up below. Example:
 
-Lines in the message:
+```
+⚠️ To look at
+• Velero: 1 failed/partial backup(s) this week (last OK 15h ago)
+• Restarting a lot this week: tempo/tempo-ingester-0 256×
 
-| Line | Content |
+📋 Nodes 7/7 Ready · Longhorn healthy · next cert 47d · Velero OK 15h ago
+🌡️ Max temp: Pi 40–51°C · HP 66–69°C
+💾 Disk: / max 48% node6 · /storage max 61% node5
+🪣 RustFS: longhorn 70G · loki 1.5G · orphaned 0.1G
+🔔 Alerts: 19 kinds fired, none firing now
+   Top: NodeSystemSaturation 10 · KubePodNotReady 8 · NodeFilesystemSpaceFillingUp 7
+🔁 Rebooted: node1 6d ago · node2 6d ago
+```
+
+What goes under "To look at" (thresholds at the top of the script):
+
+| Check | Listed when |
 |---|---|
-| Nodes | Ready / total, reboots during the week |
-| Temp max 7d | highest temperature per node, ⚠ when within 10 °C of `NodeTemperatureHigh` |
-| Pi soft temp limit | Pis that hit the firmware soft limit |
-| Disk / | root disk usage, every node; Disk /storage: the 3 fullest |
-| Alerts this week | alerts that fired (number of distinct series), at most 12 listed; Firing now |
-| Velero | last successful backup, successes and failures in 7 days |
-| Certs | next expiry; certificates not ready |
-| Longhorn | degraded or faulted volumes |
-| Flux | objects not ready |
-| RustFS | node1 bucket sizes over 100 MB with 7-day growth (from 2026-11-27), orphaned data |
-| Under-voltage | minutes with kernel under-voltage messages per Pi |
-| Restarts top | the 3 pods that restarted most |
+| Nodes | not all Ready |
+| Temperature | a node's weekly max within 10 °C of `NodeTemperatureHigh` (Pi 60 °C, HP 75 °C); Pi soft limit hit |
+| Disk | `/` at 70 % or more, `/storage` at 80 % or more |
+| Alerts | anything firing now |
+| Velero | no successful backup for 30 hours, or any failed/partial backup in 7 days |
+| Certificates | one expires within 14 days, or one is not ready |
+| Longhorn | a volume degraded or faulted |
+| Flux | an object with Ready=False (not Unknown, which means still reconciling); `e-commerce*` left out (`FLUX_IGNORE`) |
+| Pods | a pod restarted 50 times or more in 7 days |
+| Under-voltage | any kernel under-voltage message on a Pi |
+
+The RustFS line lists buckets of 1 GB or more; the 7-day growth appears from 2026-11-27, once there is a week
+of data.
 
 How it works: CronJob `weekly-digest` in the `sre-triage` namespace. It reuses the triage image (bash, curl,
 jq) but not the agent's token or service account. The script (`weekly-digest.sh`) only runs Prometheus instant
