@@ -1,19 +1,23 @@
 # tempo helm values (prod overlay)
 
 # Resource limits — none previously set, all components unbounded
-# ingester-1 uses up to 631Mi, others under 100Mi
 
 ingester:
   replicas: 1
   config:
     replication_factor: 1
+  # One ingester holds all traces since replicas went 3 -> 1 (2306a8f0f). The old 768Mi limit was
+  # sized for 3 (busiest 631Mi): the single ingester sat at 767Mi and was OOMKilled at every 30 min
+  # block flush, 256 restarts in the week to 2026-11-20 (found by the weekly digest). Steady use
+  # 650-767Mi, plus the flush spike. If it reaches 1536Mi again, shrink blocks (max_block_duration)
+  # instead of adding memory.
   resources:
     requests:
       cpu: 50m
-      memory: 256Mi
+      memory: 1Gi
     limits:
       cpu: 500m
-      memory: 768Mi
+      memory: 1536Mi
 
 compactor:
   # 512Mi/200m was sized for steady-state; the first compaction pass after a long
