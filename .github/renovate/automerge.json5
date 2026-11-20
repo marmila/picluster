@@ -127,6 +127,25 @@
       automerge: false,
       addLabels: ["blocked"],
     },
+    // Version caps for the blocked packages. Without a cap Renovate keeps the blocked
+    // PR open forever, and every open PR uses one of the prConcurrentLimit slots.
+    // With a cap Renovate closes it and only offers updates below the cap.
+    // Raise a cap only when its reason is gone.
+    {
+      description: "ubuntu: nodes run 24.04 LTS (base of metal/x86/build/Dockerfile)",
+      matchDepNames: ["ubuntu"],
+      allowedVersions: "<26",
+    },
+    {
+      description: "elastic/elasticsearch: fluent-plugin-elasticsearch breaks with ES 9 (uken/fluent-plugin-elasticsearch#1061)",
+      matchDepNames: ["elastic/elasticsearch"],
+      allowedVersions: "<9",
+    },
+    {
+      description: "python: runner image is python:3.14-slim and pyproject requires <3.15; raise with Dockerfile, .python-version and uv.lock together",
+      matchDepNames: ["python"],
+      allowedVersions: "<3.15",
+    },
     {
       description: "mongo client image (mongosh) must stay on the MongoDB server line",
       // Server version is set in kubernetes/apps/e-commerce/config/databases/base/mongodb-community.yaml
