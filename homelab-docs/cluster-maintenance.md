@@ -15,7 +15,7 @@ This document is the single reference for keeping the cluster up to date and hea
 | **Daily** | 1 min | look at ntfy; act only if there is an alert | [3](#3-daily-1-minute) |
 | **Monday** | 5–15 min | weekly maintenance issue: check the weekly bundle merged by itself, health check | [4](#4-weekly-monday-1530-minutes) |
 | **During the week** | 30–60 min each | merge **one** manual critical update when you can watch (k3s last); the others merge by themselves | [5](#5-critical-updates-one-at-a-time) |
-| **First Monday of the month** | 30–60 min | majors, OS packages, backups check, stale PRs | [6](#6-monthly-first-monday) |
+| **First Monday of the month** | 30–60 min | majors, OS packages, backups check, stale PRs, upstream digest issue (opens on the 1st) | [6](#6-monthly-first-monday) |
 | **After events** | varies | k3s upgrade, node reboot, power outage, volume resize | [7](#7-event-driven-procedures) |
 
 Times are UTC. Renovate creates the bundle **before 06:00 UTC on Monday**, and the weekly issue opens at **07:00 UTC**.
@@ -262,6 +262,21 @@ One evening, about 30–60 minutes. The same steps for every manual component.
    Also run `df -h` on node1 (Vault and the RustFS S3 backup store).
 5. **Stale PRs and the Dependency Dashboard:** clear anything stuck in "Rate-Limited" or "Repository Problems".
 6. **Blocked list:** is any reason in [2.4](#24-blocked-packages-and-caps) gone? Unblock it.
+7. **Upstream digest** (runs by itself on the **1st of the month**, 07:30 UTC): the
+   [Upstream digest](../.github/workflows/upstream-digest.yml) workflow lists the
+   [ricsanfre/pi-cluster](https://github.com/ricsanfre/pi-cluster) commits made since the last review, and
+   keeps **one open issue** labelled `upstream`. Nothing new upstream → no issue, nothing to do.
+   Upstream dependency bumps (Renovate, `(deps)`) are only counted, since your own Renovate covers them.
+   When the issue is open:
+   1. Read the listed commits (or paste the issue link to Claude) and pick the ones worth taking.
+   2. On a branch, `git cherry-pick -x <sha>` each one, push, and test it in the cluster through Flux
+      (CLAUDE.md, "FluxCD PR branch workflow").
+   3. Open a PR, merge it, and point Flux back to `master`.
+   4. **Move the bookmark:** put the upstream tip SHA shown in the issue into
+      [.github/upstream-last-reviewed](../.github/upstream-last-reviewed), commit to `master`.
+   5. Close the issue. The next run lists only commits after the bookmark.
+
+   To run it by hand: GitHub → **Actions** → **Upstream digest** → **Run workflow**.
 
 ---
 
