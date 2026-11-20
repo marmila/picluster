@@ -1,6 +1,6 @@
 # Read-only SRE triage agent: Claude Code headless, started from a ntfy button.
 # Design and safety model: homelab-docs/sre-triage-agent.md
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 
 ARG TARGETARCH
 # renovate: datasource=npm depName=@anthropic-ai/claude-code
