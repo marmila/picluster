@@ -227,5 +227,6 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
 - [ ] **Hardware:** node1/node6 power cables; keep an eye on node3.
 - [ ] **Small items:** vendor the SUC files; check the Kafka 4.3.0/4.3.1 pin;
   `RaspberryPiUnderVoltage` alert only after 2 dips.
+- [ ] **Open Renovate PRs (16, limit 20):** decide merge or close for each (2026-11-20 list: 6 GitHub Actions majors #746 #747 #748 #984 #985 #986; Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.
