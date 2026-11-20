@@ -63,7 +63,7 @@ RustFS disk and `rc` on **node1**.
   (`e9d1a0f9`, `9d7be770`, `de9ae120`, `0da0c056`).
 - [x] **Applied on pimaster:** `make k3s-config`, `make deploy-monitoring-agent` (role v1.0.6 installed by hand in
   the running container). Verified: node1 logs reach Fluentd (2e), the gateway-api-crd retry loop stopped.
-- [ ] **Rebuild the runner image** so v1.0.6 is baked in (`make ansible-runner-setup` does not rebuild):
+- [x] **Rebuild the runner image** (done 2026-11-20, image built in 233 s, `ricsanfre.fluentbit, v1.0.6`) so v1.0.6 is baked in (`make ansible-runner-setup` does not rebuild):
   `cd ~/picluster/ansible-runner && docker compose build && docker compose up --detach`, then
   `./ansible-runner/ansible-runner.sh ansible-galaxy role list 2>/dev/null | grep fluentbit` → v1.0.6.
 - [x] **Quick start doc** for all make targets and playbooks, with the fork additions:
