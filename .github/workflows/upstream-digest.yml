@@ -1,7 +1,7 @@
 ---
 # Lists the ricsanfre/pi-cluster commits not reviewed yet, so upstream fixes can
-# be cherry-picked without re-reading the whole history. Runs every Monday and
-# keeps one open issue ("Upstream digest") up to date.
+# be cherry-picked without re-reading the whole history. Runs on the 1st of each
+# month and keeps one open issue ("Upstream digest") up to date.
 #
 # The last reviewed upstream commit is stored in .github/upstream-last-reviewed.
 # Dependency bumps (renovate[bot], "(deps)" subjects) are counted but not
@@ -13,7 +13,7 @@ name: Upstream digest
 
 'on':
   schedule:
-    - cron: '30 7 * * 1'
+    - cron: '30 7 1 * *'
   workflow_dispatch:
 
 permissions:
