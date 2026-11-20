@@ -15,13 +15,6 @@ resources:
   - ./rpi-throttle-rules.yaml
   - ./rustfs-bucket-rules.yaml
 
-patches:
-  - target:
-      group: monitoring.coreos.com
-      kind: PrometheusRule
-      name: kubernetes
-    path: kubeletdown-fix-patch.yaml
-
 # Disable fluxcd substitution
 commonAnnotations:
   kustomize.toolkit.fluxcd.io/substitute: disabled
