@@ -643,3 +643,92 @@ References:
 - `postmortems/incident-2026-11-05-node6-undervoltage.md`
 - `ansible/roles/basic_setup/tasks/rpi_throttle_metrics.yml`, `ansible/roles/basic_setup/scripts/rpi_throttled_metrics`
 - `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rules.yaml`
+
+## CLUSTER-017 Node Overheating
+
+<a id="runbook-cluster-017"></a>
+Runbook ID: `CLUSTER-017`
+Owner: Platform
+Severity: `SEV-2` (`SEV-1` when `NodeTemperatureCritical` fires on several nodes at once)
+
+Objective: Find why a node runs hot and bring it back to its normal temperature before the CPU throttles or
+the node shuts down.
+
+Alerts:
+
+| Alert | Raspberry Pi (SoC, `thermal_thermal_zone0`) | HP mini (CPU, `platform_coretemp_0`) | For |
+| --- | --- | --- | --- |
+| `NodeTemperatureHigh` (warning) | over 70 °C | over 85 °C | 15m |
+| `NodeTemperatureCritical` (critical) | over 80 °C (firmware throttles) | over 95 °C (chip limit 100 °C) | 5m |
+| `RaspberryPiSoftTempLimit` (warning) | firmware soft limit bit (`0x8`) set | – | 10m |
+| `NodeTemperatureMetricsMissing` (warning) | node reports no CPU temperature | same | 30m |
+
+Background: the values come from node-exporter's hwmon collector, no extra script. Normal (2026-11-20): Pis
+35–45 °C, at most about 51 °C in a week; HP CPUs 54–62 °C, at most about 72 °C. On the HP minis the
+`thermal_thermal_zone0` chip is the chipset (`pch_skylake`, about 68 °C) and is not alerted. The gateway
+(armv7l) exports no temperature. The weekly digest shows each node's highest temperature of the week.
+
+Procedure:
+
+1. Is it one node or several? On node2:
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+kubectl get --raw "${P}$(python3 -c 'import urllib.parse;print(urllib.parse.quote("max by (nodename) (node_hwmon_temp_celsius{chip=~\"thermal_thermal_zone0|platform_coretemp_.*\"} * on (instance) group_left (nodename) node_uname_info)"))')" \
+  | python3 -c 'import sys,json;[print(r["metric"]["nodename"], round(float(r["value"][1]))) for r in json.load(sys.stdin)["data"]["result"]]'
+```
+
+   Several nodes hot at once: the room or the rack (step 4). One node: steps 2 and 3.
+
+2. Is the node busy? A pod keeping the CPU at 100 % heats a passively cooled Pi quickly:
+
+```bash
+kubectl top node <node>
+kubectl top pods -A --sort-by=cpu | head
+kubectl get pods -A -o wide --field-selector spec.nodeName=<node> | head -30
+```
+
+   If one pod is the cause, fix or limit it (CPU limit, or move it with `kubectl -n <ns> delete pod <pod>`).
+
+3. On the node itself:
+
+```bash
+# Raspberry Pi
+sudo bash -c 'vcgencmd measure_temp; vcgencmd get_throttled; vcgencmd measure_clock arm'
+# HP mini
+sensors 2>/dev/null || cat /sys/class/hwmon/hwmon*/temp*_input
+uptime
+```
+
+   - Pi with `0x8` / `0x80000` in `get_throttled`: heat (soft limit), not power. Power bits (`0x1`, `0x10000`):
+     CLUSTER-016.
+   - Check the fan: listen or look; on the Pi case fan, is the connector seated? On an HP mini, are the vents
+     dusty or blocked?
+   - Load low but hot: cooling fails (fan, dust, enclosure). Load high: step 2.
+
+4. Room or rack: several nodes up by the same amount points to the environment (heating, sun, closed cabinet,
+   switch or UPS next to the nodes). Open the cabinet or move air, then watch step 1 again.
+
+5. Critical and not dropping within 10 minutes: drain the node (`CLUSTER-011`) so its pods stop heating it, and
+   shut it down if the HP mini goes over 95 °C (it powers off at 100 °C by itself, uncleanly).
+
+6. Metrics missing: on the node, check that node-exporter runs
+   (`kubectl -n kube-prom-stack get pods -o wide | grep node-exporter`; node1: `systemctl status node_exporter`)
+   and that `/sys/class/hwmon` has `temp*_input` files. A kernel or firmware update can rename the chip; then
+   update the `chip` selectors in `node-temperature-rules.yaml`.
+
+Verify:
+
+- Step 1 shows the node back in its normal range (Pi under 55 °C, HP under 75 °C).
+- On a Pi, `vcgencmd get_throttled` shows no `*_now` bit and `measure_clock arm` the full clock.
+- The alerts resolve; the "resolved" ntfy message follows within 5 minutes.
+
+Rollback:
+
+1. Uncordon the node if you drained it (`kubectl uncordon <node>`).
+
+References:
+
+- `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-temperature-rules.yaml`
+- `homelab-docs/alerting.md` (Node temperature alerts, Weekly digest)
+- `CLUSTER-016` for under-voltage on a Pi

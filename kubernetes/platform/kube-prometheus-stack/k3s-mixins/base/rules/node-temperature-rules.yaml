@@ -1,0 +1,94 @@
+# Node temperature. Not generated from the mixins
+# (generate.sh writes to build/src/templates, so this file is not overwritten).
+#
+# Source: node-exporter hwmon collector (default on), no extra script.
+# - Raspberry Pi (aarch64): chip thermal_thermal_zone0 = SoC (cpu-thermal). The firmware
+#   starts throttling at 80 °C, then also sets soft_temp_limit_now (rpi-throttle-rules.yaml).
+# - HP mini (x86_64): chip platform_coretemp_0 = CPU package and cores, chip critical 100 °C.
+#   thermal_thermal_zone0 on x86 is the chipset (pch_skylake, about 68 °C normally): not alerted.
+# Baseline 2026-11-20: Pis 35-45 °C now, at most 51 °C over 7 days; HP CPUs 54-62 °C, at most 72 °C.
+# The gateway (armv7l) exports no temperature and is not checked.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: node-temperature
+  namespace: monitoring
+spec:
+  groups:
+  - name: node-temperature.rules
+    rules:
+    - alert: NodeTemperatureHigh
+      annotations:
+        summary: '{{ $labels.nodename }} is hot: {{ $value | printf "%.0f" }} °C.'
+        description: '{{ $labels.nodename }} has been at {{ $value | printf "%.0f" }} °C for 15 minutes (warning above 70 °C on a Pi, 85 °C on an HP mini; normal is under 55 °C on a Pi, under 75 °C on an HP). Usually a stopped fan, blocked airflow or a hot room; sometimes a runaway pod keeping the CPU at 100 %. Runbook CLUSTER-017.'
+        runbook: CLUSTER-017
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-017
+      expr: |
+        (
+          max by (instance) (node_hwmon_temp_celsius{job="node-exporter",chip="thermal_thermal_zone0"})
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter",machine="aarch64"}
+          > 70
+        )
+        or
+        (
+          max by (instance) (node_hwmon_temp_celsius{job="node-exporter",chip=~"platform_coretemp_.*"})
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter",machine="x86_64"}
+          > 85
+        )
+      for: 15m
+      labels:
+        severity: warning
+    - alert: NodeTemperatureCritical
+      annotations:
+        summary: '{{ $labels.nodename }} is overheating: {{ $value | printf "%.0f" }} °C.'
+        description: '{{ $labels.nodename }} has been at {{ $value | printf "%.0f" }} °C for 5 minutes (critical above 80 °C on a Pi, where the firmware throttles the CPU, and 95 °C on an HP mini, 5 °C below the chip limit). Pods on it slow down; an HP mini shuts down at 100 °C. Act now: check the fan, or drain the node. Runbook CLUSTER-017.'
+        runbook: CLUSTER-017
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-017
+      expr: |
+        (
+          max by (instance) (node_hwmon_temp_celsius{job="node-exporter",chip="thermal_thermal_zone0"})
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter",machine="aarch64"}
+          > 80
+        )
+        or
+        (
+          max by (instance) (node_hwmon_temp_celsius{job="node-exporter",chip=~"platform_coretemp_.*"})
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter",machine="x86_64"}
+          > 95
+        )
+      for: 5m
+      labels:
+        severity: critical
+    - alert: RaspberryPiSoftTempLimit
+      annotations:
+        summary: The firmware of {{ $labels.nodename }} reached its soft temperature limit.
+        description: The firmware of {{ $labels.nodename }} has reported the soft temperature limit for 10 minutes (bit 0x8 of vcgencmd get_throttled). It lowers the clock to cool down. Heat, not power. Runbook CLUSTER-017.
+        runbook: CLUSTER-017
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-017
+      expr: |
+        (max by (instance) (rpi_throttled_flag{flag="soft_temp_limit_now"}) == 1)
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 10m
+      labels:
+        severity: warning
+    - alert: NodeTemperatureMetricsMissing
+      annotations:
+        summary: No temperature metrics from {{ $labels.nodename }}.
+        description: node-exporter on {{ $labels.nodename }} reports no CPU temperature, so overheating would not be noticed. Check that its node-exporter runs and that the hwmon collector is not disabled. Runbook CLUSTER-017.
+        runbook: CLUSTER-017
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-017
+      expr: |
+        (
+          node_uname_info{job="node-exporter",machine="aarch64"}
+          unless on (instance) node_hwmon_temp_celsius{job="node-exporter",chip="thermal_thermal_zone0"}
+        )
+        or
+        (
+          node_uname_info{job="node-exporter",machine="x86_64"}
+          unless on (instance) node_hwmon_temp_celsius{job="node-exporter",chip=~"platform_coretemp_.*"}
+        )
+      for: 30m
+      labels:
+        severity: warning

@@ -394,6 +394,81 @@ kubernetes/platform/kube-prometheus-stack/app/base/values.yaml                  
 kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/rpi-throttle-rules.yaml
 ```
 
+## Node temperature alerts
+
+Added 2026-11-20. Before that only `RaspberryPiThrottled` reacted to heat, and only after the firmware had
+already slowed the CPU; the HP minis had no temperature coverage. The values come from node-exporter's hwmon
+collector (on by default, on the k3s nodes and node1), so there is nothing to install on the nodes.
+
+| Sensor | Pi (aarch64) | HP mini (x86_64) |
+|---|---|---|
+| hwmon chip used | `thermal_thermal_zone0` (SoC, `cpu-thermal`) | `platform_coretemp_0` (CPU package and cores, max of all) |
+| Normal (2026-11-20) | 35–45 °C, at most 51 °C in a week | 54–62 °C, at most 72 °C in a week |
+| `NodeTemperatureHigh` (warning, 15m) | over 70 °C | over 85 °C |
+| `NodeTemperatureCritical` (critical, 5m) | over 80 °C (firmware throttles) | over 95 °C (chip critical 100 °C) |
+
+Also `RaspberryPiSoftTempLimit` (warning, firmware soft limit bit for 10 minutes, from the throttling metrics
+above) and `NodeTemperatureMetricsMissing` (warning, a Pi or HP mini without a CPU temperature for 30 minutes).
+On the HP minis `thermal_thermal_zone0` is the chipset (`pch_skylake`, about 68 °C) and is left out. The
+gateway (armv7l) exports no temperature. All point to runbook
+[CLUSTER-017](../runbooks/cluster/nodes-capacity.md#runbook-cluster-017).
+
+File: `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-temperature-rules.yaml`.
+
+## Weekly digest
+
+<a id="weekly-digest"></a>
+Every Monday at 08:00 (Europe/Rome) one ntfy message on the alerts topic sums up the week, so slow trends show
+up without opening Grafana. Title `Weekly digest <year>-W<week>: all good` (priority 3), or `: N to look at`
+(priority 4) when nodes are not Ready, alerts are firing, Velero had no successful backup for 30 hours or
+failed, a certificate is not ready, a Longhorn volume is degraded or faulted, or a Flux object is not ready.
+
+Lines in the message:
+
+| Line | Content |
+|---|---|
+| Nodes | Ready / total, reboots during the week |
+| Temp max 7d | highest temperature per node, ⚠ when within 10 °C of `NodeTemperatureHigh` |
+| Pi soft temp limit | Pis that hit the firmware soft limit |
+| Disk / | root disk usage, every node; Disk /storage: the 3 fullest |
+| Alerts this week | alerts that fired (number of distinct series), at most 12 listed; Firing now |
+| Velero | last successful backup, successes and failures in 7 days |
+| Certs | next expiry; certificates not ready |
+| Longhorn | degraded or faulted volumes |
+| Flux | objects not ready |
+| RustFS | node1 bucket sizes over 100 MB with 7-day growth (from 2026-11-27), orphaned data |
+| Under-voltage | minutes with kernel under-voltage messages per Pi |
+| Restarts top | the 3 pods that restarted most |
+
+How it works: CronJob `weekly-digest` in the `sre-triage` namespace. It reuses the triage image (bash, curl,
+jq) but not the agent's token or service account. The script (`weekly-digest.sh`) only runs Prometheus instant
+queries and sends one message of at most 3,800 bytes. It reads the alerts topic from Vault
+(`alertmanager/notifications` `ntfy_url`, ExternalSecret `weekly-digest`) and drops the Alertmanager template
+parameters. Egress is limited to DNS, Prometheus and ntfy.sh (CiliumNetworkPolicy `weekly-digest-egress`).
+
+Alerts: a failed run fires `KubeJobFailed`; `WeeklyDigestMissing` fires when no run succeeded for 8 days (or
+the CronJob is gone or suspended).
+
+Run it now, for a test or after changing the script (node2):
+
+```bash
+kubectl -n sre-triage create job --from=cronjob/weekly-digest weekly-digest-test
+kubectl -n sre-triage logs -f job/weekly-digest-test
+kubectl -n sre-triage delete job weekly-digest-test
+```
+
+The log prints the same title and message that went to ntfy (never the topic URL). Change the content in
+`kubernetes/platform/sre-triage/app/base/weekly-digest.sh`; the ConfigMap is generated from it, so a push is
+enough. When the triage image tag changes in `deployment.yaml`, change it in `weekly-digest.yaml` too.
+
+Files:
+
+```
+kubernetes/platform/sre-triage/app/base/weekly-digest.sh
+kubernetes/platform/sre-triage/app/base/weekly-digest.yaml                         # ExternalSecret, CronJob, network policy
+kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/weekly-digest-rules.yaml
+```
+
 ## Alerts and the sre agent
 
 <a id="alerts-and-the-sre-agent"></a>

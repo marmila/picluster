@@ -68,6 +68,8 @@ RustFS disk and `rc` on **node1**.
   `./ansible-runner/ansible-runner.sh ansible-galaxy role list 2>/dev/null | grep fluentbit` → v1.0.6.
 - [x] **Quick start doc** for all make targets and playbooks, with the fork additions:
   [quick-start.md](quick-start.md) (`9f130947`, `c737c7fd`).
+- [x] **Node temperature alerts and weekly ntfy digest** pushed ([alerting.md](alerting.md#weekly-digest),
+  runbook CLUSTER-017). Baseline: Pis at most 51 °C in a week, HP CPUs at most 72 °C. Checks in section 1.
 
 ---
 
@@ -114,6 +116,23 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
 
 - [x] **When all three days are OK:** close actions 1 and 4 in
   [the node1 postmortem](../postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md).
+
+### 20 Nov (node2): temperature alerts and weekly digest live
+- [ ] Rules loaded, nothing firing (all nodes far below the thresholds).
+- [ ] CronJob, Secret and ConfigMap exist; a test run sends the digest to the phone.
+- [ ] 20 Nov nightly Velero backup Completed (first since the 19 Nov orphan cleanup).
+
+```bash
+echo "== flux =="; flux get kustomizations -A | grep -E "sre-triage|kube-prometheus-stack|NAME"
+echo "== rules =="; kubectl get prometheusrules -A | grep -E "node-temperature|weekly-digest"
+echo "== firing =="; kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=ALERTS%7Balertname%3D~%22NodeTemperature.*%7CRaspberryPiSoftTempLimit%7CWeeklyDigestMissing%22%7D" | jq -r '.data.result[] | .metric.alertname' | sort | uniq -c; echo "(empty = none)"
+echo "== digest objects =="; kubectl -n sre-triage get cronjob,externalsecret,secret,configmap | grep -i digest
+echo "== test run =="; kubectl -n sre-triage create job --from=cronjob/weekly-digest weekly-digest-test && kubectl -n sre-triage wait --for=condition=complete job/weekly-digest-test --timeout=120s; kubectl -n sre-triage logs job/weekly-digest-test; kubectl -n sre-triage delete job weekly-digest-test
+echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors | tail -3
+```
+
+### 23 Nov 08:00: first scheduled digest
+- [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
 
 ---
 

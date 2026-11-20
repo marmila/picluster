@@ -1,0 +1,36 @@
+# Weekly status digest (CronJob sre-triage/weekly-digest, homelab-docs/alerting.md "Weekly digest").
+# Not generated from the mixins. A failed run already fires KubeJobFailed; this catches the job
+# not running at all (suspended, deleted, schedule broken) or never succeeding.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: weekly-digest
+  namespace: monitoring
+spec:
+  groups:
+  - name: weekly-digest.rules
+    rules:
+    - alert: WeeklyDigestMissing
+      annotations:
+        summary: No weekly digest sent for more than 8 days.
+        description: The weekly-digest CronJob in sre-triage has not completed for more than 8 days (or it is gone, or suspended), so the Monday status message is not arriving. Check `kubectl -n sre-triage get cronjob,jobs` and the last job's log. See homelab-docs/alerting.md, Weekly digest.
+        runbook: alerting.md#weekly-digest
+        runbook_url: https://github.com/marmila/picluster/blob/master/homelab-docs/alerting.md#weekly-digest
+      # Last success older than 8 days; or never succeeded and created more than 8 days ago
+      # (no false alarm in the first week); or the CronJob is gone; or it is suspended.
+      expr: |
+        (time() - kube_cronjob_status_last_successful_time{namespace="sre-triage",cronjob="weekly-digest"} > 8 * 86400)
+        or
+        (
+          (time() - kube_cronjob_created{namespace="sre-triage",cronjob="weekly-digest"} > 8 * 86400)
+          unless on (namespace, cronjob) kube_cronjob_status_last_successful_time{namespace="sre-triage",cronjob="weekly-digest"}
+        )
+        or
+        absent(kube_cronjob_info{namespace="sre-triage",cronjob="weekly-digest"})
+        or
+        (kube_cronjob_spec_suspend{namespace="sre-triage",cronjob="weekly-digest"} == 1)
+      for: 1h
+      labels:
+        severity: warning

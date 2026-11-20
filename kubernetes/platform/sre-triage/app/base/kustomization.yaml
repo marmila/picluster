@@ -8,3 +8,10 @@ resources:
   - externalsecret.yaml
   - deployment.yaml
   - networkpolicy.yaml
+  - weekly-digest.yaml
+
+configMapGenerator:
+  - name: weekly-digest-script
+    namespace: sre-triage
+    files:
+      - weekly-digest.sh

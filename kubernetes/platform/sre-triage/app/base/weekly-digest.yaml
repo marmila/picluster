@@ -1,0 +1,137 @@
+# Weekly cluster status digest to the alerts ntfy topic (homelab-docs/alerting.md "Weekly digest").
+# Script: weekly-digest.sh (ConfigMap from configMapGenerator in kustomization.yaml).
+# Lives in the sre-triage namespace to reuse its image (bash, curl, jq) and Vault access; it does not
+# use the agent's token or service account. Missing runs: WeeklyDigestMissing; failed runs: KubeJobFailed.
+#
+# Test now:  kubectl -n sre-triage create job --from=cronjob/weekly-digest weekly-digest-test
+#            kubectl -n sre-triage logs -f job/weekly-digest-test; kubectl -n sre-triage delete job weekly-digest-test
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: weekly-digest
+  namespace: sre-triage
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: weekly-digest
+  data:
+    # Same topic as Alertmanager; the script drops the template query string.
+    - secretKey: NTFY_URL
+      remoteRef:
+        key: alertmanager/notifications
+        property: ntfy_url
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: weekly-digest
+  namespace: sre-triage
+automountServiceAccountToken: false
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: weekly-digest
+  namespace: sre-triage
+  labels:
+    app.kubernetes.io/name: weekly-digest
+spec:
+  schedule: "0 8 * * 1"
+  timeZone: Europe/Rome
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: weekly-digest
+        spec:
+          serviceAccountName: weekly-digest
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: digest
+              # Same image as deployment.yaml (keep the tags in sync).
+              image: ghcr.io/marmila/sre-triage:sha-e036859
+              command: ["bash", "/scripts/weekly-digest.sh"]
+              env:
+                - name: PROM_URL
+                  value: http://kube-prometheus-stack-prometheus.kube-prom-stack.svc:9090
+              envFrom:
+                - secretRef:
+                    name: weekly-digest
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: script
+              configMap:
+                name: weekly-digest-script
+            - name: tmp
+              emptyDir:
+                sizeLimit: 16Mi
+---
+# Egress: DNS, Prometheus, ntfy.sh. Nothing else; no ingress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: weekly-digest-egress
+  namespace: sre-triage
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: weekly-digest
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-prom-stack
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: ntfy.sh
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
