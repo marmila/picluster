@@ -97,7 +97,7 @@ cert_bad=$(q 'certmanager_certificate_ready_status{condition="False"} == 1' '.me
 [ -z "$cert_bad" ] || todo+=("Certificates not ready: $cert_bad")
 
 # --- Longhorn (robustness 1 healthy, 2 degraded, 3 faulted, 0 detached) -----------------------
-lh_bad=$(q 'longhorn_volume_robustness >= 2' '"\(.metric.volume)\(if .value[1] == "3" then " FAULTED" else " degraded" end)"' | cut -f1 | paste -sd'·' | sed 's/·/ · /g')
+lh_bad=$(q 'longhorn_volume_robustness >= 2' '"\(.metric.volume)\(if .value[1] == "3" then " FAULTED" else " degraded" end)"' | cut -f1 | awk 'NF { printf "%s%s", (n++ ? " · " : ""), $0 }')
 [ -z "$lh_bad" ] || todo+=("Longhorn: $lh_bad")
 
 # --- Flux: only objects that failed (ready=False); Unknown = still reconciling -----------------
@@ -105,7 +105,7 @@ flux_bad=$(q "gotk_resource_info{ready=\"False\",name!~\"$FLUX_IGNORE\"}" '.metr
 flux_n=$(printf '%s' "$flux_bad" | grep -c . || true)
 if [ "$flux_n" -gt 0 ]; then
   more=""; [ "$flux_n" -le 5 ] || more=" +$((flux_n - 5))"
-  todo+=("Flux not ready ($flux_n): $(printf '%s\n' "$flux_bad" | head -5 | paste -sd'·' | sed 's/·/ · /g')$more")
+  todo+=("Flux not ready ($flux_n): $(printf '%s\n' "$flux_bad" | head -5 | awk 'NF { printf "%s%s", (n++ ? " · " : ""), $0 }')$more")
 fi
 
 # --- Pods restarting a lot ------------------------------------------------------------------------
