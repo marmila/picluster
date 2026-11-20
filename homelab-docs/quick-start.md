@@ -29,11 +29,22 @@ Rules:
 - Never run `ansible-playbook` directly on the host. Use `make` or `./ansible-runner/ansible-runner.sh ansible-playbook ...`.
   The only exception is `install-local-utils`, see [section 6](#6-all-make-targets).
 - In the inventory, `pimaster` is the runner container (local connection), not the VM. Apt does not update it;
-  rebuilding the image does (`make ansible-runner-setup`).
+  rebuilding the image does (see below).
 - Before running any target, `git pull` on pimaster so it uses the playbooks you just pushed.
-- The Galaxy roles and collections are baked into the runner image at build time. After a change to
-  `ansible/requirements.yml` (for example a Renovate bump or a cherry-pick), run `make ansible-runner-setup`
-  first, or the old role version keeps running.
+- The Galaxy roles and collections, the Python dependencies and the tools are baked into the runner image at build
+  time; they are not mounted from the repo. After a change to `ansible/requirements.yml`, `ansible/pyproject.toml`,
+  `uv.lock` or `ansible-runner/Dockerfile` (a Renovate bump or a cherry-pick), **rebuild the image**, or the old
+  versions keep running:
+
+  ```bash
+  cd ~/picluster/ansible-runner
+  docker compose build              # new image from the current repo
+  docker compose up --detach        # recreates the container on the new image
+  ```
+
+  `make ansible-runner-setup` is **not** enough: it only runs `docker compose up --detach`, which builds only
+  when no image exists yet. A role installed by hand inside the running container (`ansible-galaxy role install`)
+  is lost the next time the container is recreated.
 
 `make` or `make help` lists every target with its one-line description.
 
@@ -42,7 +53,7 @@ Rules:
 ```bash
 cd ~/picluster
 git pull
-make ansible-runner-setup        # build/start the runner container, create ~/.ssh/id_rsa if missing
+make ansible-runner-setup        # first time: build the image and start the container; create ~/.ssh/id_rsa if missing
 make secret-files                # prompts for the secrets below, writes ~/.secrets/*.ini
 ```
 
@@ -192,7 +203,7 @@ make admin-cli
 | `make get-pi-status` | `pi_throttling` on every Pi (under-voltage, throttling). The same data is in Prometheus |
 | `make os-backup` | start a restic backup on all nodes now |
 | `make openwrt-certbot-tls` | renew the gateway TLS certificate with certbot and deploy it to OpenWRT (Let's Encrypt item in the [checklist](ops-checklist.md)) |
-| `make deploy-monitoring-agent` | Fluent Bit agent on node1, which sends node1's logs to Fluentd in the cluster. It works on node1 since the 2026-11 cherry-picks: the Vault lookup runs on the controller, `Self_Hostname` is indented, and role v1.0.6 is needed, so rebuild the runner first |
+| `make deploy-monitoring-agent` | Fluent Bit agent on node1, which sends node1's logs to Fluentd in the cluster. It works on node1 since the 2026-11 cherry-picks: the Vault lookup runs on the controller, `Self_Hostname` is indented, and role v1.0.6 is needed, so rebuild the runner image first ([section 1](#1-where-commands-run)) |
 | `make configure-vault` / `make configure-minio` | re-apply the Terraform for Vault / RustFS (these are `tofu apply`: ask first) |
 | `make lint-ci` | yamllint like CI does |
 | `make syntax-check-external-services` | Ansible syntax check |
@@ -233,7 +244,7 @@ Only run these on purpose, after a backup check:
 |---|---|---|
 | `help` | | list targets |
 | `prepare-ansible` | | `ansible-runner-setup` + `secret-files` |
-| `ansible-runner-setup` | | build the runner container |
+| `ansible-runner-setup` | | create local dirs and SSH key, `docker compose up --detach` (builds only if no image exists; to rebuild see [section 1](#1-where-commands-run)) |
 | `ansible-local-setup`, `ansible-local-galaxy`, `ansible-local-lint`, `ansible-local-syntax-check-external-services` | | uv-based local env |
 | `uv-lock-check`, `lint`, `lint-ci`, `syntax-check-external-services`, `lint-fix-whitespace` | | checks |
 | `init` | | full install, see [section 3](#3-full-install-from-scratch) |
