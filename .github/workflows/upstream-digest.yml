@@ -1,0 +1,109 @@
+---
+# Lists the ricsanfre/pi-cluster commits not reviewed yet, so upstream fixes can
+# be cherry-picked without re-reading the whole history. Runs on the 1st of each
+# month and keeps one open issue ("Upstream digest") up to date.
+#
+# The last reviewed upstream commit is stored in .github/upstream-last-reviewed.
+# Dependency bumps (renovate[bot], "(deps)" subjects) are counted but not
+# listed: the fork's own Renovate already covers them.
+#
+# After a review: cherry-pick what is worth taking (git cherry-pick -x), set the
+# file to the upstream tip shown in the issue, commit, and close the issue.
+name: Upstream digest
+
+'on':
+  schedule:
+    - cron: '30 7 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  digest:
+    name: Update upstream digest issue
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v7
+
+      - name: Fetch upstream.
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/ricsanfre/pi-cluster.git
+          # Trees are needed for the changed paths, blobs are not
+          git fetch --no-tags --filter=blob:none upstream master
+
+      - name: Build the digest.
+        id: digest
+        run: |
+          set -euo pipefail
+          upstream_url="https://github.com/ricsanfre/pi-cluster"
+          last="$(grep -v '^#' .github/upstream-last-reviewed | grep -m1 -E '^[0-9a-f]{40}$')"
+          tip="$(git rev-parse upstream/master)"
+
+          relevant=0
+          deps=0
+          : > commits.md
+          while IFS=$'\t' read -r sha short date author subject; do
+            if [[ "${author}" == renovate* || "${subject}" =~ \(deps\) ]]; then
+              deps=$((deps + 1))
+              continue
+            fi
+            relevant=$((relevant + 1))
+            # Top three path levels touched, e.g. kubernetes/platform/fluent
+            paths="$(git show --name-only --format= "${sha}" | cut -d/ -f1-3 | sort -u | head -4 | sed 's/.*/`&`/' | paste -sd ' ' -)"
+            echo "- [ ] [\`${short}\`](${upstream_url}/commit/${sha}) ${date} ${subject}<br>${paths}" >> commits.md
+          done < <(git log --no-merges --reverse --date=short \
+                     --format='%H%x09%h%x09%ad%x09%an%x09%s' "${last}..${tip}")
+
+          {
+            echo "Upstream commits on \`master\` after the last reviewed one, oldest first."
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Last reviewed | [\`${last:0:8}\`](${upstream_url}/commit/${last}) |"
+            echo "| Upstream tip | [\`${tip:0:8}\`](${upstream_url}/commit/${tip}) |"
+            echo "| To review | ${relevant} |"
+            echo "| Dependency bumps skipped | ${deps} (covered by this repo's Renovate) |"
+            echo
+            echo "## Commits to review"
+            echo
+            if [[ "${relevant}" -eq 0 ]]; then echo "_none_"; else cat commits.md; fi
+            echo
+            echo "## When done"
+            echo
+            echo "1. Cherry-pick what is worth taking on a feature branch: \`git cherry-pick -x <sha>\`."
+            echo "2. Set \`.github/upstream-last-reviewed\` to \`${tip}\` and commit."
+            echo "3. Close this issue."
+            echo
+            echo "_Updated $(date -u +%Y-%m-%d) by the Upstream digest workflow._"
+          } > body.md
+
+          echo "relevant=${relevant}" >> "${GITHUB_OUTPUT}"
+          cat body.md
+
+      - name: Create or update the issue.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEVANT: ${{ steps.digest.outputs.relevant }}
+        run: |
+          set -euo pipefail
+          title="Upstream digest (ricsanfre/pi-cluster)"
+          gh label create upstream --color 5319E7 \
+            --description "Changes to review from ricsanfre/pi-cluster" --force
+
+          number="$(gh issue list --state open --label upstream \
+            --json number,title --jq ".[] | select(.title == \"${title}\") | .number" | head -n1)"
+
+          if [[ -n "${number}" ]]; then
+            gh issue edit "${number}" --body-file body.md
+            echo "Updated issue #${number}"
+          elif [[ "${RELEVANT}" -gt 0 ]]; then
+            gh issue create --title "${title}" --label upstream --body-file body.md
+          else
+            echo "Nothing new upstream, no issue opened"
+          fi
