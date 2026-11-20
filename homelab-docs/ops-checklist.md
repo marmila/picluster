@@ -55,6 +55,17 @@ RustFS disk and `rc` on **node1**.
 - [x] **Phone check:** next alert arrives in the compact format; a long triage report arrives in parts.
   Both confirmed on the phone 2026-11-19.
 
+### 20 Nov 2026
+- [x] **Upstream cherry-picks applied** (PR #992, merged into master): external-dns annotation prefix (`7195fbf4`),
+  node1 fluent-bit agent fixes: RFC5424 syslog parser, Vault lookup on the controller, `Self_Hostname` indentation
+  (`1e3e36e2`, `e9de567f`), role `ricsanfre.fluentbit` v1.0.6 (`4234219a`), `make k3s-config` (`2ad60d9a`),
+  k3s v1.37.2+k3s1 with the `gateway-api-crd` add-on disabled (`99b0bfa9`), mixin pins and fixes
+  (`e9d1a0f9`, `9d7be770`, `de9ae120`, `0da0c056`).
+- [x] **Applied on pimaster:** `make ansible-runner-setup` (role v1.0.6), `make k3s-config`,
+  `make deploy-monitoring-agent`. Verified: node1 logs reach Fluentd (2e), the gateway-api-crd retry loop stopped.
+- [x] **Quick start doc** for all make targets and playbooks, with the fork additions:
+  [quick-start.md](quick-start.md) (`9f130947`, `c737c7fd`).
+
 ---
 
 ## 1. Checks over the next days
@@ -124,8 +135,9 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   ```
 - [x] **2c. node1 `/var/log` (2.7 GB):** 2 GB was `/var/log/fluentbit.log` (about 54k lines/day, no rotation),
   truncated 2026-11-19. The errors in it (syslog parse errors, mis-indented `Self_Hostname`) are fixed by
-  cherry-pick Batch A (`e513a832`, `6ae134a1`, `4d30396a`); no config change before that batch.
-- [ ] **2e. node1 logs never reach Fluentd** (found 2026-11-19): `getaddrinfo(fluentd.homelab.marmilan.com):
+  cherry-pick Batch A (`e513a832`, `6ae134a1`, `4d30396a`), applied 2026-11-20.
+- [x] **2e. node1 logs never reach Fluentd** (found 2026-11-19; **fixed 2026-11-20** with the cherry-picks, PR #992:
+  `7195fbf4` = upstream `89e0ced1`. Verified: `dig @10.0.0.11` → 10.0.0.66, no new `getaddrinfo` errors.): `getaddrinfo(fluentd.homelab.marmilan.com):
   Domain name not found`. Inside the network the zone is served by bind9 on node1 (`host_vars/node1.yml`,
   via gateway 10.0.0.1), which has no `fluentd` record (`dig @10.0.0.11` empty; the public IONOS record
   `@1.1.1.1` = 10.0.0.66 is not used inside). external-dns (rfc2136 → node1 bind) should create it, but the
