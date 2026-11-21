@@ -5,6 +5,8 @@ namespace: loki
 resources:
   - ../../base
 
+components:
+  - ../../components/monitoring
 
 configMapGenerator:
   - name: loki-helm-values
