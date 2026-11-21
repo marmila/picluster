@@ -1,0 +1,18 @@
+# Private repo with the trading agent manifests (github.com/marmila/trading-agent).
+# Read-only deploy key from Vault (trading/deploy-key), see homelab-docs/trading-agent.md.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: trading-agent
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: ssh://git@github.com/marmila/trading-agent
+  ref:
+    branch: main
+  secretRef:
+    name: trading-agent-deploy-key
+  # Only the manifests; scripts and docs never reach the cluster.
+  ignore: |
+    /*
+    !/deploy/
