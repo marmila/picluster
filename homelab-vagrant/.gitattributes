@@ -1,0 +1,2 @@
+# Files run inside Linux VMs: keep LF even on a Windows checkout
+* text eol=lf

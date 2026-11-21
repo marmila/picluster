@@ -1,0 +1,62 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# pimaster: Ubuntu 22.04 VM on the Windows laptop. It hosts the ansible-runner
+# container and, when resized, the k3d dev cluster.
+# Rebuild procedure: homelab-docs/pimaster-vm.md
+#
+# Tunables (environment variables on the Windows side):
+#   PIMASTER_MEMORY  MB of RAM        (default 2048; 10240 for the dev cluster)
+#   PIMASTER_CPUS    vCPUs            (default 2; 4 for the dev cluster)
+#   PIMASTER_DISK    root disk size   (default 100GB, grow only)
+#   PIMASTER_BRIDGE  host NIC for the bridged LAN adapter
+#   PIMASTER_REPO    git URL cloned into /home/marmila/picluster
+
+MEMORY   = Integer(ENV.fetch("PIMASTER_MEMORY", "2048"))
+CPUS     = Integer(ENV.fetch("PIMASTER_CPUS", "2"))
+DISK     = ENV.fetch("PIMASTER_DISK", "100GB")
+BRIDGE   = ENV.fetch("PIMASTER_BRIDGE", "Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC")
+REPO_URL = ENV.fetch("PIMASTER_REPO", "https://github.com/marmila/picluster.git")
+
+unless Vagrant.has_plugin?("vagrant-disksize")
+  raise "Plugin vagrant-disksize missing. Install it with: vagrant plugin install vagrant-disksize"
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2204"
+  config.vm.hostname = "pimaster"
+
+  # Root disk (the provisioner grows partition, LVM and filesystem to match)
+  config.disksize.size = DISK
+
+  # No /vagrant synced folder: the repo is cloned inside the VM
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # Adapter 1: NAT, used by `vagrant ssh` (127.0.0.1:2222)
+  config.vm.network "forwarded_port", guest: 22, host: 2222, auto_correct: true
+
+  # Adapter 2: host-only, fixed IP reachable from Windows
+  config.vm.network "private_network", ip: "192.168.56.10", adapter: 2
+
+  # Adapter 3: bridged to the home LAN (DHCP); route to 10.0.0.0/24 set by base.sh
+  config.vm.network "public_network", bridge: BRIDGE, adapter: 3
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "pimaster"
+    vb.memory = MEMORY
+    vb.cpus = CPUS
+    vb.customize ["modifyvm", :id, "--nictype1", "82540EM"] # NAT
+    vb.customize ["modifyvm", :id, "--nictype2", "82540EM"] # host-only
+    vb.customize ["modifyvm", :id, "--nictype3", "82540EM"] # bridged
+    vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+  end
+
+  # Always on first `vagrant up`: user, Docker, network, repo clone
+  config.vm.provision "base", type: "shell", path: "provision/base.sh",
+    env: { "REPO_URL" => REPO_URL }
+
+  # Only on request: tools and kernel settings for the k3d dev cluster
+  #   vagrant provision --provision-with dev-tools
+  config.vm.provision "dev-tools", type: "shell", path: "provision/dev-tools.sh",
+    run: "never"
+end

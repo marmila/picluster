@@ -68,6 +68,10 @@ back when you're done ([section 7](#7-stop-and-give-the-ram-back)).
 
 ## 2. Resize the pimaster VM
 
+> If pimaster was rebuilt from [homelab-vagrant/pimaster](../homelab-vagrant/pimaster/Vagrantfile), resize it
+> and install the dev tools with Vagrant instead: [pimaster-vm.md section 7](pimaster-vm.md#7-resize-and-dev-tools).
+> That replaces this section and section 4.
+
 Changing RAM and CPUs only edits the VM's VirtualBox settings. The disk, network adapters (NAT, host-only
 192.168.56.10, bridged 192.168.1.7) and everything inside Ubuntu stay the same. The ansible-runner has
 `restart: unless-stopped`, so Docker starts it again after the reboot.
