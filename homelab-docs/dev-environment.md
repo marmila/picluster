@@ -168,6 +168,27 @@ make dev-up
 
 It ends with `Smoke test passed`.
 
+The first run takes 15–25 minutes on Wi-Fi, because every image is downloaded (RustFS alone about 3 min).
+The smoke test prints nothing while it waits (up to 2 min per component). To watch, open a second
+session:
+
+```bash
+kubectl get pods -A -w                                   # Ctrl+C to quit
+kubectl get events -A --sort-by=.lastTimestamp | tail -15
+```
+
+On the first run, `FAIL: kube-system/daemonset/cilium not ready` followed by `Smoke test FAILED` is
+expected if everything else passed: Flux's first Cilium upgrade outlasts Helm's 5-minute limit while
+images download. Fix it once:
+
+```bash
+flux reconcile hr cilium -n kube-system --force --timeout 15m
+flux get hr -A          # every line READY True
+make dev-smoke          # Smoke test passed
+```
+
+Then `make dev-status` should show every Flux Kustomization `Ready`.
+
 No kubeconfig juggling is needed: pidev has no ansible-runner and no prod kubeconfig, so k3d can write
 `~/.kube/config` and set `k3d-picluster` as the current context.
 
@@ -252,6 +273,8 @@ After a `halt` / `up`, the k3d container restarts with Docker. If the cluster is
 | `growpart ... does not exist` / `partition already full size` | Harmless: the box disk is already 128 GB, nothing to grow |
 | `make dev-up`: `flag provided but not defined: -data` | Wrong `tmpl` (krakozaure/tmpl). The scripts need `benbjohnson/tmpl`: `sudo rm /usr/local/bin/tmpl && sudo GOBIN=/usr/local/bin /snap/bin/go install github.com/benbjohnson/tmpl@latest`, then `make dev-up` again |
 | Tools missing | `vagrant provision pidev --provision-with dev-tools` |
+| HelmRelease `cilium` `READY False`: `client rate limiter Wait returned an error: rate: Wait(n=1) would exceed context deadline` | Helm upgrade timed out (5 min) while the Cilium pod restarted; typical on the first `dev-up`. The pod is usually fine: `flux reconcile hr cilium -n kube-system --force --timeout 15m`. If it happens on every `dev-recreate`, raise the HelmRelease timeout in the dev overlay |
+| `make dev-up` ends `Smoke test FAILED`, only Cilium failed | Same cause as above: fix the HelmRelease, then `make dev-smoke` |
 | Node stays `NotReady`, Cilium pods crash | Kernel modules: `lsmod \| grep xt_socket`, or `make load-kernel-modules` |
 | `kubectl context is '...', expected 'k3d-picluster'` | `kubectl config use-context k3d-picluster` |
 | `/etc/bash.bashrc: line 7: PS1: unbound variable` from make | Harmless if the step continues; if it stops: `echo $BASH_ENV` and check `/etc/bash.bashrc` |

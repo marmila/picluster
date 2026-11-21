@@ -55,4 +55,4 @@ command -v flux >/dev/null || curl -fsSL https://fluxcd.io/install.sh | bash
 
 echo
 for c in docker k3d kubectl helm tmpl flux; do printf '%-8s ' "$c"; command -v "$c" || echo MISSING; done
-echo "Dev tools ready. Next: homelab-docs/dev-environment.md, section 5."
+echo "Dev tools ready. Next: homelab-docs/dev-environment.md, section 4."
