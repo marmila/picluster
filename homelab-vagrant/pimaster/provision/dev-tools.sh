@@ -42,9 +42,12 @@ echo "== helm 4"
 command -v helm >/dev/null || curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
 
 echo "== tmpl (needs a recent Go; the apt package is too old)"
-if ! command -v tmpl >/dev/null; then
+# dev/create_cluster.sh calls `tmpl -data=@file.json x.tmpl`: that is benbjohnson/tmpl.
+# Other tools named tmpl (e.g. krakozaure/tmpl) have no -data flag: replace them.
+if ! tmpl -h 2>&1 | grep -q -- '-data'; then
   snap list go >/dev/null 2>&1 || snap install go --classic
-  GOBIN=/usr/local/bin /snap/bin/go install github.com/krakozaure/tmpl@latest
+  rm -f /usr/local/bin/tmpl
+  GOBIN=/usr/local/bin /snap/bin/go install github.com/benbjohnson/tmpl@latest
 fi
 
 echo "== flux CLI"
