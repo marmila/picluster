@@ -2,7 +2,7 @@
 title: Log Aggregation (Loki)
 permalink: /docs/loki/
 description: How to deploy Grafana Loki in our Raspberry Pi Kubernetes cluster.
-last_modified_at: "19-06-2026"
+last_modified_at: "21-11-2026"
 
 ---
 
@@ -12,7 +12,7 @@ Loki architecture is displayed in the following picture (source: [Grafana docume
 
 ![LOKI-Architecture-Components](/assets/img/loki_architecture_components.svg)
 
-All Loki components are included within a single binary (docker image) that  supports three different deployments modes where the above components can be started in different PODs
+All Loki components are included within a single binary (docker image) that  supports three different deployments modes where the above components can be started in different PODs 
 
 - Monolithic
 
@@ -28,7 +28,7 @@ All Loki components are included within a single binary (docker image) that  sup
 
 - Microservices
   In this deployment each individual Loki component can be started in an independent process (container).
-
+  
 
 Further details in Loki architecture documentation: [Loki components](https://grafana.com/docs/loki/latest/fundamentals/architecture/components/) and [deployment modes](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/)
 
@@ -39,13 +39,13 @@ Loki will be installed using Simple scalable deployment mode using an S3 Object 
 
 ## Configure S3 Server
 
-The S3 storage server is used as Loki long-term data storage.
+The S3 storage server is used as Loki long-term data storage. 
 
 Grafana Loki needs to store two different types of data: chunks and indexes. Both of them can be stored in an S3-compatible server.
 
 {{site.data.alerts.note}}
 
-Loki helm chart is able to install an S3 service as a subchart, but its installation will be disabled and the S3 Storage Service already deployed in the cluster will be used as Loki's backend.
+Loki helm chart is able to install an S3 service as a subchart, but its installation will be disabled and the S3 Storage Service already deployed in the cluster will be used as Loki's backend. 
 
 As part of the S3 Storage Service installation, loki's S3 bucket, policy and user is already configured.
 See documentation: ["PiCluster - S3 Backup Backend"](/docs/rustfs/).
@@ -57,7 +57,7 @@ See documentation: ["PiCluster - S3 Backup Backend"](/docs/rustfs/).
 Use RustFS CLI (`rc`) to create the loki bucket and user:
 
 ```shell
-rc mb <s3_alias>/k3s-loki
+rc mb <s3_alias>/k3s-loki 
 rc admin user add <s3_alias> loki <user_password>
 ```
 {{site.data.alerts.note}}
@@ -98,10 +98,10 @@ Where `user_policy.json`, contains the following AWS access policies definition:
             "arn:aws:s3:::k3s-loki",
             "arn:aws:s3:::k3s-loki/*"
         ]
-    }
+    }  
   ]
 }
-```
+``` 
 
 See further details in [Loki-Storage documentation](https://grafana.com/docs/loki/latest/operations/storage/)
 
@@ -110,7 +110,7 @@ See further details in [Loki-Storage documentation](https://grafana.com/docs/lok
 Installation from helm chart. There are two alternatives:
 
 - [Loki-stack helm chart](https://github.com/grafana/helm-charts/tree/main/charts/loki-stack). With this helm chart the complete PLG stack can be installed.
-
+  
   This helm chart will not be used because we are only interested in deploying Loki component. Promtail will not be used and Grafana will be deployed as part of kube-prometheus-stack.
 
 - [Loki-helm chart v3.x](https://github.com/grafana/loki/tree/main/production/helm/loki). Used for [Monolithic](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/#monolithic-mode) and Simple scalable deployment modes](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/#simple-scalable-deployment-mode).
@@ -311,21 +311,21 @@ write:
     size: 1Gi
   resources:
     requests:
-      cpu: 25m
-      memory: 64Mi
+      cpu: 50m
+      memory: 128Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 500m
+      memory: 512Mi
 
 read:
   replicas: 1
   resources:
     requests:
-      cpu: 25m
-      memory: 64Mi
+      cpu: 50m
+      memory: 128Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 500m
+      memory: 512Mi
 
 backend:
   replicas: 1
@@ -358,6 +358,15 @@ Key changes from the defaults:
 - **`replication_factor: 1`** — matches the single write replica so the ingester ring accepts writes
 - **Reduced persistence** to 1 Gi per component instead of the default 10 Gi
 - **CPU and memory limits** appropriate for ARM64 Raspberry Pi nodes
+- **Ingester (`write`) sized for WAL replay** — on restart the ingester loads its WAL into memory *on top
+  of* its ~230 Mi steady state (~600 streams). At the previous 256 Mi limit the replay always crossed the
+  limit, so the pod OOM-looped without ever draining the WAL, taking the write path and the fluentd Loki
+  output down with it. `cpu 500m` / `memory 512Mi` is the value measured on this cluster; do not shrink it
+  back to the pre-replay baseline.
+- **Querier (`read`) sized for query load** — the canary's `count_over_time` and multi-hour `offset` queries
+  plus Grafana Explore keep the querier busy. At 256 Mi it ran pinned at the limit, GC pressure throttled the
+  CPU to 100 % and the 1 s readiness probe could not be served, so the Service lost its endpoints whenever
+  the write path was healthy enough to give it work. `cpu 500m` / `memory 512Mi` for the same reason.
 - **Smaller memcached caches** — 256 Mi chunks cache and 128 Mi results cache vs. defaults of 8 Gi and 1 Gi
 
 ### GitOps installation
@@ -543,3 +552,89 @@ grafana:
     type: loki
     url: http://loki-read-headless.loki.svc.cluster.local
 ```
+
+## Observability
+
+### Metrics
+
+Loki exposes its own metrics in Prometheus format on the `http-metrics` port of every component. They
+are the only way to see the ingester internals — stream count, WAL replay state — which cAdvisor and
+pod logs cannot show.
+
+#### Prometheus Integration
+
+A `ServiceMonitor`, Prometheus Operator's CRD, can be created so kube-prometheus-stack automatically
+starts collecting the metrics. In this repository it is environment-specific, so it lives in a
+kustomization component that only the prod overlay loads:
+
+```
+kubernetes/platform/loki/app/components/monitoring/
+├── kustomization.yaml   # kind: Component - ConfigMap merge + HelmRelease patch
+├── helm-patch.yaml      # appends monitoring-values.yaml to spec.valuesFrom
+└── values.yaml
+```
+
+The values it provides:
+
+```yml
+monitoring:
+  serviceMonitor:
+    enabled: true
+  dashboards:
+    enabled: true
+clusterLabelOverride: pi-cluster
+```
+
+- `monitoring.serviceMonitor` creates a single `ServiceMonitor` in the `loki` namespace. The chart
+  marks the services that must not be scraped — `loki-gateway`, the `*-headless` services and
+  `loki-query-scheduler-discovery` — with `prometheus.io/service-monitor: "false"`, so the scrape
+  targets are `write`, `read`, `backend`, `canary` and the two caches.
+- `monitoring.selfMonitoring` stays disabled: it installs a second kube-prometheus stack from inside
+  the chart, which is not wanted here.
+- `clusterLabelOverride` keeps the `cluster` label on Loki's metrics equal to the Prometheus external
+  label (`pi-cluster`) instead of the chart default `<release>-<chart>`. The bundled dashboards build
+  their `cluster` variable from that label.
+
+Without the component nothing scrapes Loki — the namespace has no `ServiceMonitor` and no
+`PodMonitor` — which is why the ingester internals were invisible during the 2026-11 logging
+incidents. `OBS-004` relies on `loki_ingester_memory_streams`, which only exists once the component
+is deployed.
+
+#### Grafana Dashboards
+
+`monitoring.dashboards` creates the `loki-dashboards-1` and `loki-dashboards-2` ConfigMaps, labelled
+`grafana_dashboard: "1"`, carrying the upstream dashboards version-matched to the chart:
+
+-   `Loki / Operational`
+-   `Loki / Writes`, `Loki / Reads`, `Loki / Writes Resources`, `Loki / Reads Resources`
+-   `Loki / Retention`, `Loki / Chunks`, `Loki / Deletion`
+-   `Loki / Logs`
+-   `Recording Rules`
+
+Labelled ConfigMaps are the same source the fluentd, fluent-bit, Strimzi and CloudNativePG charts
+produce in this cluster, but the grafana-operator does not import them on its own: each dashboard is
+wired with a `GrafanaDashboard` resource that points at the ConfigMap key through
+`spec.configMapRef`, the same shape used for those services:
+
+```yml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: loki-operational
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  folder: Observability
+  configMapRef:
+    name: loki-dashboards-1
+    key: loki-operational.json
+```
+
+Nine of the ten are onboarded: `Loki / Operational`, `Loki / Writes`, `Loki / Reads`,
+`Loki / Writes Resources`, `Loki / Reads Resources`, `Loki / Retention`, `Loki / Chunks`,
+`Loki / Deletion` and `Loki / Logs`. The `Recording Rules` dashboard is deliberately skipped: it
+queries `loki_ruler_wal_*`, and `monitoring.rules` stays disabled because none of the other bundled
+dashboards need recorded metrics.
+

@@ -2,7 +2,7 @@
 title: What is this project about?
 permalink: /docs/home/
 description: The scope of this project is to create a kubernetes cluster at home using Raspberry Pis and low cost mini PCs, and to automate its deployment and configuration applying IaC (infrastructure as a code) and GitOps methodologies with tools like Ansible, Terraform and FluxCD. How to automatically deploy K3s baesed kubernetes cluster, Longhorn as distributed block storage for PODs' persistent volumes, Prometheus as monitoring solution, EFK+Loki stack as centralized log management solution, Velero and Restic as backup solution and Istio as service mesh architecture.
-last_modified_at: "06-07-2026"
+last_modified_at: "21-11-2026"
 ---
 
 
@@ -13,7 +13,7 @@ The main goal of  this project is to create a kubernetes cluster at home using A
 The project scope includes the automatic installation and configuration of a lightweight Kubernetes flavor based on [K3S](https://k3s.io/), and deployment of cluster basic services such as:
 - Distributed block storage for POD's persistent volumes, [LongHorn](https://longhorn.io/).
 - S3 Object storage, [RustFS](https://github.com/rustfs/rustfs).
-- Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/).
+- Backup/restore solution for the cluster, [Velero](https://velero.io/) and [Restic](https://restic.net/). 
 - Certificate management, [Cert-Manager](https://cert-manager.io).
 - Secrets Management solution with [Vault](https://www.vaultproject.io/) and [External Secrets](https://external-secrets.io/)
 - Identity Access Management(IAM) providing Single-sign On, [Keycloak](https://www.keycloak.org/)
@@ -136,7 +136,7 @@ Even whe the premise is to deploy all services in the kubernetes cluster, there 
 
    Currently only acme issuer (letsencytp) using IONOS as dns-01 challenge provider is configured. Check list of [supported dns01 providers](https://cert-manager.io/docs/configuration/acme/dns01/#supported-dns01-providers).
 
-### Self-hosted external services
+### Self-hosted external services 
 
 There is another list of services that I have decided to run outside the kubernetes cluster selfhosting them.
 
@@ -181,8 +181,8 @@ From software perspective, I have developed the following:
 
 2. Automate initial OS installation in x86_64 nodes using PXE server and Ubuntu's **auto-install** template files.
 
-3. **Ansible** playbook and roles for configuring cluster nodes and installing and bootstrapping K3S cluster
-
+3. **Ansible** playbook and roles for configuring cluster nodes and installing and bootstrapping K3S cluster  
+   
    Source code can be found in Pi Cluster Git repository under [`/ansible`]({{site.git_address}}/tree/master/ansible) directory.
 
    Aditionally several ansible roles have been developed to automate different configuration tasks on Ubuntu-based servers that can be reused in other projects. These roles are used by Pi-Cluster Ansible Playbooks
@@ -190,7 +190,7 @@ From software perspective, I have developed the following:
    Each ansible role source code can be found in its dedicated GitHub repository and is published in Ansible-Galaxy to facilitate its installation with `ansible-galaxy` command.
 
    | Ansible role | Description | GitHub |
-   | ---| --- | --- |
+   | ---| --- | --- | 
    |  [ricsanfre.security](https://galaxy.ansible.com/ricsanfre/security) | Automate SSH hardening configuration tasks  | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-security)|
    | [ricsanfre.ntp](https://galaxy.ansible.com/ricsanfre/ntp)  | Chrony NTP service configuration | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-ntp) |
    | [ricsanfre.firewall](https://galaxy.ansible.com/ricsanfre/firewall) | NFtables firewall configuration | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-firewall) |
@@ -199,13 +199,12 @@ From software perspective, I have developed the following:
    | [ricsanfre.storage](https://galaxy.ansible.com/ricsanfre/storage)| Configure LVM | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-storage) |
    | [ricsanfre.iscsi_target](https://galaxy.ansible.com/ricsanfre/iscsi_target)| Configure iSCSI Target| [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-iscsi_target) |
    | [ricsanfre.iscsi_initiator](https://galaxy.ansible.com/ricsanfre/iscsi_initiator)| Configure iSCSI Initiator | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-iscsi_initiator) |
-   | [ricsanfre.k8s_cli](https://galaxy.ansible.com/ricsanfre/k8s_cli)| Install kubectl and Helm utilities | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-k8s_cli) |
    | [ricsanfre.fluentbit](https://galaxy.ansible.com/ricsanfre/fluentbit)| Configure fluentbit | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-fluentbit) |
    | [ricsanfre.rustfs](https://galaxy.ansible.com/ricsanfre/rustfs)| Configure RustFS S3 server | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-rustfs) |
    | [ricsanfre.minio](https://galaxy.ansible.com/ricsanfre/minio)| Configure MinIO S3 server (legacy) | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-minio) |
    | [ricsanfre.backup](https://galaxy.ansible.com/ricsanfre/backup)| Configure Restic | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-backup) |
    | [ricsanfre.vault](https://galaxy.ansible.com/ricsanfre/vault)| Configure Hashicorp Vault | [{{site.data.icons.github}}](https://github.com/ricsanfre/ansible-role-vault) |
-   {: .table .border-dark }
+   {: .table .border-dark } 
 
 4. **Packaged Kubernetes applications** (Helm, Kustomize, manifest files) to be deployed using FluxCD
 
@@ -240,12 +239,12 @@ The software used and the latest version tested of each component
 | Service Proxy | Envoy Gateway | 1.8.2 | Replaces Ingress NGINX and OAuth2 Proxy |
 | Storage | Longhorn | 1.12.0 | |
 | TLS Certificates | Cert-Manager | v1.20.3 | |
-| Logging | ECK Operator | 3.4.1 | |
-| Logging | ElasticSearch | 8.19.18 | Deployed with ECK Operator |
-| Logging | Kibana | 8.19.18 | Deployed with ECK Operator |
-| Logging | Fluentbit | 5.0.8 | Helm chart version: 0.57.8 |
-| Logging | Fluentd | 1.18.0 | Helm chart version: 0.5.3 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.18 |
-| Logging | Loki | 3.6.7 | Helm chart version: 7.0.0 |
+| Logging | ECK Operator | 3.5.0 | |
+| Logging | ElasticSearch | 8.19.23 | Deployed with ECK Operator |
+| Logging | Kibana | 8.19.23 | Deployed with ECK Operator |
+| Logging | Fluentbit | 5.1.3 | Helm chart version: 0.58.3 |
+| Logging | Fluentd | 1.20.1 | Helm chart version: 0.6.0 [Custom docker image](https://github.com/ricsanfre/fluentd-aggregator) from official v1.20.1 |
+| Logging | Loki | 3.6.11 | Helm chart version: 7.5.0 |
 | Monitoring | Kube Prometheus Stack | 87.10.1 | |
 | Monitoring | Prometheus Operator | v0.92.1 | Installed with Kube Prometheus Stack |
 | Monitoring | Prometheus | v3.13.0 | Installed with Kube Prometheus Stack |
