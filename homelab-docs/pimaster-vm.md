@@ -51,7 +51,7 @@ State as of 2026-11-21.
 `vagrant up pimaster` runs the **base** provisioner (pidev runs the same one) ([base.sh](../homelab-vagrant/pimaster/provision/base.sh)):
 
 1. Sets the timezone to Europe/Rome and installs git, make, curl, jq.
-2. Grows partition, LVM and filesystem to the virtual disk size (default 100 GB).
+2. Grows partition, LVM and filesystem to the virtual disk size (the box disk is 128 GB, root LV about 126 GB).
 3. Turns on IPv4 forwarding and sets DNSSEC off in systemd-resolved (the Oct 2026 root KSK rollover broke
    validation).
 4. Creates the `docker` group, then user `marmila` (in that order, so the IDs are 1001/1002), with
@@ -76,7 +76,7 @@ Tunables (environment variables in the PowerShell session that runs `vagrant`):
 | `PIMASTER_CPUS` | `2` | pimaster vCPUs |
 | `PIDEV_MEMORY` | `10240` | pidev RAM in MB |
 | `PIDEV_CPUS` | `4` | pidev vCPUs |
-| `PIMASTER_DISK` | `100GB` | Root disk of both VMs, grow only |
+| `PIMASTER_DISK` | `128GB` | Root disk of both VMs. 128 GB is the box's own size; only a larger value changes anything |
 | `PIMASTER_BRIDGE` | `Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC` | Another laptop or NIC: `VBoxManage list bridgedifs` |
 | `PIMASTER_REPO` | `https://github.com/marmila/picluster.git` | |
 
@@ -127,7 +127,7 @@ $vb = "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 ```
 
 **Put the VM on D:.** The default machine folder is `C:\Users\marco\VirtualBox VMs`, and C: has about 28 GB
-free. The disk is dynamic but can grow to 100 GB, so point the default folder at D: before creating the VM:
+free. The disk is dynamic but can grow to 128 GB, so point the default folder at D: before creating the VM:
 
 ```powershell
 & $vb setproperty machinefolder "D:\VirtualBox VMs"
@@ -178,7 +178,7 @@ This changes where VirtualBox creates new VMs from then on. Existing VMs stay wh
    vagrant ssh pimaster -c "id marmila; df -h /; ip -4 -br addr; ip route | grep 10.0.0.0; docker version --format '{{.Server.Version}}'; docker compose version; ls ~marmila/picluster | head -3"
    ```
 
-   Expected: `uid=1001(marmila) gid=1002(marmila)`, a root disk of about 100 GB, eth1 192.168.56.10, the
+   Expected: `uid=1001(marmila) gid=1002(marmila)`, a root disk of about 124 GB, eth1 192.168.56.10, the
    `10.0.0.0/24` route, Docker with compose, and the repo.
 
 ## 6. Restore and start the ansible-runner
@@ -254,7 +254,7 @@ Only if pidev can't run (not enough RAM for a third VM), dev can run on pimaster
 | --- | --- | --- |
 | One machine | Two: `pimaster` (prod control) and `pidev` (dev, `autostart: false`) | Dev never shares a VM with the runner and its prod kubeconfig |
 | 1 GB / 1 vCPU fixed | 2 GB / 2 vCPU, set with `PIMASTER_MEMORY` / `PIMASTER_CPUS` | Runner builds are slow on 1 vCPU; the dev cluster lives on pidev |
-| 50 GB disk, LV not extended | 100 GB, partition / PV / LV / filesystem grown by the provisioner | Room for the k3d dev cluster |
+| 50 GB disk, LV not extended | 128 GB (box size), partition / PV / LV / filesystem grown by the provisioner | Room for the k3d dev cluster |
 | Docker without the compose / buildx plugins | With the plugins | `make ansible-runner-setup` uses `docker compose` |
 | pip `ansible`, `ansible-lint`, `molecule` on the host | Removed | Ansible runs in the runner container (CLAUDE.md: never host `ansible-playbook`) |
 | `marmila` with an empty password | Locked password, passwordless sudo via `/etc/sudoers.d` | Same sudo behaviour without an empty password |

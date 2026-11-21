@@ -37,7 +37,7 @@ pv="$(pvs --noheadings -o pv_name | head -n1 | tr -d ' ')"
 if [ -n "$pv" ]; then
   disk="/dev/$(lsblk -no pkname "$pv")"
   partnum="$(cat "/sys/class/block/$(basename "$pv")/partition")"
-  growpart "$disk" "$partnum" || true          # exit 1 = already full size
+  growpart "$disk" "$partnum" >/dev/null 2>&1 || echo "partition already full size"
   pvresize "$pv"
   lvextend -r -l +100%FREE "$(findmnt -no SOURCE /)" || true   # fails only when nothing to add
 fi
@@ -91,8 +91,16 @@ network:
           via: 192.168.1.21
 EOF
 chmod 600 /etc/netplan/*.yaml
-netplan apply
-ip route | grep '^10.0.0.0/24' || echo "WARNING: route to 10.0.0.0/24 missing" >&2
+netplan apply 2>&1 | grep -v 'Open vSwitch' || true
+# netplan apply restarts the links: wait for DHCP on eth2 and for DNS before going on
+for i in $(seq 1 30); do
+  if ip route | grep -q '^10.0.0.0/24' && resolvectl query github.com >/dev/null 2>&1; then
+    break
+  fi
+  [ "$i" -eq 30 ] && echo "WARNING: route to 10.0.0.0/24 or DNS still missing after 60s" >&2
+  sleep 2
+done
+ip route | grep '^10.0.0.0/24' || true
 
 echo "== Repo and ansible-runner directories"
 if [ ! -d "${USER_HOME}/picluster/.git" ]; then

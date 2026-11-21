@@ -11,11 +11,12 @@
 # Tunables (environment variables on the Windows side):
 #   PIMASTER_MEMORY / PIMASTER_CPUS  pimaster size (default 2048 MB / 2)
 #   PIDEV_MEMORY    / PIDEV_CPUS     pidev size    (default 10240 MB / 4)
-#   PIMASTER_DISK                    root disk size, both VMs (default 100GB, grow only)
+#   PIMASTER_DISK                    root disk size, both VMs (default 128GB = the box's own
+#                                    size; only a larger value changes anything)
 #   PIMASTER_BRIDGE                  host NIC for the bridged LAN adapter
 #   PIMASTER_REPO                    git URL cloned into /home/marmila/picluster
 
-DISK     = ENV.fetch("PIMASTER_DISK", "100GB")
+DISK     = ENV.fetch("PIMASTER_DISK", "128GB")
 BRIDGE   = ENV.fetch("PIMASTER_BRIDGE", "Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC")
 REPO_URL = ENV.fetch("PIMASTER_REPO", "https://github.com/marmila/picluster.git")
 

@@ -56,7 +56,7 @@ pulls.
 | Item | Value |
 | --- | --- |
 | OS | Ubuntu 22.04 (`generic/ubuntu2204`), x86_64 |
-| Size | 10 GB RAM, 4 vCPU (`make dev-preflight` needs 8 GiB **available**), 100 GB disk |
+| Size | 10 GB RAM, 4 vCPU (`make dev-preflight` needs 8 GiB **available**), 128 GB disk (about 124 GB usable on /) |
 | Base ([base.sh](../homelab-vagrant/pimaster/provision/base.sh)) | user `marmila`, Docker + compose, DNSSEC fix, route `10.0.0.0/24`, repo in `~/picluster` |
 | Dev tools ([dev-tools.sh](../homelab-vagrant/pimaster/provision/dev-tools.sh)) | Cilium kernel modules + sysctls, k3d, kubectl, helm 4, tmpl, flux |
 
@@ -109,7 +109,7 @@ vagrant status
 vagrant ssh pidev -c "nproc; free -h | head -2; df -h / | tail -1; ip route | grep 10.0.0.0; for c in docker k3d kubectl helm tmpl flux; do command -v `$c || echo `$c MISSING; done; lsmod | grep -c xt_socket"
 ```
 
-Expected: 4 CPUs, about 9.5 GiB, about 100 GB root, the route, every tool found, `1` for `xt_socket`.
+Expected: 4 CPUs, about 9.5 GiB, about 124 GB root, the route, every tool found, `1` for `xt_socket`.
 
 ### Log in
 
@@ -222,6 +222,10 @@ After a `halt` / `up`, the k3d container restarts with Docker. If the cluster is
 | pidev disk on C: | Machine folder not changed ([section 2](#2-prerequisites-on-windows)). Move it with `VBoxManage movevm pidev --folder "D:\VirtualBox VMs"` (VM off) |
 | `ERROR: only N GiB available, need at least 8 GiB` | Check `free -h`. Grow pidev (`PIDEV_MEMORY`) or, for small tests only, `make dev-up DEV_MIN_MEM_GB=6` |
 | VirtualBox refuses to start pidev, or Windows gets slow | Host out of RAM. Close apps, power off `ansible-control-node`, or `$env:PIDEV_MEMORY = "8192"` |
+| `vagrant up pidev` stopped with `The SSH command responded with a non-zero exit status` | The VM exists, only provisioning failed. Fix the cause shown above the error, then `vagrant provision pidev` (re-runs base and dev-tools; safe to repeat). No need to destroy |
+| `Temporary failure resolving` / `DNSSEC validation failed: missing-key` during provisioning | The box ships `DNSSEC=yes`; `base.sh` turns it off first. Check `/etc/systemd/resolved.conf.d/90-dnssec-off.conf`, then `vagrant provision pidev` |
+| `Could not resolve host: github.com` right after `== Route to the cluster network` | `netplan apply` restarts the links; `base.sh` waits up to 60 s for DHCP and DNS. If it still fails: `ip route`, `resolvectl query github.com`, then `vagrant provision pidev` |
+| `growpart ... does not exist` / `partition already full size` | Harmless: the box disk is already 128 GB, nothing to grow |
 | Tools missing | `vagrant provision pidev --provision-with dev-tools` |
 | Node stays `NotReady`, Cilium pods crash | Kernel modules: `lsmod \| grep xt_socket`, or `make load-kernel-modules` |
 | `kubectl context is '...', expected 'k3d-picluster'` | `kubectl config use-context k3d-picluster` |
