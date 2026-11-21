@@ -243,7 +243,7 @@ Only if pidev can't run (not enough RAM for a third VM), dev can run on pimaster
 | VM created on C: | Machine folder not changed: [section 4](#4-prerequisites-on-windows). Move it with `VBoxManage movevm pimaster --folder "D:\VirtualBox VMs"` (VM off) |
 | `WARNING: marmila is uid=... gid=...` | IDs differ from 1001/1002 (box changed). Set `USER_UID` / `USER_GID` in `ansible-runner/docker-compose.yaml` to `id -u` / `id -g` |
 | Root disk still small | `sudo pvs; sudo lvs; lsblk` and rerun `vagrant provision --provision-with base` |
-| DNS fails (`missing-key`) | `resolvectl status`, check `/etc/systemd/resolved.conf.d/90-dnssec-off.conf` |
+| `apt` fails with `Temporary failure resolving ...` during provisioning, or `resolvectl query` says `DNSSEC validation failed: missing-key` | The box ships `DNSSEC=yes`. `base.sh` turns it off as its first step; check `/etc/systemd/resolved.conf.d/90-dnssec-off.conf` and `resolvectl status`, then `vagrant provision <machine>` |
 | Nodes unreachable | `ip route` must show `10.0.0.0/24 via 192.168.1.21 dev eth2`, and eth2 must have a 192.168.1.x address |
 | `ansible ... -m ping` fails with `Permission denied (publickey)` | `~/.ssh/id_rsa` not restored, or the runner generated a new key: restore it, then `docker restart ansible-runner` |
 | `ssh` from Windows: `REMOTE HOST IDENTIFICATION HAS CHANGED` | New VM, new host key: `ssh-keygen -R 192.168.56.10` |

@@ -12,6 +12,18 @@ USER_HOME="/home/${USER_NAME}"
 REPO_URL="${REPO_URL:-https://github.com/marmila/picluster.git}"
 SSH_PUBKEY="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCnm/DUez8uWb1HuDMmVdQwrzfyKtnU+4bBpYWukECWWISPwF1tXJ78kj/HZcO/Fya35zJd5wRqPrmKfyuSJI0d3/wpQRi9JPkULlnCjT9LyTbzzfWZjqOFiG76VF4U77lbm80fG26ul0YqnYQXD5aIc3u+o5ehBqTsZlKEf3CzviE9eAM7cMACb/1uWJ+1KUTPNe4dPE72BLgU29RHNARHm/kVVo8BxTRtuZolcZZZX7TQbkFpxBA6SSCsdaTfGRzCtyl0E6RokVZuX0Zhh6VnXm2IWAu6jxGllJI2YdhtoTax3P+vbiJRCmK2xTWjJcoVYNo6k5nebkhbZ51kTu0l marmila@pimaster"
 
+# Must be first: the generic/ubuntu2204 box ships DNSSEC=yes, and validation fails
+# with "missing-key" since the Oct 2026 root KSK rollover, so apt cannot resolve anything.
+echo "== DNS: DNSSEC off"
+mkdir -p /etc/systemd/resolved.conf.d
+printf '[Resolve]\nDNSSEC=no\n' > /etc/systemd/resolved.conf.d/90-dnssec-off.conf
+systemctl restart systemd-resolved
+for i in $(seq 1 15); do
+  resolvectl query archive.ubuntu.com >/dev/null 2>&1 && break
+  [ "$i" -eq 15 ] && { echo "ERROR: DNS still not resolving" >&2; resolvectl status >&2; exit 1; }
+  sleep 2
+done
+
 echo "== Timezone"
 timedatectl set-timezone Europe/Rome
 
@@ -34,11 +46,6 @@ df -h /
 echo "== IPv4 forwarding"
 echo "net.ipv4.conf.all.forwarding=1" > /etc/sysctl.d/enabled_ipv4_forwarding.conf
 sysctl -p /etc/sysctl.d/enabled_ipv4_forwarding.conf
-
-echo "== DNS: DNSSEC off (validation broke after the Oct 2026 root KSK rollover)"
-mkdir -p /etc/systemd/resolved.conf.d
-printf '[Resolve]\nDNSSEC=no\n' > /etc/systemd/resolved.conf.d/90-dnssec-off.conf
-systemctl restart systemd-resolved
 
 echo "== User ${USER_NAME}"
 # Order matters: docker group first, then the user. That gives the same IDs as
