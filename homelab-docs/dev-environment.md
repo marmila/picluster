@@ -28,6 +28,7 @@ reach the runner or the prod cluster. pidev is disposable: destroy it and recrea
 - [6. Stop, free the RAM, or delete pidev](#6-stop-free-the-ram-or-delete-pidev)
 - [7. Troubleshooting](#7-troubleshooting)
 - [8. Reference](#8-reference)
+- [9. CI/CD integration (plan)](#9-cicd-integration-plan)
 - [Appendix: dev on pimaster (not recommended)](#appendix-dev-on-pimaster-not-recommended)
 
 ## 1. What it is and what it needs
@@ -267,7 +268,7 @@ After a `halt` / `up`, the k3d container restarts with Docker. If the cluster is
 | VM | `pidev`, 192.168.56.11, `vagrant up pidev` from `homelab-vagrant/pimaster` |
 | VM size variables | `PIDEV_MEMORY` (MB, default 10240), `PIDEV_CPUS` (default 4) |
 | k3d cluster / context | `picluster` / `k3d-picluster` |
-| K3s image | `rancher/k3s:v1.37.1-k3s1` (same as prod) |
+| K3s image | `rancher/k3s:v1.37.2-k3s1` (same as prod) |
 | Docker network | `picluster`, `172.30.0.0/16`, gateway `172.30.0.1` |
 | Pod / service CIDR | `10.42.0.0/16` / `10.43.0.0/16` |
 | LoadBalancer pool (Cilium) | `172.30.200.1`–`172.30.200.254` |
@@ -276,6 +277,150 @@ After a `halt` / `up`, the k3d container restarts with Docker. If the cluster is
 | Flux source | `marmila/picluster`, `master`, `kubernetes/clusters/dev` |
 | Scripts | [dev/Makefile](../dev/Makefile), [dev/README.md](../dev/README.md) |
 | Upstream doc | [docs/_docs/dev.md](../docs/_docs/dev.md), <https://picluster.ricsanfre.com/docs/dev/> |
+
+## 9. CI/CD integration (plan)
+
+> Status: **plan only, nothing implemented.** Written 2026-11-21, while pidev was being set up for the
+> first time. Re-check the "Open questions" before starting any phase.
+
+### 9.1 Is it worth it? Short answer
+
+Yes, but in a narrow way. The dev cluster is worth putting in front of the **changes that static checks
+cannot judge and Renovate does not automerge**: Cilium, Flux, k3s, CloudNativePG/operators, chart majors,
+and new services. It is **not** worth running on every PR or every Renovate bundle. Those already have a
+good gate, and a k3d run costs 10–15 minutes per profile.
+
+Do not make pidev a CI runner (see [9.5](#95-what-not-to-do)).
+
+### 9.2 What upstream says
+
+Checked on 2026-11-21 against <https://picluster.ricsanfre.com/docs/dev/>,
+[dev/README.md upstream](https://github.com/ricsanfre/pi-cluster/blob/master/dev/README.md) and the
+repo's OpenCode skills:
+
+| Topic | Upstream position |
+| --- | --- |
+| Purpose | "Laptop-sized k3d environment for POCs". Same k3s minor and options as prod |
+| Stated use cases | POC workspaces (`make dev-poc-new`), multi-node scheduling/failover tests (`K3D_AGENTS=1`), rehearsing a migration before prod (CNPG Barman plugin, ADR 0013), testing a new service before wiring prod |
+| Test ladder | [.opencode/skills/service-testing](../.opencode/skills/service-testing/SKILL.md): static → dev deploy → smoke → functional → integration → negative → promotion. "Do not skip to prod because the manifests render" |
+| Branch validation | "Flux tracks `master`. Branch validation must follow the `flux-change` procedure and be reverted afterwards" |
+| CI/CD, GitHub Actions, Renovate | **Not mentioned at all.** Upstream uses the dev cluster by hand only |
+| Limits | No Longhorn (local-path only), no Istio ambient, x86 only (prod is ARM + x86), no IONOS webhook / ACME, dev CA untrusted, at most two heavy profiles |
+
+So this plan is our own extension. Upstream gives the building blocks (`dev-up`, `dev-smoke`,
+`dev-status`, `dev-render`, profiles) but no pipeline.
+
+### 9.3 What CI already does today
+
+| Workflow | What it checks | Gap |
+| --- | --- | --- |
+| `ci.yml` | yamllint | syntax only |
+| `validate-kubernetes.yml` (required check) | `kustomize build` of every prod Flux Kustomization, `helm template` of every HelmRelease, kubeconform | **prod only**, and nothing is ever installed |
+| Renovate ([automerge.json5](../.github/renovate/automerge.json5)) | automerges when every check passes; weekly non-major bundle, one critical component per weekday | k3s, Longhorn, Cilium, Flux, system-upgrade-controller and majors stay manual, so they get no runtime test before reaching prod |
+| `renovate-watch.yml` | ntfy when an automerge PR is stuck | — |
+
+Static checks do not catch: a chart whose `helm upgrade` fails (immutable field, CRD change, hook
+timeout), a controller that crashloops with the new version, a webhook that breaks other installs, a values
+key that renders but is wrong at runtime, or the dev overlays drifting from base (nobody renders them).
+
+### 9.4 The plan, in phases
+
+Each phase is useful on its own, and you can stop after any of them.
+
+#### Phase 1: manual gate for manual PRs (no CI change)
+
+Use pidev as a pre-flight check before merging a PR that Renovate does not automerge.
+
+1. On pidev: `make dev-up` (or `make dev-recreate` for a clean start). Enable the profile that contains the
+   component, if it is not in the base (Cilium, CoreDNS, Flux, metrics-server are base).
+2. Point dev Flux at the PR branch (see "Branch on dev" below), reconcile, then run `make dev-status` and
+   `make dev-smoke`, plus the functional checks of the service-testing skill.
+3. Paste the result in the PR as a comment, merge, point dev back to `master`.
+
+Covers: Cilium, Flux, CNPG, Strimzi, cert-manager, Envoy Gateway, kube-prometheus-stack majors. **Does
+not cover:** k3s on ARM, Longhorn and anything storage-related, because k3d cannot run them. Those keep
+the current procedure (OS upgrade playbook, runbooks).
+
+Branch on dev: prod uses the procedure in CLAUDE.md (commit `instance.sync.ref`, then patch the
+GitRepository). On dev, nothing else syncs this cluster, so committing is not needed. Patch the
+in-cluster object only:
+
+```bash
+kubectl -n flux-system get fluxinstance,gitrepository     # find the names first
+kubectl -n flux-system patch fluxinstance flux --type merge \
+  -p '{"spec":{"sync":{"ref":"refs/heads/<branch>"}}}'
+flux reconcile source git flux-system -n flux-system
+flux get sources git -n flux-system                       # must show refs/heads/<branch>
+```
+
+To verify first: whether the flux-instance HelmRelease in dev puts `refs/heads/master` back on its next
+reconcile. If it does, suspend it during the test (`flux suspend hr flux-instance -n flux-system`) and
+resume it afterwards. `make dev-recreate` always returns to `master`.
+
+Effort: none in code. A short checklist in this doc after the first real run.
+
+#### Phase 2: render the dev tree in CI (cheap, static)
+
+Add a second job to `validate-kubernetes.yml` that runs the same validator on dev:
+`validate_flux.py --env dev` (the script already takes `--env`), or `make -C dev dev-render`. GitHub-hosted
+runner, about 2 minutes, no cluster.
+
+Catches dev overlays that no longer build after a base change. Without it, the dev cluster silently rots,
+and phase 1 fails for reasons unrelated to the PR.
+
+Keep it **non-required** at first. Make it required only once it has been green for a few weeks.
+
+Effort: about 20 lines of YAML. To verify first: that `--env dev` works with the dev
+`cluster-settings` and profile layout (not tested yet: kustomize is not on the laptop).
+
+#### Phase 3: ephemeral k3d in GitHub Actions, on demand (optional)
+
+A `dev-cluster-test.yml` workflow on a GitHub-hosted runner. The repo is public, so `ubuntu-latest` (4 vCPU,
+16 GB) is free and enough for base plus one or two profiles. Every run starts from nothing and is thrown
+away.
+
+- Trigger: `workflow_dispatch` (inputs: branch, profiles) and the PR label `dev-test`. **Not** on every PR.
+- Steps: install k3d, kubectl, helm, flux and `benbjohnson/tmpl`; load the Cilium kernel modules;
+  `make dev-up` with Flux on the PR branch; enable the requested profiles; wait for the Kustomizations;
+  `make dev-smoke`; on failure upload `make dev-status`, `flux events` and pod logs as an artifact.
+- Renovate: add the `dev-test` label from `packageRules` to the manual packages (Cilium, Flux, operators)
+  so the run starts by itself; you still merge by hand. A failed run is reported by `renovate-watch`.
+
+Two changes are needed in the repo first:
+
+1. A way to set the Flux sync ref at bootstrap time (for example `DEV_FLUX_REF=refs/heads/<branch>` read
+   by `dev/bootstrap.sh`), instead of the fixed `refs/heads/master` in
+   [flux-instance dev values](../kubernetes/platform/flux-operator/instance/overlays/dev/values.yaml).
+   This also replaces the manual patch of phase 1.
+2. A wait step: "all Flux Kustomizations Ready, or fail after N minutes" (`flux get ks -A` / `kubectl wait`).
+
+Limits: x86 runner (the ARM half of prod is not tested), Vault profiles need `VAULT=1` and a few extra
+minutes, `observability` + another heavy profile is the most a 16 GB runner can take.
+
+Effort: about a day, including the two script changes. Do it only if phase 1 shows you would
+otherwise run the same dev test by hand several times a month.
+
+### 9.5 What not to do
+
+- **No self-hosted runner on pidev.** The repo is public: a self-hosted runner can run code from a fork's
+  PR. pidev has a route to `10.0.0.0/24`, so that code would reach the prod cluster network. pidev is also
+  off whenever the laptop is, so a required check would block PRs. If a self-hosted runner is ever needed,
+  put it on a VM with no route to the cluster, and only for `workflow_dispatch` / `push`, never
+  `pull_request`.
+- **No dev cluster test as a required check.** A 10–15 minute k3d run that occasionally flakes (image pulls,
+  runner resources) would block the Renovate bundle and the critical-component automerge.
+- **No promotion pipeline dev → prod.** Flux already deploys prod from `master`. The dev cluster is a
+  pre-merge test, not a stage the change has to pass through after merging.
+- **No prod secrets or credentials in dev or in CI.** The dev cluster uses its own Vault, RustFS and CA.
+
+### 9.6 Open questions
+
+| Question | How to answer it |
+| --- | --- |
+| Does the dev flux-instance HelmRelease undo a manual `sync.ref` patch? | Try it in phase 1 |
+| Does `validate_flux.py --env dev` work as is? | Run it on pimaster or in the runner container, which has kustomize and helm |
+| How long does `make dev-up` take on `ubuntu-latest`? | One `workflow_dispatch` test run before writing phase 3 for real |
+| How many manual PRs per month would use the dev test? | Count them during phase 1; that decides phase 3 |
 
 ## Appendix: dev on pimaster (not recommended)
 
