@@ -1,22 +1,42 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 #
-# pimaster: Ubuntu 22.04 VM on the Windows laptop. It hosts the ansible-runner
-# container and, when resized, the k3d dev cluster.
-# Rebuild procedure: homelab-docs/pimaster-vm.md
+# Two machines on the Windows laptop:
+#
+#   pimaster  hosts the ansible-runner container. Primary machine.
+#             Rebuild procedure: homelab-docs/pimaster-vm.md
+#   pidev     k3d dev cluster VM (base + dev tools). Never started unless named:
+#             vagrant up pidev. See homelab-docs/dev-environment.md
 #
 # Tunables (environment variables on the Windows side):
-#   PIMASTER_MEMORY  MB of RAM        (default 2048; 10240 for the dev cluster)
-#   PIMASTER_CPUS    vCPUs            (default 2; 4 for the dev cluster)
-#   PIMASTER_DISK    root disk size   (default 100GB, grow only)
-#   PIMASTER_BRIDGE  host NIC for the bridged LAN adapter
-#   PIMASTER_REPO    git URL cloned into /home/marmila/picluster
+#   PIMASTER_MEMORY / PIMASTER_CPUS  pimaster size (default 2048 MB / 2)
+#   PIDEV_MEMORY    / PIDEV_CPUS     pidev size    (default 10240 MB / 4)
+#   PIMASTER_DISK                    root disk size, both VMs (default 100GB, grow only)
+#   PIMASTER_BRIDGE                  host NIC for the bridged LAN adapter
+#   PIMASTER_REPO                    git URL cloned into /home/marmila/picluster
 
-MEMORY   = Integer(ENV.fetch("PIMASTER_MEMORY", "2048"))
-CPUS     = Integer(ENV.fetch("PIMASTER_CPUS", "2"))
 DISK     = ENV.fetch("PIMASTER_DISK", "100GB")
 BRIDGE   = ENV.fetch("PIMASTER_BRIDGE", "Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC")
 REPO_URL = ENV.fetch("PIMASTER_REPO", "https://github.com/marmila/picluster.git")
+
+MACHINES = {
+  "pimaster" => {
+    ip:     "192.168.56.10",
+    memory: Integer(ENV.fetch("PIMASTER_MEMORY", "2048")),
+    cpus:   Integer(ENV.fetch("PIMASTER_CPUS", "2")),
+    primary: true,
+    autostart: true,
+    dev_tools: false,
+  },
+  "pidev" => {
+    ip:     "192.168.56.11",
+    memory: Integer(ENV.fetch("PIDEV_MEMORY", "10240")),
+    cpus:   Integer(ENV.fetch("PIDEV_CPUS", "4")),
+    primary: false,
+    autostart: false,
+    dev_tools: true,
+  },
+}
 
 unless Vagrant.has_plugin?("vagrant-disksize")
   raise "Plugin vagrant-disksize missing. Install it with: vagrant plugin install vagrant-disksize"
@@ -24,7 +44,6 @@ end
 
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/ubuntu2204"
-  config.vm.hostname = "pimaster"
 
   # Root disk (the provisioner grows partition, LVM and filesystem to match)
   config.disksize.size = DISK
@@ -32,31 +51,37 @@ Vagrant.configure("2") do |config|
   # No /vagrant synced folder: the repo is cloned inside the VM
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  # Adapter 1: NAT, used by `vagrant ssh` (127.0.0.1:2222)
-  config.vm.network "forwarded_port", guest: 22, host: 2222, auto_correct: true
+  MACHINES.each do |name, m|
+    config.vm.define name, primary: m[:primary], autostart: m[:autostart] do |node|
+      node.vm.hostname = name
 
-  # Adapter 2: host-only, fixed IP reachable from Windows
-  config.vm.network "private_network", ip: "192.168.56.10", adapter: 2
+      # Adapter 1: NAT, used by `vagrant ssh` (auto_correct picks a free host port)
+      node.vm.network "forwarded_port", guest: 22, host: 2222, id: "ssh", auto_correct: true
 
-  # Adapter 3: bridged to the home LAN (DHCP); route to 10.0.0.0/24 set by base.sh
-  config.vm.network "public_network", bridge: BRIDGE, adapter: 3
+      # Adapter 2: host-only, fixed IP reachable from Windows
+      node.vm.network "private_network", ip: m[:ip], adapter: 2
 
-  config.vm.provider "virtualbox" do |vb|
-    vb.name = "pimaster"
-    vb.memory = MEMORY
-    vb.cpus = CPUS
-    vb.customize ["modifyvm", :id, "--nictype1", "82540EM"] # NAT
-    vb.customize ["modifyvm", :id, "--nictype2", "82540EM"] # host-only
-    vb.customize ["modifyvm", :id, "--nictype3", "82540EM"] # bridged
-    vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+      # Adapter 3: bridged to the home LAN (DHCP); route to 10.0.0.0/24 set by base.sh
+      node.vm.network "public_network", bridge: BRIDGE, adapter: 3
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = name
+        vb.memory = m[:memory]
+        vb.cpus = m[:cpus]
+        vb.customize ["modifyvm", :id, "--nictype1", "82540EM"] # NAT
+        vb.customize ["modifyvm", :id, "--nictype2", "82540EM"] # host-only
+        vb.customize ["modifyvm", :id, "--nictype3", "82540EM"] # bridged
+        vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+      end
+
+      # Always on first `vagrant up`: user, Docker, network, repo clone
+      node.vm.provision "base", type: "shell", path: "provision/base.sh",
+        env: { "REPO_URL" => REPO_URL }
+
+      # Tools and kernel settings for the k3d dev cluster.
+      # pidev: on first up. pimaster: only with --provision-with dev-tools.
+      node.vm.provision "dev-tools", type: "shell", path: "provision/dev-tools.sh",
+        run: (m[:dev_tools] ? "once" : "never")
+    end
   end
-
-  # Always on first `vagrant up`: user, Docker, network, repo clone
-  config.vm.provision "base", type: "shell", path: "provision/base.sh",
-    env: { "REPO_URL" => REPO_URL }
-
-  # Only on request: tools and kernel settings for the k3d dev cluster
-  #   vagrant provision --provision-with dev-tools
-  config.vm.provision "dev-tools", type: "shell", path: "provision/dev-tools.sh",
-    run: "never"
 end

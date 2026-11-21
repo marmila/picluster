@@ -1,11 +1,20 @@
 # pimaster VM: rebuild with Vagrant
 
-How to rebuild the pimaster VM from scratch on the Windows laptop. pimaster is the Ubuntu VM that hosts the
-ansible-runner container (the `pimaster` host in `ansible/inventory.yml` is that container, not the VM) and,
-when resized, the k3d dev cluster ([dev-environment.md](dev-environment.md)).
+How to rebuild the pimaster VM from scratch on the Windows laptop. pimaster is the **prod control VM**: it
+hosts the ansible-runner container (the `pimaster` host in `ansible/inventory.yml` is that container, not the
+VM), which manages the prod cluster.
+
+The same Vagrantfile defines two machines:
+
+| VM | Purpose | Size | Host-only IP | Doc |
+| --- | --- | --- | --- | --- |
+| **pimaster** | Prod control: ansible-runner, node SSH key, secrets, prod kubeconfig | 2 GB / 2 vCPU | 192.168.56.10 | this page |
+| **pidev** | Dev: k3d dev cluster, no secrets, no runner. Starts only with `vagrant up pidev` | 10 GB / 4 vCPU | 192.168.56.11 | [dev-environment.md](dev-environment.md) |
 
 - **Definition:** [homelab-vagrant/pimaster/Vagrantfile](../homelab-vagrant/pimaster/Vagrantfile), with the
   provisioners in [homelab-vagrant/pimaster/provision/](../homelab-vagrant/pimaster/provision/).
+- **Always name the machine** in Vagrant commands (`vagrant up pimaster`, `vagrant destroy pimaster`). Without
+  a name, `destroy`, `halt` and `reload` act on both VMs.
 - **Not in git, and cannot be regenerated:** the SSH key the cluster nodes trust, `~/.secrets`, the kubeconfig
   and the certbot state. **Back them up first** ([section 3](#3-back-up-what-is-not-in-git)).
 
@@ -17,7 +26,7 @@ when resized, the k3d dev cluster ([dev-environment.md](dev-environment.md)).
 - [4. Prerequisites on Windows](#4-prerequisites-on-windows)
 - [5. Rebuild](#5-rebuild)
 - [6. Restore and start the ansible-runner](#6-restore-and-start-the-ansible-runner)
-- [7. Resize and dev tools](#7-resize-and-dev-tools)
+- [7. Resize, and the dev cluster](#7-resize-and-the-dev-cluster)
 - [8. Troubleshooting](#8-troubleshooting)
 - [9. Changes from the original Vagrantfile](#9-changes-from-the-original-vagrantfile)
 
@@ -39,7 +48,7 @@ State as of 2026-11-21.
 
 ## 2. What the Vagrantfile builds
 
-`vagrant up` runs the **base** provisioner ([base.sh](../homelab-vagrant/pimaster/provision/base.sh)):
+`vagrant up pimaster` runs the **base** provisioner (pidev runs the same one) ([base.sh](../homelab-vagrant/pimaster/provision/base.sh)):
 
 1. Sets the timezone to Europe/Rome and installs git, make, curl, jq.
 2. Grows partition, LVM and filesystem to the virtual disk size (default 100 GB).
@@ -55,17 +64,19 @@ It does **not** start the ansible-runner. `make ansible-runner-setup` generates 
 is present, and the cluster nodes would not trust that key. Restore first, then start the runner
 ([section 6](#6-restore-and-start-the-ansible-runner)).
 
-The **dev-tools** provisioner ([dev-tools.sh](../homelab-vagrant/pimaster/provision/dev-tools.sh)) runs only on
-request: Cilium kernel modules, sysctls, k3d, kubectl, helm 4, tmpl and flux
-([section 7](#7-resize-and-dev-tools)).
+The **dev-tools** provisioner ([dev-tools.sh](../homelab-vagrant/pimaster/provision/dev-tools.sh)) installs
+the Cilium kernel modules, sysctls, k3d, kubectl, helm 4, tmpl and flux. It runs automatically on pidev and
+never on pimaster unless you ask for it ([section 7](#7-resize-and-the-dev-cluster)).
 
 Tunables (environment variables in the PowerShell session that runs `vagrant`):
 
 | Variable | Default | Use |
 | --- | --- | --- |
-| `PIMASTER_MEMORY` | `2048` | `10240` for the dev cluster |
-| `PIMASTER_CPUS` | `2` | `4` for the dev cluster |
-| `PIMASTER_DISK` | `100GB` | Grow only |
+| `PIMASTER_MEMORY` | `2048` | pimaster RAM in MB |
+| `PIMASTER_CPUS` | `2` | pimaster vCPUs |
+| `PIDEV_MEMORY` | `10240` | pidev RAM in MB |
+| `PIDEV_CPUS` | `4` | pidev vCPUs |
+| `PIMASTER_DISK` | `100GB` | Root disk of both VMs, grow only |
 | `PIMASTER_BRIDGE` | `Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC` | Another laptop or NIC: `VBoxManage list bridgedifs` |
 | `PIMASTER_REPO` | `https://github.com/marmila/picluster.git` | |
 
@@ -138,6 +149,9 @@ This changes where VirtualBox creates new VMs from then on. Existing VMs stay wh
    vagrant global-status --prune
    ```
 
+   This old folder defines a single machine, so `destroy` there removes only the old pimaster. pidev, if it
+   exists, is managed from the repo folder and is not touched.
+
    If that folder is gone, delete it in VirtualBox instead:
 
    ```powershell
@@ -152,7 +166,7 @@ This changes where VirtualBox creates new VMs from then on. Existing VMs stay wh
    git pull
    cd homelab-vagrant\pimaster
    vagrant validate
-   vagrant up
+   vagrant up pimaster
    ```
 
    The first `up` downloads or updates the box, then runs `base.sh`, which takes about 5–10 minutes. The
@@ -161,7 +175,7 @@ This changes where VirtualBox creates new VMs from then on. Existing VMs stay wh
 3. Check:
 
    ```powershell
-   vagrant ssh -c "id marmila; df -h /; ip -4 -br addr; ip route | grep 10.0.0.0; docker version --format '{{.Server.Version}}'; docker compose version; ls ~marmila/picluster | head -3"
+   vagrant ssh pimaster -c "id marmila; df -h /; ip -4 -br addr; ip route | grep 10.0.0.0; docker version --format '{{.Server.Version}}'; docker compose version; ls ~marmila/picluster | head -3"
    ```
 
    Expected: `uid=1001(marmila) gid=1002(marmila)`, a root disk of about 100 GB, eth1 192.168.56.10, the
@@ -194,34 +208,35 @@ docker ps --filter name=ansible-runner --format '{{.Names}} {{.Status}}'
 `ansible picluster -m ping` returning `pong` from every node proves the restored key works. Then delete the
 backup file from the VM (`rm ~/pimaster-backup.tgz`) and keep the copy on D:.
 
-## 7. Resize and dev tools
+## 7. Resize, and the dev cluster
 
-Vagrant applies memory and CPUs on every `vagrant up` / `vagrant reload`. Set the variables in the same
-PowerShell session:
+**The dev cluster does not run on pimaster.** It runs on the separate `pidev` VM: `vagrant up pidev`, then
+follow [dev-environment.md](dev-environment.md). pimaster stays small and only runs the ansible-runner.
+
+To change pimaster's size, set the variables in the PowerShell session. Vagrant applies them on every
+`vagrant up` / `vagrant reload`:
 
 ```powershell
 cd C:\Users\marco\bin\picluster\homelab-vagrant\pimaster
+$env:PIMASTER_MEMORY = "4096"; $env:PIMASTER_CPUS = "2"
+vagrant reload pimaster
 
-# Dev cluster size
-$env:PIMASTER_MEMORY = "10240"; $env:PIMASTER_CPUS = "4"
-vagrant reload
-
-# Install the k3d dev tools (one time)
-vagrant provision --provision-with dev-tools
-
-# Back to the normal size
+# Back to the default (2 GB / 2 vCPU)
 Remove-Item Env:PIMASTER_MEMORY, Env:PIMASTER_CPUS
-vagrant reload
+vagrant reload pimaster
 ```
 
-This replaces the `VBoxManage modifyvm` steps in [dev-environment.md](dev-environment.md) section 2, and
-`dev-tools` replaces its section 4. If you resize with `VBoxManage` anyway, the next `vagrant reload` without
-the variables puts the VM back to 2 GB / 2 vCPU.
+If you resize with `VBoxManage` instead, the next `vagrant reload pimaster` without the variables puts the VM
+back to 2 GB / 2 vCPU.
+
+Only if pidev can't run (not enough RAM for a third VM), dev can run on pimaster:
+[dev-environment.md appendix](dev-environment.md#appendix-dev-on-pimaster-not-recommended).
 
 ## 8. Troubleshooting
 
 | Symptom | Cause / fix |
 | --- | --- |
+| A Vagrant command touched pidev too | Commands without a machine name act on both VMs: always write `pimaster` or `pidev` |
 | `Plugin vagrant-disksize missing` | `vagrant plugin install vagrant-disksize` |
 | `VirtualBox ... name "pimaster" already exists` | The old VM is still registered: [section 5](#5-rebuild) step 1 |
 | Vagrant asks which network to bridge, or the bridge fails | The adapter name differs: `VBoxManage list bridgedifs`, then `$env:PIMASTER_BRIDGE = "<name>"` |
@@ -237,12 +252,13 @@ the variables puts the VM back to 2 GB / 2 vCPU.
 
 | Original (`D:\SCRIPT\vagrant-pimaster`) | Now (`homelab-vagrant/pimaster`) | Why |
 | --- | --- | --- |
-| 1 GB / 1 vCPU fixed | 2 GB / 2 vCPU, set with `PIMASTER_MEMORY` / `PIMASTER_CPUS` | Runner builds are slow on 1 vCPU; the dev cluster needs 10 GB / 4 |
+| One machine | Two: `pimaster` (prod control) and `pidev` (dev, `autostart: false`) | Dev never shares a VM with the runner and its prod kubeconfig |
+| 1 GB / 1 vCPU fixed | 2 GB / 2 vCPU, set with `PIMASTER_MEMORY` / `PIMASTER_CPUS` | Runner builds are slow on 1 vCPU; the dev cluster lives on pidev |
 | 50 GB disk, LV not extended | 100 GB, partition / PV / LV / filesystem grown by the provisioner | Room for the k3d dev cluster |
 | Docker without the compose / buildx plugins | With the plugins | `make ansible-runner-setup` uses `docker compose` |
 | pip `ansible`, `ansible-lint`, `molecule` on the host | Removed | Ansible runs in the runner container (CLAUDE.md: never host `ansible-playbook`) |
 | `marmila` with an empty password | Locked password, passwordless sudo via `/etc/sudoers.d` | Same sudo behaviour without an empty password |
 | No DNSSEC fix | `DNSSEC=no` drop-in | Oct 2026 `missing-key` failure |
 | No repo, no runner folders | Repo cloned, folders created | Ready for the restore |
-| Inline script | `provision/base.sh` + optional `dev-tools.sh` | Readable, re-runnable, LF line endings enforced by `.gitattributes` |
+| Inline script | `provision/base.sh` + `dev-tools.sh` (pidev only) | Readable, re-runnable, LF line endings enforced by `.gitattributes` |
 | Netplan file 644 | 600 | Avoids netplan's permission warning |
