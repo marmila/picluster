@@ -151,6 +151,32 @@ kubectl -n tempo top pod tempo-ingester-0
 kubectl -n tempo describe pod tempo-ingester-0 | grep -A3 "Last State"
 ```
 
+### 22 Nov: triage agent gives shallow reports (assessed 2026-11-21)
+Causes found in the config, most important first:
+1. **No alert context:** the Triage button always sends `body=triage` (fixed in the ntfy URL), so the prompt is
+   "Triage all firing alerts" and the skill sweeps the whole cluster (10 steps). The tapped alert is not passed.
+2. **Budget forces breadth:** Sonnet, 600 s, under 3,500 characters, one check per tool call. The reply is now
+   split into parts (up to 4 × 2,500 bytes), so the 3,500 cap is no longer needed.
+3. **Tool friction:** allow list has kubectl/flux read verbs plus jq, grep, sort, uniq, head, tail, wc, date; no
+   awk, sed, cut, xargs; no Python in the image. Refusals are logged per run (`denied=[...]`).
+4. **Read gaps:** no log history (Loki not reachable: no `services/proxy` Role in `loki`); CRD groups missing
+   from `sre-triage-read`: kafka.strimzi.io, networking.istio.io, security.istio.io, gateway.envoyproxy.io,
+   k8s.keycloak.org, mongodbcommunity.mongodb.com, grafana.integreatly.org, opentelemetry.io. No host access
+   (by design; node metrics cover part of it).
+
+- [ ] **Measure first** (node2): turns, cost, timeouts and refused commands of the last runs:
+  ```bash
+  kubectl -n sre-triage logs deploy/sre-triage --since=168h | grep -E "triage (start|end)|Triage failed" | tail -30
+  ```
+- [ ] Decide and implement (explain first), candidates:
+  - prompt: deep-dive the most recent alert group first (newest `startsAt`), full sweep only on request;
+    report in sections up to ~8,000 characters (parts already supported);
+  - timeout 900–1200 s; optionally Opus for triage (cost per run vs daily limit 20);
+  - allow read-only `awk`, `sed -n`, `cut`; PromQL URL-encoding hint with `jq -rn --arg q '...' '$q|@uri'`;
+  - Loki read access (Role `services/proxy` GET in `loki`, LogQL recipes in the skill);
+  - add the missing CRD groups to `sre-triage-read`.
+- [ ] After the change: tap Triage on a real alert and compare the report with one from before.
+
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
 - [ ] It no longer lists `tempo-ingester-0`, and no Velero failure (the 15 Nov one is out of the window).
