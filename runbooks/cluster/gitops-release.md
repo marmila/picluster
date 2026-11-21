@@ -351,8 +351,12 @@ full error.
 Preconditions:
 
 - `kubectl` on node2.
-- Before a force-unlock: no `tf-runner` pod for this resource is running a plan or apply (step 2 lists them).
-  Unlocking a live run can corrupt the state.
+- Before a force-unlock: the lock is stale, not held by a live plan or apply. Unlocking a live run can corrupt
+  the state. Judge it from the lock, not from a runner pod: the lock's `Created` time predates the problem and
+  the same lock ID comes back on every failed attempt (step 4 prints the lock info). A `<name>-tf-runner` pod
+  in `Running` proves nothing: the runner is one-shot and shows up for about 20 seconds on every attempt,
+  including the ones that fail on the lock. A real live run is one pod that stays up for minutes.
+  (Upstream ricsanfre/pi-cluster 9f621b3d3.)
 
 Procedure:
 
