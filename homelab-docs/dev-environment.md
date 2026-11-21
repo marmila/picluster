@@ -121,6 +121,30 @@ ssh marmila@192.168.56.11          # same key as pimaster
 vagrant ssh pidev                   # logs in as vagrant, then:  sudo -iu marmila
 ```
 
+#### With PuTTY
+
+base.sh installs the pimaster public key for `marmila`, so the PuTTY key you already use for
+pimaster works on pidev too:
+`C:\Users\marco\Desktop\kubernetes cluster\Ansible Control Node Ubuntu Server VM\pimaster.ppk`.
+
+1. Start PuTTY. In **Session**, set **Host Name** to `marmila@192.168.56.11`, **Port** `22`,
+   and **Connection type** SSH.
+2. Open **Connection > SSH > Auth > Credentials**. In **Private key file for authentication**,
+   browse to `pimaster.ppk`.
+3. Go back to **Session**, type `pidev` under **Saved Sessions**, and click **Save**. After that,
+   double-click `pidev` to connect.
+4. On the first connection, accept the host key.
+
+`192.168.56.11` is the host-only address, so it works from the laptop even without the home LAN.
+There is no password: `marmila` has passwordless sudo, and the account logs in with the key only.
+
+| Problem | Fix |
+|---|---|
+| `Server refused our key` | Wrong `.ppk`, or base.sh did not reach the user step. Check with `vagrant ssh pidev -c "sudo cat /home/marmila/.ssh/authorized_keys"`, which should end in `marmila@pimaster`. If it is missing, run `vagrant provision pidev`. |
+| Timeout on `192.168.56.11` | The VM is off or the host-only adapter is down. Run `vagrant status`, then `vagrant up pidev`. |
+| `WARNING - POTENTIAL SECURITY BREACH` after `vagrant destroy` + `up` | The new VM has a new host key. Accept it. |
+| Log in as `vagrant` instead of `marmila` | Use host `127.0.0.1`, port `2201` (see `vagrant ssh-config pidev`), and the key file `homelab-vagrant\pimaster\.vagrant\machines\pidev\virtualbox\private_key`. That file is OpenSSH format, so convert it first: PuTTYgen, **Load**, **Save private key** as `pidev-vagrant.ppk`. |
+
 ## 4. Start the dev cluster
 
 On pidev as `marmila`:
