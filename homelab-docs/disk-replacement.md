@@ -89,11 +89,19 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 
 ### 2.3 Shopping list
 
-| Qty | Item | For |
-|---|---|---|
-| 5 | Kingston DC600M **1.92 TB** 2.5" SATA (or WD Red SA500 2 TB, or Crucial MX500 2 TB) | node-esp-1, node-esp-2, node5, node6, node1 |
-| 3 | Kingston DC600M **480 GB** 2.5" SATA (or WD Red SA500 500 GB, or Crucial MX500 500 GB) | node2, node3, node4 |
-| 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | node5 |
+Pick **one option** for all drives (same model everywhere keeps it simple). The adapter is needed in every option.
+
+| Option | Qty | Drive | Size | For |
+|---|---|---|---|---|
+| **A: Kingston DC600M** (best: power-loss protection, highest endurance) | 5 | Kingston DC600M 2.5" SATA | **1.92 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Kingston DC600M 2.5" SATA | **480 GB** | node2, node3, node4 |
+| **B: Crucial MX500** (cheapest that is fine) | 5 | Crucial MX500 2.5" SATA | **2 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Crucial MX500 2.5" SATA | **500 GB** | node2, node3, node4 |
+| **C: WD Red SA500** (middle) | 5 | WD Red SA500 2.5" SATA | **2 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | WD Red SA500 2.5" SATA | **500 GB** | node2, node3, node4 |
+| **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter (USB 3.2 Gen 1 / 5 Gbps, UAS), same model as the others | | node5 |
+
+Total per option: **8 drives** (5 large + 3 small) + **1 adapter**.
 
 Before ordering, check the max power line of the exact model in its datasheet (condition 2).
 
