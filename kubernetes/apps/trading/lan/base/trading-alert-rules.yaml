@@ -1,0 +1,42 @@
+# Trading bot alerts. The end-to-end check (gateway + bot API) is the blackbox target
+# web-freqtrade (WebEndpointDown). Generic pod alerts (KubePodCrashLooping, KubePodNotReady)
+# also cover the namespace; these add bot-specific thresholds and a pointer to the runbook.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: trading-bot
+  namespace: trading
+  annotations:
+    # Rule templates use $labels: keep Flux variable substitution away from them
+    kustomize.toolkit.fluxcd.io/substitute: disabled
+spec:
+  groups:
+  - name: trading-bot
+    rules:
+    - alert: FreqtradeDown
+      expr: |
+        kube_deployment_status_replicas_available{namespace="trading", deployment="freqtrade"} < 1
+        or absent(kube_deployment_status_replicas_available{namespace="trading", deployment="freqtrade"})
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: Trading bot (freqtrade) has no available pod
+        description: >-
+          trading/freqtrade has had no ready pod for 10 minutes, so the dry-run is not trading. Usual causes: a blocked
+          outbound host in the Cilium policy (the API never starts and the liveness probe kills the pod), the secrets
+          ExternalSecret not synced, or the Longhorn volume not attaching. See homelab-docs/trading-agent.md.
+        runbook_url: https://github.com/marmila/picluster/blob/master/homelab-docs/trading-agent.md#alerts
+    - alert: FreqtradeRestarting
+      expr: |
+        increase(kube_pod_container_status_restarts_total{namespace="trading", container="freqtrade"}[1h]) >= 3
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: Trading bot restarted {{ $value | humanize }} times in the last hour
+        description: >-
+          trading/{{ $labels.pod }} keeps restarting. Check the previous logs
+          (kubectl -n trading logs deploy/freqtrade --previous) and Cilium drops in the trading namespace.
+          See homelab-docs/trading-agent.md.
+        runbook_url: https://github.com/marmila/picluster/blob/master/homelab-docs/trading-agent.md#alerts
