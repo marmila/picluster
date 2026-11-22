@@ -151,13 +151,72 @@ price of those 5 drives.
 
 Before ordering, check the max power line of the exact model in its datasheet (condition 2).
 
-### 2.4 Make every disk last longer: fewer Longhorn copies for self-replicating apps
+### 2.4 Make every disk last longer: fewer disk writes
 
-Kafka (3 brokers), CloudNativePG Postgres (3 instances) and MongoDB (3-member replica set) already keep 3 copies
-of their data themselves. Longhorn then stores each instance's volume 3 times: every write lands on 9 disks.
-Giving these volumes **1 Longhorn replica** (a dedicated StorageClass, one branch, tested through Flux) removes a
-large share of the cluster's disk writes and of the rebuild traffic after a node stall, without losing
-redundancy: the application still has its 3 copies on 3 nodes. To be done before or right after phase 1.
+Measured on 2026-11-22 (24 h average of `longhorn_volume_write_throughput` × each volume's replica count):
+Longhorn writes **269 GB/day** to the cluster's disks (about 98 TB/year).
+
+| Volume | Disk GB/day | Replicas | Redundancy outside Longhorn | Action |
+|---|---|---|---|---|
+| Elasticsearch | 84 | 2 | none (1 node, index replicas 0) | keep |
+| Prometheus | 55 | 2 | none (not in Velero) | keep |
+| Loki write (WAL) | 36 | 3 → **1** | chunks are in S3; only not-yet-uploaded logs are on the volume | **done, live** |
+| MongoDB threatmap | 27 | 3 | none (1 member) | **threatmap disabled** |
+| Postgres Keycloak ×2 | 29 | 3 → **1** | 2 CNPG instances + WAL archive and backups in RustFS (barman) | **done, live** |
+| Kafka ×3 | 32 | 3 | none for the app topics (`replicas: 1`) | keep |
+| Others | 6 | 3 | – | keep |
+
+The earlier idea ("Kafka, Postgres and MongoDB keep 3 copies themselves") was wrong for this cluster: only
+Postgres has its own copy (2 instances). Lowering Kafka's Longhorn replicas would need its topics at 3 copies
+first, which writes the same amount.
+
+**Done 2026-11-22:**
+
+- **threatmap disabled** (MongoDB ~27 GB/day): see [ops-checklist.md](ops-checklist.md) for how to re-enable.
+- **1 Longhorn replica, data locality `best-effort`** for `databases/postgres-keycloak-1`,
+  `databases/postgres-keycloak-2` and `loki/data-loki-write-0` (~43 GB/day). The single copy stays on the node
+  where its pod runs, so the two Postgres instances keep their data on two different nodes.
+
+Expected after both: about **200 GB/day** (-25%).
+
+**This is a live patch, not in Git.** The Longhorn volume's `numberOfReplicas` is not managed by Flux. A
+StorageClass in Git is not used on purpose: Loki's write volume comes from a StatefulSet, whose storage template
+cannot be changed, so a new StorageClass would break the Loki Helm upgrade.
+
+- **Disk swaps (procedures A–D): nothing to revert or redo.** Draining a node and evicting its Longhorn replicas
+  (A1/B1) copies the single replica to another node first; the volume keeps 1 replica.
+- **Do not put these back to 3 after the new disks:** the reason is the applications' own redundancy, not disk
+  wear.
+- **Reapply** only when the volumes are recreated: a full cluster rebuild (`make clean` / `make init`), a Velero
+  restore of `databases` or `loki`, or a deleted and recreated PVC (for example CNPG rebuilding an instance). New
+  volumes get Longhorn's default of 3 replicas. Command (node2):
+
+  ```bash
+  PVCS="databases/postgres-keycloak-1 databases/postgres-keycloak-2 loki/data-loki-write-0"
+  vol() { kubectl -n ${1%/*} get pvc ${1#*/} -o jsonpath='{.spec.volumeName}'; }
+  for p in $PVCS; do v=$(vol $p); kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"dataLocality":"best-effort","numberOfReplicas":1}}'; done
+  for p in $PVCS; do v=$(vol $p); echo "$p $(kubectl -n longhorn-system get volumes.longhorn.io $v -o jsonpath='{.spec.numberOfReplicas} {.spec.dataLocality} {.status.robustness}')"; done
+  ```
+
+  CNPG names new instances with a higher number (`postgres-keycloak-3`, ...): check the current PVC names with
+  `kubectl -n databases get pvc | grep keycloak` first. Undo: the same patch with `"dataLocality":"disabled","numberOfReplicas":3`.
+- **To check the saving**, rerun the measurement (node2):
+
+  ```bash
+  P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+  Q='avg_over_time(longhorn_volume_write_throughput[1d])'
+  kubectl get --raw "${P}$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$Q")" > /tmp/lh_w.json
+  kubectl -n longhorn-system get volumes.longhorn.io -o json > /tmp/lh_v.json
+  python3 -c '
+  import json
+  w = {r["metric"].get("volume"): float(r["value"][1]) for r in json.load(open("/tmp/lh_w.json"))["data"]["result"]}
+  rows = []
+  for v in json.load(open("/tmp/lh_v.json"))["items"]:
+      ks = v["status"].get("kubernetesStatus", {}); rep = v["spec"]["numberOfReplicas"]; app = w.get(v["metadata"]["name"], 0) * 86400 / 1e9
+      rows.append((app * rep, rep, ks.get("namespace", "-") + "/" + ks.get("pvcName", "-")))
+  for r in sorted(rows, reverse=True)[:12]: print("%7.1f GB/d  rep %d  %s" % r)
+  print("%7.1f GB/day total" % sum(r[0] for r in rows))'
+  ```
 
 ## 3. Order
 
@@ -560,7 +619,8 @@ Keep the old node1 SSD untouched for a week as a fallback.
 
 When node6, node-esp-2 and node5 run on new disks:
 
-1. Give Elasticsearch and Prometheus their third replica back (node2):
+1. Give Elasticsearch and Prometheus their third replica back (node2). Leave the Keycloak Postgres and Loki write
+   volumes at 1 replica (2.4):
    ```bash
    for v in pvc-a6e3a543-70ff-4bc5-a595-82bf0fcf9c45 pvc-e1c0c8e4-c16e-4a91-bf7c-0ebc0b68209b; do
      kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":3}}'

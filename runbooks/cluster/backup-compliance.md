@@ -55,7 +55,10 @@ velero restore describe restore-full-<test-id> --details
 ```
 
 4. Validate core services (Flux, DNS, ingress, storage, observability).
-5. Record RTO/RPO metrics and gaps.
+5. Reapply the live Longhorn replica settings: restored volumes get the default of 3 replicas. Keycloak Postgres
+   and Loki write run with 1 replica, data locality `best-effort` (patch command in
+   `homelab-docs/disk-replacement.md` section 2.4).
+6. Record RTO/RPO metrics and gaps.
 
 Verify:
 

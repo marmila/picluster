@@ -265,9 +265,12 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   not fire on healthy disks (node-esp-1, node1–3); raise the threshold if it does.
 
 ### 22 Nov: write reduction (worn disks)
-- [ ] **Longhorn 1 replica, live patch (not in Git yet):** `postgres-keycloak-1`, `postgres-keycloak-2`,
-  `loki/data-loki-write-0` → `numberOfReplicas: 1`, `dataLocality: best-effort` (saves ~43 GB/day of 269). A
-  recreated PVC gets 3 again: add a `longhorn-single` StorageClass in Git for them.
+- [x] **Longhorn 1 replica, live patch (stays out of Git on purpose):** `postgres-keycloak-1`,
+  `postgres-keycloak-2`, `loki/data-loki-write-0` → `numberOfReplicas: 1`, `dataLocality: best-effort` (saves
+  ~43 GB/day of 269). Nothing to revert for disk swaps; reapply only after a rebuild, a restore or a recreated PVC
+  ([disk-replacement.md 2.4](disk-replacement.md#24-make-every-disk-last-longer-fewer-disk-writes)).
+- [ ] **Measure the saving** (evening of 23 Nov, full 24 h without threatmap): rerun the table in
+  disk-replacement.md 2.4. Expected about 200 GB/day (was 269).
 - [x] **Threatmap disabled** (MongoDB ~27 GB/day): `threatmap-app` and `mongodb-community-operator-app` have
   `suspend: true` in Git (namespace and MongoDB volume kept). Live, node2:
   `kubectl -n databases scale deploy -l app.kubernetes.io/name=community-operator --replicas=0` (or the operator
