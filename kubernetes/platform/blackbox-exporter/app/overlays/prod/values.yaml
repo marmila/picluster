@@ -27,3 +27,7 @@ serviceMonitor:
     - name: web-threatmap
       url: https://threatmap.${CLUSTER_DOMAIN}/
       module: http_reachable
+    # FreqUI / bot API through lan-gateway (LAN-only); /api/v1/ping needs no login
+    - name: web-freqtrade
+      url: https://freqtrade.${CLUSTER_DOMAIN}/api/v1/ping
+      module: http_reachable

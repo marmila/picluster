@@ -42,6 +42,18 @@ vs market −56.7%, only 22 trades). Go-live earliest after 8–12 weeks and at 
 
 Few trades are normal: 4h candles, roughly one entry per pair per month.
 
+## Alerts
+
+All go to ntfy like the other cluster alerts.
+
+| Alert | Severity | Fires when | First check (node2) |
+|---|---|---|---|
+| `WebEndpointDown` target `web-freqtrade` | critical | `https://freqtrade.../api/v1/ping` fails 5 min (blackbox, through `lan-gateway`) | `kubectl -n trading get pod`; if the pod is fine: `kubectl -n envoy-gateway-system get gateway lan-gateway` |
+| `FreqtradeDown` | critical | no available freqtrade pod for 10 min | `kubectl -n trading describe pod -l app.kubernetes.io/name=freqtrade`, then the drops command below |
+| `FreqtradeRestarting` | warning | 3+ restarts in 1 h | `kubectl -n trading logs deploy/freqtrade --previous --tail=30` |
+
+`KubePodCrashLooping`, `KubePodNotReady` and `KubeJobFailed` (backtest jobs) also cover the namespace.
+
 ## Network policy (Cilium, in `trading-agent/deploy/base/networkpolicy.yaml`)
 
 - **In:** port 8080 only from the `lan-gateway` Envoy pods, plus `host` / `remote-node` (kubelet probes).
