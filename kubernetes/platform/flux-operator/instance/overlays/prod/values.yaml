@@ -3,7 +3,7 @@ instance:
   sync:
     kind: GitRepository
     url: https://github.com/marmila/picluster
-    ref: refs/heads/feature/fluentd-1.20.1
+    ref: refs/heads/master
     path: kubernetes/clusters/prod
     interval: 1h
     ignore: |
