@@ -143,7 +143,7 @@ echo "== load"; kubectl top nodes
 
 Go only if every node is `Ready`, no volume is `degraded`/`faulted`, and no node is above about 80% CPU.
 
-### 4.2 Lighten the cluster during a swap (agreed: scaling down, evicting and cordoning are fine)
+### 4.2 Lighten the cluster during a swap
 
 Draining a node moves its pods to the others, and on 2026-11-14 and 2026-11-22 that overloaded the Pis. Before a
 drain, scale down what is not needed for a day, and keep heavy pods off the worn Pis.
