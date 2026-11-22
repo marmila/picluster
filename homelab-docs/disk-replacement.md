@@ -109,6 +109,22 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 **Phase 2, later (not now):** 1 × 1 TB for node-esp-1, 1 × 1 TB for node1, 2 × 500 GB for node2 and node3, same
 model as phase 1. Buy each when SMART monitoring (postmortem action 3c) reports it near its end.
 
+**Full list: all 8 disks at once (phase 1 + phase 2).** Same options, same model everywhere:
+
+| Option | Qty | Drive | Size | For |
+|---|---|---|---|---|
+| **A: Crucial MX500** (cheapest that is fine) | 5 | Crucial MX500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Crucial MX500 2.5" SATA | **500 GB** | node2, node3, node4 |
+| **B: WD Red SA500** (middle) | 5 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | WD Red SA500 2.5" SATA | **500 GB** | node2, node3, node4 |
+| **C: Kingston DC600M** (best, most expensive) | 5 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Kingston DC600M 2.5" SATA | **480 GB** | node2, node3, node4 |
+| **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | | node5 |
+
+Total per option: **8 drives** (5 × 1 TB class + 3 × 500 GB class) + **1 adapter**. For more Longhorn space take
+**2 TB** (MX500 / SA500) or **1.92 TB** (DC600M) instead of the 1 TB class: same procedure, about double the
+price of those 5 drives.
+
 Before ordering, check the max power line of the exact model in its datasheet (condition 2).
 
 ### 2.4 Make every disk last longer: fewer Longhorn copies for self-replicating apps
