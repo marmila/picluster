@@ -66,22 +66,35 @@ Recommended models (both 2.5" SATA, DRAM cache):
 
 For comparison, node-esp-2's MX500 500 GB is rated 180 TBW and had written about 187 TB.
 
-### 2.2 Raspberry Pi compatibility (important)
+### 2.2 Raspberry Pi compatibility (checked 2026-11-22)
 
 On a Pi the part that must be compatible is the **USB-SATA adapter**, not the SSD: the Pi only sees the
-adapter's bridge chip. The current adapters boot and run with `uas` at 5 Gbit/s on every Pi, so **keep them**
-(node5: replace its adapter with the same model, it logs CRC errors). Some SSD + bridge combinations hang under
-UAS (known with some Samsung EVO drives on JMicron/ASMedia bridges), so:
+adapter's bridge chip, which then speaks plain SATA to any 2.5" SSD. Checked on all six Pis:
 
-1. Record the adapter chip on each Pi (on the Pi):
-   ```bash
-   lsusb | grep -vi hub
-   ```
-   Example: `152d:0578 JMicron JMS578`, `174c:55aa ASMedia ASM1051/1153`. Write it in section 10.
-2. **Buy one drive first** and do node6 with it (procedure A includes a compatibility test). Buy the rest only
-   after node6 runs clean for a day.
-3. Power: one 2.5" SATA SSD per Pi on the official power supply is fine. Do not use NVMe-in-USB enclosures on the
-   Pis (more power, different bridges).
+| Pi | Model | Adapter (`lsusb`) | Driver / link |
+|---|---|---|---|
+| node1, node2, node3, node5, node6 | Raspberry Pi 4 Model B Rev 1.5 | `14b0:0207` StarTech USB-SATA | `uas`, 5000M |
+| node4 | Raspberry Pi 4 Model B Rev 1.5 | `14b0:0206` StarTech USB-SATA (older revision) | `uas`, 5000M |
+
+These StarTech adapters are widely used on the Pi 4, and these ones have run the BX500s with UAS for two years.
+So **all drives can be bought at once**; keep the adapters. Conditions:
+
+1. **2.5" SATA** drive (not NVMe, not mSATA, not M.2).
+2. **Max power ≤ 4 W** in the drive's datasheet: the Pi 4 gives about 1.2 A (6 W) to all its USB ports
+   together. Use the official 3 A power supply and nothing else on the Pi's USB ports.
+3. **One new StarTech adapter of the same model for node5** (its current one logs 92 CRC errors).
+4. The `fio` + `dmesg` check in procedure A5 stays as a **check after each swap**, not a reason to wait before
+   buying.
+
+### 2.3 Shopping list
+
+| Qty | Item | For |
+|---|---|---|
+| 5 | Kingston DC600M **1.92 TB** 2.5" SATA (or WD Red SA500 2 TB) | node-esp-1, node-esp-2, node5, node6, node1 |
+| 3 | Kingston DC600M **480 GB** 2.5" SATA (or WD Red SA500 500 GB) | node2, node3, node4 |
+| 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | node5 |
+
+Before ordering, check the max power line of the exact model in its datasheet (condition 2).
 
 ## 3. Order
 
@@ -89,7 +102,7 @@ One node per day at most. Each swap waits for Longhorn to be fully healthy befor
 
 | # | Node | Procedure | Why this position |
 |---|---|---|---|
-| 1 | node6 | A | Worst Pi disk; first test of the new drive in a Pi adapter |
+| 1 | node6 | A | Worst Pi disk; first run of the new drive in a Pi adapter (A5 check) |
 | 2 | node-esp-2 | B | Disk with errors. After node6, so its ES/Prometheus copies move to a healthy disk |
 | 3 | node5 | A | Worn; new adapter too |
 | 4 | node-esp-1 | B | Size upgrade |
@@ -497,11 +510,11 @@ When node6, node-esp-2, node5 and node-esp-1 run on new disks:
 
 | # | Node | Adapter (`lsusb`) | New drive (model, serial) | Date | SMART baseline | Notes |
 |---|---|---|---|---|---|---|
-| 1 | node6 | | | | | |
+| 1 | node6 | StarTech `14b0:0207` | | | | |
 | 2 | node-esp-2 | internal SATA | | | | |
-| 3 | node5 | (new adapter) | | | | |
+| 3 | node5 | new StarTech (old `14b0:0207`, CRC errors) | | | | |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | | | | | |
-| 6 | node3 | | | | | |
-| 7 | node2 | | | | | |
-| 8 | node1 | | | | | |
+| 5 | node4 | StarTech `14b0:0206` | | | | |
+| 6 | node3 | StarTech `14b0:0207` | | | | |
+| 7 | node2 | StarTech `14b0:0207` | | | | |
+| 8 | node1 | StarTech `14b0:0207` | | | | |
