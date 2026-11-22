@@ -1,0 +1,9 @@
+# LAN-only Gateway: HTTPS with the cluster wildcard certificate, on an IP the router does not
+# forward. For UIs that must not be reachable from the internet and can't sit behind the OIDC
+# SecurityPolicy (e.g. FreqUI, which sends its own Authorization header).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - lan-gateway.yaml
+  - lan-https-redirect-route.yaml

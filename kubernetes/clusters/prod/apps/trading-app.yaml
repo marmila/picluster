@@ -40,7 +40,7 @@ spec:
   # No postBuild substitution here: the backtest CronJob script uses bash ${VARS}
   # that Flux would replace with empty strings.
 ---
-# LAN-only LoadBalancer for FreqUI (cluster-specific IP and hostname).
+# FreqUI HTTPRoute on lan-gateway (HTTPS, LAN only; hostname from cluster-settings).
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -53,6 +53,7 @@ spec:
     name: flux-system
   dependsOn:
     - name: trading-app
+    - name: envoy-gateway-config
   path: ./kubernetes/apps/trading/lan/base
   prune: true
   wait: false

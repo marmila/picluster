@@ -9,3 +9,4 @@ components:
   - ../../components/monitoring
   - ../../components/opentelemetry
   - ../../components/istio
+  - ../../components/lan-gateway

@@ -7,20 +7,22 @@ mode-switch scripts live in the **private** repo `marmila/trading-agent`; this r
 |---|---|
 | Bot manifests, strategy, `set-mode.sh` / `readiness.sh` / `kill-switch.sh` | `marmila/trading-agent` (`deploy/`, `scripts/`) |
 | Flux source for the private repo + deploy key | `kubernetes/apps/trading/source/base` |
-| LAN-only FreqUI address | `kubernetes/apps/trading/lan/base` (`FREQTRADE_LOAD_BALANCER_IP` in cluster-settings) |
+| FreqUI HTTPRoute (HTTPS, LAN only) | `kubernetes/apps/trading/lan/base` on `lan-gateway` |
+| `lan-gateway` (10.0.0.70, `LAN_GATEWAY_LOAD_BALANCER_IP`, wildcard cert `pi-cluster-tls`) | `kubernetes/platform/envoy-gateway/config/components/lan-gateway` |
 | Flux Kustomizations `trading-source` → `trading-app` → `trading-lan` | `kubernetes/clusters/prod/apps/trading-app.yaml` |
 | Generated secrets `trading/freqtrade`, `trading/freqtrade-jwt`, `trading/freqtrade-ws` | `terraform/vault/resources/secrets/trading.json` |
 | Hand-made secrets `trading/deploy-key`, `trading/binance` (live only) | Vault, created by hand (below) |
 
 ## Access: LAN / WireGuard only
 
-FreqUI is on `http://freqtrade.homelab.marmilan.com` (10.0.0.70), user `marco`, password from Vault:
+FreqUI is on `https://freqtrade.homelab.marmilan.com` (`lan-gateway`, 10.0.0.70; public IONOS A record to that private IP, like the other homelab names), user `marco`, password from Vault:
 
 ```bash
 vault kv get -mount=secret -field=password trading/freqtrade
 ```
 
-There is deliberately **no public route**. Envoy Gateway's OIDC filter strips the incoming `Authorization` header
+`lan-gateway` is a second Envoy Gateway on an IP the router does not forward, with the cluster
+wildcard certificate. There is deliberately **no route on public-gateway**. Envoy Gateway's OIDC filter strips the incoming `Authorization` header
 (Envoy `preserve_authorization_header` defaults to false and Envoy Gateway does not expose it), and FreqUI sends
 its own JWT in that header, so a Keycloak-protected route would load the UI and fail every API call. Keycloak
 comes back in Phase 2 for the MCP server.
