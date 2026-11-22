@@ -11,6 +11,7 @@ homelab goes here.
 | [cluster-maintenance.md](cluster-maintenance.md) | Keeping the cluster updated: how Renovate works here, daily / weekly / monthly tasks, critical update order, event procedures |
 | [update-automation.md](update-automation.md) | How Renovate updates get checked by CI and (step by step) merged automatically, and the alerts that watch them |
 | [node-os-maintenance.md](node-os-maintenance.md) | OS package upgrades (`make os-upgrade-check`, `make os-upgrade`: pre-flight incl. CPU, memory and disk of the other nodes, drain, reboot, uncordon, progress-based Longhorn wait, one node at a time) and the manual safe reboot of a node |
+| [disk-replacement.md](disk-replacement.md) | Replace every node's SSD one at a time without downtime (after the 2026-11-22 worn-disk incident): new sizes and models, Pi adapter compatibility, order, procedures for Pi workers, x86 workers (PXE), masters (etcd) and node1 (clone) |
 | [ops-checklist.md](ops-checklist.md) | Working checklist: what was done in November 2026, the checks for the next days, open follow-ups and backlog |
 | [pimaster-vm.md](pimaster-vm.md) | Rebuild the **pimaster** prod control VM with Vagrant ([homelab-vagrant/pimaster/](../homelab-vagrant/pimaster/)): backup of keys / secrets / kubeconfig, rebuild, restore, ansible-runner start, resize |
 | [dev-environment.md](dev-environment.md) | k3d dev cluster on the separate **pidev** VM (`vagrant up pidev`, 10 GB / 4 vCPU, no secrets, no runner): create, `make dev-up`, profiles, halt / destroy; appendix for running dev on pimaster |
