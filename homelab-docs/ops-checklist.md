@@ -186,13 +186,17 @@ Causes found in the config, most important first:
     mongodb, grafana operator, opentelemetry.
   - The Triage button still sends only `triage`: ntfy does not template action bodies, so a plain tap
     now means "the newest alert".
-- [ ] Deployed: the pod runs the new image (`kubectl -n sre-triage get deploy sre-triage -o jsonpath='{.spec.template.spec.containers[0].image}'`)
+- [x] Deployed 2026-11-22 (`sha-6bc59c2`, Flux on master): the pod runs the new image (`kubectl -n sre-triage get deploy sre-triage -o jsonpath='{.spec.template.spec.containers[0].image}'`)
   and Loki answers through the proxy as the agent:
   ```bash
   kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/labels" --as=system:serviceaccount:sre-triage:sre-triage | jq -r '.data[]' | head
   ```
-- [ ] After the change: ask the agent "Why did the 21 and 22 Nov backups fail?" and compare with the 22 Nov
-  report (it said "bucket missing"). Turns and duration should go up (`triage end:` log line).
+- [x] After the change: ask the agent "Why did the 21 and 22 Nov backups fail?" and compare with the 22 Nov
+  report (it said "bucket missing"). 2026-11-22: 3 min 26 s (was 32 s), 22 turns, $0.31 API-equivalent
+  (Pro plan usage, not billed); found node1 sda 81-88% busy 02:10-03:00 both nights in Prometheus, tested
+  the cause, listed Not checked. Report reached ntfy in parts. One `awk` refused (skill now says `jq`).
+  It also found the failed `longhorn-snapshot-cleanup` of 21 Nov (ES purge HTTP 500 during the backup
+  window): CronJob moved 03:30 → 06:30 UTC.
 
 ### 22 Nov: Velero backups PartiallyFailed (Elasticsearch volume)
 `full-20261121` and `full-20261122` PartiallyFailed, `VeleroNoRecentBackup` critical. Only the Elasticsearch

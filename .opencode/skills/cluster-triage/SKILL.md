@@ -13,6 +13,9 @@ quoted evidence. Before writing a cause, test it: what else would be true if it 
 that explains one failure but contradicts the rest (one volume failed, the others in the same bucket
 uploaded fine) is wrong or incomplete.
 
+Filter and threshold numbers with `jq` (`select(.[1] | tonumber > 60)`), not `awk` or `sed`: those
+are not allowed.
+
 ## Preconditions
 
 - A valid kubeconfig. Confirm the target first:
@@ -152,7 +155,9 @@ kubectl -n longhorn-system get backupvolumes.longhorn.io
 ```
 
 `backupvolumes.longhorn.io` shows `LASTBACKUPAT` per volume: a volume that stopped advancing is the
-one that fails. To find which pod reported an upload error, grep the instance-manager logs
+one that fails. Exception: the Prometheus volume (`pvc-e1c0c8e4…`, `kube-prom-stack`) is excluded from
+backups on purpose since 2026-11-15 (`velero.io/exclude-from-backup=true`), so its last backup stays at
+2026-11-15. To find which pod reported an upload error, grep the instance-manager logs
 (`kubectl -n longhorn-system logs <instance-manager pod> --since=24h | grep -i <error>`).
 
 - A single `PartiallyFailed` with one `connection reset by peer` error is usually transient: the next
