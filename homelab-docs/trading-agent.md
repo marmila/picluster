@@ -2,6 +2,8 @@
 
 Freqtrade bot running the TrendFollow4h strategy, later supervised by Claude. The bot's manifests, strategy and
 mode-switch scripts live in the **private** repo `marmila/trading-agent`; this repo only wires it in.
+Bot status, checklists, backtest results, the weekly routine and going live are documented **only in the private
+repo** (`README.md`, `docs/phase0-checklist.md`). This page covers the cluster side: access, alerts, network, rebuild.
 
 | What | Where |
 |---|---|
@@ -26,21 +28,6 @@ wildcard certificate. There is deliberately **no route on public-gateway**. Envo
 (Envoy `preserve_authorization_header` defaults to false and Envoy Gateway does not expose it), and FreqUI sends
 its own JWT in that header, so a Keycloak-protected route would load the UI and fail every API call. Keycloak
 comes back in Phase 2 for the MCP server.
-
-## Status
-
-Phase 0 done **2026-11-22** (PR #997): dry-run running since 2026-11-22, FreqUI on HTTPS through `lan-gateway`,
-backtest gate passed (tuned `adx_min` 22, out of sample 2025–26: profit factor 1.87, max drawdown 6.2%, +13.7%
-vs market −56.7%, only 22 trades). Go-live earliest after 8–12 weeks and at least 20–30 closed dry-run trades.
-
-## Weekly check (about 5 minutes)
-
-1. FreqUI → Dashboard: state `running`, closed trades, profit. Change nothing in the UI.
-   Login form: Bot Name is only a label stored in the browser (e.g. `trendfollow`), API Url
-   `https://freqtrade.homelab.marmilan.com`, user `marco`, password from Vault (above).
-2. Optional, node2: `./scripts/readiness.sh` from a `trading-agent` checkout (read-only).
-
-Few trades are normal: 4h candles, roughly one entry per pair per month.
 
 ## Alerts
 
@@ -106,29 +93,6 @@ All go to ntfy like the other cluster alerts.
    echo "== secrets"; kubectl -n trading get externalsecret; kubectl -n flux-system get externalsecret trading-agent-deploy-key
    echo "== bot"; kubectl -n trading get pod,pvc -o wide
    echo "== gateway"; kubectl -n envoy-gateway-system get gateway lan-gateway
-   echo "== https"; curl -s -o /dev/null -w "%{http_code}
-" https://freqtrade.homelab.marmilan.com/api/v1/ping
+   echo "== https"; curl -s -o /dev/null -w "%{http_code}\n" https://freqtrade.homelab.marmilan.com/api/v1/ping
    ```
    Expected: all `True`, pod `1/1 Running`, gateway `10.0.0.70` programmed, `200`.
-
-## Backtest (Phase 0 gate)
-
-```bash
-STAMP=bt-$(date +%Y%m%d-%H%M)
-kubectl -n trading create job --from=cronjob/freqtrade-backtest $STAMP
-kubectl -n trading logs -f job/$STAMP | tee /tmp/$STAMP.log
-grep -nE "^== |Total profit %|Profit factor|Max % of account underwater|Market change|\"adx_min\"" /tmp/$STAMP.log
-```
-
-Gate: the last run (tuned parameters, TEST window) shows profit factor > 1.3, max drawdown < 25%, and is better
-risk-adjusted than "Market change". Takes about 15–40 min. The tuned value goes into the strategy by commit.
-
-## Going live / kill switch
-
-Never by `kubectl`: the mode is a commit in `marmila/trading-agent`, made by `scripts/set-mode.sh` on the laptop.
-`readiness.sh` and `kill-switch.sh` run on node2. The `trading/binance` secret (spot trading only, withdrawals off,
-IP whitelist on) is created by hand just before go-live:
-
-```bash
-vault kv put -mount=secret trading/binance key=... secret=...
-```
