@@ -288,7 +288,7 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 ### Next steps (from 22 Nov evening)
 
 **Tonight, before the 02:00 UTC backup (node2):**
-- [ ] **Cluster back on `master`.** The Grafana folders test (PR #1003, merged) switched Flux to
+- [x] **Cluster back on `master`** (done 22 Nov evening: source on master, `velero-config` re-applied at `82a0cda0`, exclusion `["threatmap"]` back). The Grafana folders test (PR #1003, merged) switched Flux to
   `feature/grafana-folders`, which did not have the Velero threatmap exclusion (`b43bdbe4`). Point the
   GitRepository back to master and check:
   ```bash
