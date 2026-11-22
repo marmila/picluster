@@ -128,8 +128,8 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   [the node1 postmortem](../postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md).
 
 ### 20 Nov (node2): temperature alerts and weekly digest live
-- [ ] Rules loaded, nothing firing (all nodes far below the thresholds). Not checked yet: the mixins
-  Kustomization was in the Flux cascade during the test; run the `rules` and `firing` lines below.
+- [x] Rules loaded, nothing firing. 2026-11-22: `node-temperature` and `weekly-digest` PrometheusRules in
+  `kube-prom-stack` (37h), no `NodeTemperature*`, `RaspberryPiSoftTempLimit` or `WeeklyDigestMissing` alert.
 - [x] CronJob, Secret and ConfigMap exist; a test run sends the digest to the phone (2026-11-20, 18:49).
 - [x] 20 Nov nightly Velero backup Completed (first since the 19 Nov orphan cleanup), 18 and 19 Nov too.
 
@@ -143,7 +143,8 @@ echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=N
 ```
 
 ### 21 Nov (node2): Tempo ingester stable
-- [ ] Restart count unchanged since the new limit, memory well below 1536Mi, pod requests 1Gi.
+- [x] Restart count unchanged since the new limit, memory well below 1536Mi, pod requests 1Gi. 2026-11-22:
+  0 restarts, limit 1536Mi, 187Mi used.
 
 ```bash
 kubectl -n tempo get pod tempo-ingester-0 -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount,NODE:.spec.nodeName,REQ:.spec.containers[0].resources.requests.memory,LIM:.spec.containers[0].resources.limits.memory
@@ -164,7 +165,14 @@ Causes found in the config, most important first:
    k8s.keycloak.org, mongodbcommunity.mongodb.com, grafana.integreatly.org, opentelemetry.io. No host access
    (by design; node metrics cover part of it).
 
-- [ ] **Measure first** (node2): turns, cost, timeouts and refused commands of the last runs:
+- [x] **Measure first** (node2): turns, cost, timeouts and refused commands of the last runs.
+  2026-11-22, 13 runs since 19 Nov: every run ends by itself in **12-32 s** (limit 600 s), 6-25 turns,
+  $0.09-0.26, `denied=[]` every time, no timeouts. So budget (cause 2) and tool refusals (cause 3) are not
+  what makes reports shallow: the agent stops early by choice. Free-text requests do reach it ("focusing on
+  this request from the operator: ..."); only the Triage button carries no alert. What limited the 22 Nov
+  backup report was cause 4: it could not read the Velero error details or RustFS on node1, so it guessed
+  ("bucket missing", medium confidence). Fix order: prompt (go deep, verify before concluding, say what it
+  could not check), then read gaps, then the alert context on the button.
   ```bash
   kubectl -n sre-triage logs deploy/sre-triage --since=168h | grep -E "triage (start|end)|Triage failed" | tail -30
   ```
