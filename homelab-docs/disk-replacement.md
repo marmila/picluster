@@ -707,6 +707,24 @@ When node6, node-esp-2 and node5 run on new disks:
    [CLUSTER-018](../runbooks/cluster/nodes-capacity.md#runbook-cluster-018)). Phase 2 drives are bought when
    `DiskWornOut` fires for them.
 
+   **Silence on the worn disks:** `DiskWornOut` is silenced for node4, node5, node6 and node-esp-2 from
+   2026-11-22 until **2026-12-22 18:54 UTC** (Alertmanager silence `e33eec49`), so the known worn disks do not
+   notify every 12 hours until they are swapped. It matches by node name only:
+
+   - a **new disk** on those nodes starts near 0% wear and is far below the 80% threshold, so the silence hides
+     nothing real after a swap;
+   - the other alerts (`DiskMediaErrors`, `DiskCrcErrorsIncreasing`, `DiskWriteLatencyHigh`, `DiskSmartFailing`)
+     are **not** silenced and still notify for these nodes;
+   - if the 4 swaps are not done by 2026-12-22, extend it (node2):
+
+     ```bash
+     AM="kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
+     $AM silence query                                   # current silences and end dates
+     $AM silence add alertname=DiskWornOut 'nodename=~"node4|node5|node6|node-esp-2"' --duration=30d --author=marmila --comment="Known worn disks, replacement planned"
+     ```
+
+     After the last of the 4 swaps, expire it early: `$AM silence expire e33eec49-ba6e-4267-99c4-d968f0e331d3`.
+
 ## 10. Progress
 
 | # | Node | Adapter (`lsusb`) | New drive (model, serial) | Date | SMART baseline | Notes |
