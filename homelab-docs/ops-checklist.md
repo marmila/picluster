@@ -269,6 +269,9 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   `postgres-keycloak-2`, `loki/data-loki-write-0` → `numberOfReplicas: 1`, `dataLocality: best-effort` (saves
   ~43 GB/day of 269). Nothing to revert for disk swaps; reapply only after a rebuild, a restore or a recreated PVC
   ([disk-replacement.md 2.4](disk-replacement.md#24-make-every-disk-last-longer-fewer-disk-writes)).
+- [x] **Patch applied and checked** (22 Nov): 1 replica each, on the pod's node: `postgres-keycloak-1` node6,
+  `postgres-keycloak-2` node5 (both worn disks), `data-loki-write-0` node-esp-1. Keycloak backups verified:
+  WAL archiving working, daily backups completed (last 22 Nov 02:30), recoverable from 7 Nov.
 - [ ] **Measure the saving** (evening of 23 Nov, full 24 h without threatmap): rerun the table in
   disk-replacement.md 2.4. Expected about 200 GB/day (was 269).
 - [x] **Threatmap disabled** (MongoDB ~27 GB/day): `threatmap-app` and `mongodb-community-operator-app` have

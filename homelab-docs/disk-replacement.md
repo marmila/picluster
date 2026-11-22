@@ -179,6 +179,18 @@ first, which writes the same amount.
 
 Expected after both: about **200 GB/day** (-25%).
 
+Result of the patch (2026-11-22): each volume kept one replica, on its pod's node:
+
+| Volume | Replica (and pod) on | Note |
+|---|---|---|
+| `postgres-keycloak-1` | node6 | worn disk (100%) |
+| `postgres-keycloak-2` | node5 | worn disk (100%) |
+| `data-loki-write-0` | node-esp-1 | |
+
+Both Keycloak Postgres instances now have their only Longhorn copy on the two most worn Pi disks. The safety net
+is the CNPG backup in RustFS, checked the same day: WAL archiving working, daily backups `completed` (last
+2026-11-22 02:30), recoverable from 2026-11-07. Check it again before each swap of node5 or node6 (procedure A1).
+
 **This is a live patch, not in Git.** The Longhorn volume's `numberOfReplicas` is not managed by Flux. A
 StorageClass in Git is not used on purpose: Loki's write volume comes from a StatefulSet, whose storage template
 cannot be changed, so a new StorageClass would break the Loki Helm upgrade.
@@ -303,6 +315,20 @@ A cordoned node keeps its running pods and its Longhorn replicas; it only receiv
 Example for **node6** (IP `10.0.0.16`). For node5 use `node5` and `15`.
 
 ### A1. Move all Longhorn data off the node (node2)
+
+node5 and node6 hold the **only** Longhorn copy of a Keycloak Postgres instance (1 replica since 2026-11-22, see
+2.4). The eviction below copies it to another node like any other replica, but check first that the other
+instance and the backups are fine:
+
+```bash
+kubectl -n databases get pods -o wide | grep postgres-keycloak | awk '{print $1, $3, $(NF-2)}'   # both Running
+kubectl -n databases get cluster postgres-keycloak -o jsonpath='{"last backup: "}{.status.lastSuccessfulBackup}{"
+"}{range .status.conditions[?(@.type=="ContinuousArchiving")]}{"WAL archiving: "}{.status}{"
+"}{end}'
+```
+
+Go only with both instances `Running`, a backup from the last night and `WAL archiving: True`.
+
 
 Longhorn copies every replica on node6 to the other nodes. The volumes stay online.
 
