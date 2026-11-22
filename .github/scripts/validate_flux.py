@@ -50,6 +50,11 @@ def cluster_kustomizations(env):
             sys.exit(f"cannot build {d.relative_to(REPO)}:\n{res.stderr}")
         for doc in load_docs(res.stdout):
             if doc.get("kind") == "Kustomization" and doc.get("apiVersion", "").split("/")[0] == "kustomize.toolkit.fluxcd.io":
+                src = doc["spec"].get("sourceRef") or {}
+                if src.get("name", "flux-system") != "flux-system":
+                    # Path lives in another repo (e.g. trading-app from marmila/trading-agent).
+                    print(f"  skip {doc['metadata']['name']}: source {src.get('kind')}/{src['name']} is another repo")
+                    continue
                 found.append((doc["metadata"]["name"], doc["spec"]["path"], doc["spec"].get("targetNamespace")))
     return found
 
