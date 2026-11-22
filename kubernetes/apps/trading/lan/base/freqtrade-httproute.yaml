@@ -1,0 +1,19 @@
+# FreqUI on the LAN only: https://freqtrade.${CLUSTER_DOMAIN} through lan-gateway (10.0.0.70,
+# not forwarded by the router). No OIDC SecurityPolicy on purpose: Envoy's OAuth2 filter strips
+# the Authorization header FreqUI uses for its own API login.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: freqtrade
+  namespace: trading
+spec:
+  parentRefs:
+    - name: lan-gateway
+      namespace: envoy-gateway-system
+      sectionName: https
+  hostnames:
+    - "freqtrade.${CLUSTER_DOMAIN}"
+  rules:
+    - backendRefs:
+        - name: freqtrade
+          port: 8080

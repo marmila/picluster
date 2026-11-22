@@ -1,0 +1,63 @@
+# Trading agent (Freqtrade). Manifests live in the private repo marmila/trading-agent.
+# See homelab-docs/trading-agent.md.
+---
+# GitRepository for the private repo + its deploy key.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: trading-source
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: external-secrets-config
+  path: ./kubernetes/apps/trading/source/base
+  prune: true
+  wait: true
+  timeout: 5m
+---
+# The bot itself, from the private repo. Mode (dry-run | live) is chosen in that repo.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: trading-app
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: trading-agent
+  dependsOn:
+    - name: trading-source
+    - name: external-secrets-config
+    - name: longhorn-app
+  path: ./deploy/overlays/prod
+  prune: true
+  wait: false
+  # No postBuild substitution here: the backtest CronJob script uses bash ${VARS}
+  # that Flux would replace with empty strings.
+---
+# FreqUI HTTPRoute on lan-gateway (HTTPS, LAN only; hostname from cluster-settings).
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: trading-lan
+  namespace: flux-system
+spec:
+  interval: 30m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: trading-app
+    - name: envoy-gateway-config
+  path: ./kubernetes/apps/trading/lan/base
+  prune: true
+  wait: false
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings

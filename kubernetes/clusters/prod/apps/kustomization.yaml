@@ -4,3 +4,4 @@ resources:
   - e-commerce-app.yaml
   - threatmap-kafka.yaml
   - threatmap-app.yaml
+  - trading-app.yaml
