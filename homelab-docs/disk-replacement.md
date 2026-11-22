@@ -42,41 +42,58 @@ Budget DRAM-less drives (BX500) without TRIM (the Pi USB bridges report `DISC-MA
 years under Longhorn and etcd writes, and slow to hundreds of milliseconds per write long before they fail. That
 stalled node5 and node6 on 2026-11-22.
 
-To keep the cost down, only the **4 worn disks** are replaced now (phase 1). The other 4 still have years left
-and are replaced later, when SMART monitoring says so (phase 2). Writes are also reduced (2.4), so every disk lasts
-longer.
+**4 disks are worn out** (node4, node5, node6, node-esp-2) and must be replaced now. The other 4 still have years
+left. The recommendation (2.3) is to buy **7 drives now**: the 4 worn ones plus node1, node2 and node3, so all six
+Pis get the same model while it is still on sale; node-esp-1 waits for its `DiskWornOut` alert. Writes were also
+reduced (2.4), so every disk lasts longer. The purchase is not decided yet (2026-11-22).
 
 ## 2. New disks: model, size, compatibility
 
 ### 2.1 What to buy
 
 All nodes take a **2.5" SATA SSD**: the Pis through their existing USB-SATA adapter, the mini PCs internally.
-Choose drives with DRAM cache and high endurance (TBW). Avoid DRAM-less and QLC drives (Crucial BX500, Samsung
-QVO, Crucial P-series).
+Only drives **with DRAM cache and TLC flash** (2.1.2).
 
-| Node | Role | Now | Phase | **New size** | Why |
+#### 2.1.1 Size and timing per node
+
+| Node | Role | Now (wear 2026-11-22) | **New size** | Buy | Why |
 |---|---|---|---|---|---|
-| node-esp-2 | Longhorn worker | 500 GB, errors | **1 (now)** | **1 TB** | Longhorn uses 13–228 GB per node today: 1 TB is 2–4× the room |
-| node6 | Longhorn worker (Pi) | 240 GB, worn | **1 (now)** | **1 TB** | same |
-| node5 | Longhorn worker (Pi) | 480 GB, worn | **1 (now)** | **1 TB** | same |
-| node4 | master, etcd | 240 GB, worn | **1 (now)** | **500 GB** | etcd needs endurance, not space |
-| node-esp-1 | Longhorn worker | 480 GB, 34% | 2 (later) | 1 TB | when SMART warns |
-| node3 | master, etcd | 240 GB, 47% | 2 (later) | 500 GB | when SMART warns |
-| node2 | master, etcd | 240 GB, 35% | 2 (later) | 500 GB | when SMART warns |
-| node1 | Vault, RustFS, DNS | 240 GB, 37% | 2 (later) | 1 TB | when SMART warns or RustFS needs room |
+| node6 | Longhorn worker (Pi) | BX500 240 GB, 100% | **1 TB** | **now** | worn out; Longhorn uses 13–228 GB per node, 1 TB is 2–4× the room |
+| node5 | Longhorn worker (Pi) | BX500 480 GB, 100% | **1 TB** | **now** | worn out |
+| node4 | master, etcd (Pi) | BX500 240 GB, 100% | **500 GB** | **now** | worn out; etcd needs endurance, not space |
+| node-esp-2 | Longhorn worker (x86) | MX500 500 GB, 109%, 1,754 errors | **1 TB** (960 GB ok) | **now** | worn out, media errors |
+| node1 | Vault, RustFS, DNS (Pi) | BX500 240 GB, 37% | **1 TB** | now (recommended) | no second copy of Vault/RustFS/DNS; RustFS needs room |
+| node3 | master, etcd (Pi) | BX500 240 GB, 47% | **500 GB** | now (recommended) | ~2 years left, bought now to get the same model |
+| node2 | master, etcd (Pi) | BX500 240 GB, 35% | **500 GB** | now (recommended) | same |
+| node-esp-1 | Longhorn worker (x86) | BX500 480 GB, 34% | **1 TB** (960 GB ok) | later | no power limit, any SATA drive fits: buy when `DiskWornOut` fires |
 
-Models (all 2.5" SATA with DRAM cache), with rated endurance (TBW) at the two sizes:
+Different sizes are fine: masters hold etcd, not Longhorn data, and Longhorn places replicas by free space.
 
-| Model | 500 GB class | 1 TB class | Notes |
-|---|---|---|---|
-| **Crucial MX500** | 180 TBW (500 GB) | 360 TBW (1 TB) | **Cheapest that is fine.** Low power, common on Pis. At this cluster's rates (node5 ~55 TB/year, masters ~23 TB/year) about 6–8 years, longer once writes are reduced (2.4). Firmware M3CR043 or newer (`smartctl -i`) |
-| Kingston KC600 | 300 TBW (512 GB) | 600 TBW (1 TB) | Good budget option, often cheap; twice the MX500's endurance |
-| Samsung 870 EVO | 300 TBW (500 GB) | 600 TBW (1 TB) | Very common; same endurance as the KC600 |
-| WD Red SA500 (NAS) | 350 TBW (500 GB) | 600 TBW (1 TB) | NAS drive, same class |
-| Kingston DC600M (data-center) | 876 TBW (480 GB) | 1,752 TBW (960 GB) | Best: power-loss protection (fast `fsync` for etcd/Longhorn), highest endurance, most expensive |
+#### 2.1.2 Models
 
-**Avoid** (no DRAM cache or QLC flash): Crucial BX500 (the drive that wore out here), Kingston A400, Samsung 870
-QVO, WD Green, Crucial P-series, no-brand drives.
+**For the Pis** (same model on all six; max power ≤ 4 W in the datasheet, 2.2), in order of preference:
+
+| # | Model | 1 TB / 500 GB part number | TBW (1 TB / 500 GB) | Notes |
+|---|---|---|---|---|
+| 1 | **Crucial MX500** | `CT1000MX500SSD1` / `CT500MX500SSD1` | 360 / 180 | Same family the adapters run today. Crucial left retail in Feb 2026: leftover stock only, check the seller. About €120 for 1 TB (Trovaprezzi, Nov 2026) |
+| 2 | **Samsung 870 EVO** | `MZ-77E1T0B/EU` / `MZ-77E500B/EU` | 600 / 300 | Most common SSD on Pi 4s. **Not** the 870 **QVO** |
+| 3 | **WD Red SA500** or **WD Blue SA500** | Red `WDS100T1R0A` / `WDS500G1R0A`; Blue `WDS100T2B0A` / `WDS500G2B0A` | 600 / 350 (Red), 400 / 200 (Blue) | **Not** the WD Blue **SA510** (no DRAM) |
+
+At this cluster's rates (about 200 GB/day of Longhorn writes after 2.4, spread over 4 nodes; masters ~23 TB/year)
+even the MX500 lasts many years: no data-center drives needed.
+
+**For the mini PCs** (node-esp-2 now, node-esp-1 later): no power limit, so any of the above, or the cheapest
+good option: a **used enterprise SATA SSD**, 960 GB, health ≥ 95%: Samsung PM883 / PM893, Micron 5300 / 5400 PRO,
+Intel S4510. 1–3 PB endurance and power-loss protection, often the same price as a new 1 TB consumer drive.
+
+**Do not buy:**
+
+| Drive | Why |
+|---|---|
+| Crucial BX500 | DRAM-less: the drive that wore out here |
+| Any Kingston on the Pis (A400, KC600, ...) | Often not recognised behind these USB adapters in the past |
+| Samsung 870 QVO, WD Blue SA510, WD Green, Kingston A400, Crucial P-series | DRAM-less or QLC |
+| No-name drives, marketplace sellers with no history | fakes of discontinued models (MX500) are common |
 
 For comparison, node-esp-2's MX500 500 GB is rated 180 TBW and had written about 187 TB, as the busiest Longhorn
 node with the smallest drive.
@@ -110,46 +127,45 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 
 ### 2.3 Shopping list
 
-**Phase 1, buy now: 4 drives** (+ 1 optional spare adapter). Pick one option.
+**Decision pending (2026-11-22).** Recommended: **7 drives now**, node-esp-1 later. No adapter needed (node5's
+was tested fine; a spare StarTech USB 3.0 to 2.5" SATA adapter of the same model is optional).
 
-| Option | Qty | Drive | Size | For |
-|---|---|---|---|---|
-| **A: Crucial MX500** (cheapest that is fine) | 3 | Crucial MX500 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
-| | 1 | Crucial MX500 2.5" SATA | **500 GB** | node4 |
-| **B: Kingston KC600** (budget, more endurance) | 3 | Kingston KC600 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
-| | 1 | Kingston KC600 2.5" SATA | **512 GB** | node4 |
-| **C: Samsung 870 EVO** (common) | 3 | Samsung 870 EVO 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
-| | 1 | Samsung 870 EVO 2.5" SATA | **500 GB** | node4 |
-| **D: WD Red SA500** (NAS) | 3 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
-| | 1 | WD Red SA500 2.5" SATA | **500 GB** | node4 |
-| **E: Kingston DC600M** (best, most expensive) | 3 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-2, node6, node5 |
-| | 1 | Kingston DC600M 2.5" SATA | **480 GB** | node4 |
-| **All options, optional** | 1 | StarTech USB 3.0 to 2.5" SATA adapter (USB 3.2 Gen 1 / 5 Gbps, UAS), same model as the others | | spare (node5's tested OK) |
+**Step 1: one test drive first.** Buy **1 × 1 TB** of the chosen Pi model (2.1.2). It goes into node6, the first
+swap (procedure A). Step A5 is the compatibility test, all must pass:
 
-**Phase 2, later (not now):** 1 × 1 TB for node-esp-1, 1 × 1 TB for node1, 2 × 500 GB for node2 and node3, same
-model as phase 1. Buy each when SMART monitoring (postmortem action 3c) reports it near its end.
+- `lsusb -t`: `Driver=uas, 5000M`;
+- `fio`: hundreds of MB/s, no `reset` / `abort` lines in `dmesg`;
+- after A6 (which installs the SMART timer): `smartmon_read_ok` is 1 for node6 (SMART readable through the adapter, so the
+  disk alerts cover it).
 
-**Full list: all 8 disks at once (phase 1 + phase 2).** Same options, same model everywhere:
+If it fails, put that drive in node-esp-2 (internal SATA, no adapter) and test the next model on node6.
 
-| Option | Qty | Drive | Size | For |
-|---|---|---|---|---|
-| **A: Crucial MX500** (cheapest that is fine) | 5 | Crucial MX500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
-| | 3 | Crucial MX500 2.5" SATA | **500 GB** | node2, node3, node4 |
-| **B: Kingston KC600** (budget, more endurance) | 5 | Kingston KC600 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
-| | 3 | Kingston KC600 2.5" SATA | **512 GB** | node2, node3, node4 |
-| **C: Samsung 870 EVO** (common) | 5 | Samsung 870 EVO 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
-| | 3 | Samsung 870 EVO 2.5" SATA | **500 GB** | node2, node3, node4 |
-| **D: WD Red SA500** (NAS) | 5 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
-| | 3 | WD Red SA500 2.5" SATA | **500 GB** | node2, node3, node4 |
-| **E: Kingston DC600M** (best, most expensive) | 5 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-1, node-esp-2, node5, node6, node1 |
-| | 3 | Kingston DC600M 2.5" SATA | **480 GB** | node2, node3, node4 |
-| **All options, optional** | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | | spare |
+**Step 2: the rest**, same model:
 
-Total per option: **8 drives** (5 × 1 TB class + 3 × 500 GB class), plus an optional spare adapter. For more Longhorn space take
-**2 TB** (MX500 / KC600 / 870 EVO / SA500) or **1.92 TB** (DC600M) instead of the 1 TB class: same procedure, about double the
-price of those 5 drives.
+| Qty | Drive | Size | For |
+|---|---|---|---|
+| 2 | Pi model (2.1.2) | 1 TB | node5, node1 (node6 got the test drive) |
+| 3 | Pi model (2.1.2) | 500 GB | node4, node3, node2 |
+| 1 | used enterprise 960 GB (or any model from 2.1.2) | 960 GB–1 TB | node-esp-2 |
 
-Before ordering, check the max power line of the exact model in its datasheet (condition 2).
+Total, test drive included: **3 × 1 TB + 3 × 500 GB of the Pi model, plus 1 × 960 GB for node-esp-2 = 7
+drives.** Later: 1 × 960 GB–1 TB for node-esp-1.
+
+Rough cost (Italian prices, Nov 2026, check on the day): **€750–850** for the 7 drives; only the 4 worn ones
+(node6, node5, node4, node-esp-2) about €450–500.
+
+**When each drive arrives**, before using it (any Linux machine, or a Pi through the adapter):
+
+```bash
+sudo smartctl -i -A -d sat /dev/sdX | grep -iE "model|serial|firmware|Power_On_Hours|Total_LBAs"
+```
+
+- the model is exactly the part number ordered (`CT1000MX500SSD1`, `Samsung SSD 870 EVO 1TB`, `WDC WDS100T1R0A`, ...);
+- power-on hours close to 0 (a few hours from factory test is normal; for the used enterprise drive, check the
+  health the seller stated: wear indicator ≥ 95%, no reallocated or uncorrectable sectors);
+- otherwise send it back.
+
+Write the model and serial in the progress table (10).
 
 ### 2.4 Make every disk last longer: fewer disk writes
 
@@ -234,6 +250,31 @@ cannot be changed, so a new StorageClass would break the Loki Helm upgrade.
 
 One node per day at most. Each swap waits for Longhorn to be fully healthy before the next.
 
+### 3.1 Every swap at a glance
+
+The same 7 stages for every node; the procedure (A–D) only changes what happens in the middle. Commands are in
+sections 4–8.
+
+| Stage | Where | What | Done when | Time |
+|---|---|---|---|---|
+| 0. Before | node2 | Pre-flight (4.1); lighten the cluster (4.2); for node5/node6 also the Keycloak backup check (A1) | all nodes `Ready`, no `degraded` volume, CPU < 80% | 10 min |
+| 1. Empty | node2 | Evict the node's Longhorn replicas (A1/B1). Masters: etcd snapshot instead (C1). node1: nothing (D) | replicas on the node = 0, degraded = 0 | 1–6 h |
+| 2. Remove | node2, then the node | Drain, `sudo poweroff`, delete node + `node-password` secret + Longhorn node | node gone from `kubectl get nodes` | 15 min |
+| 3. New disk | laptop or the node | Pi: image the SSD and write `user-data`/`network-config` (A4). Mini PC: fit the SSD, `make pxe-setup`, PXE boot (B4). node1: clone the old disk (D2) | node boots and answers SSH | 30–45 min |
+| 4. First boot check | the node | Pi: `lsusb -t` (uas, 5000M), `fio` + `dmesg` (A5, mandatory on the first Pi with the new model) | no `reset`/`abort` in `dmesg` | 10 min |
+| 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e k3s_primary_control_node=false`), `update_node_config.yml` | playbooks green | 20–30 min |
+| 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1 | all green | 10 min |
+
+Then restore what was scaled down (4.2), uncordon the Pis if they were cordoned, and fill in the progress table (10).
+**Stop and ask** if any "done when" is not met: do not start the next node.
+
+| Node | Procedure | Downtime | Watch out for |
+|---|---|---|---|
+| node6, node5 | A (Pi Longhorn worker) | none (cluster keeps running) | node6 first: its A5 test validates the drive model for all Pis |
+| node-esp-2 | B (x86 worker, PXE reinstall) | none | Prometheus and ES move to node-esp-1: cordon the worn Pis during the drain (4.2) |
+| node4, node3, node2 | C (master) | none, etcd runs on 2 of 3 | never two masters out at once; node2 needs `-e k3s_primary_control_node=false`, and kubectl from node3 during its swap |
+| node1 | D (clone) | 30–45 min of Vault, RustFS, DNS | evening, not 02:00–04:00; unseal Vault after boot; keep the old disk a week |
+
 **Phase 1 (now):**
 
 | # | Node | Procedure | Why this position |
@@ -243,8 +284,15 @@ One node per day at most. Each swap waits for Longhorn to be fully healthy befor
 | 3 | node5 | A | Worn (adapter tested OK, kept) |
 | 4 | node4 | C | Worn etcd disk |
 
-**Phase 2 (later, when SMART warns):** node-esp-1 (B), node3 (C), node2 (C: first master in the inventory, see the
-`-e` flag in 7), node1 (D: short downtime, quiet evening).
+**If node1, node3 and node2 are bought with phase 1 (2.3):** right after node4, one per day:
+
+| # | Node | Procedure | Why this position |
+|---|---|---|---|
+| 5 | node1 | D | Short downtime: a quiet evening, not during Velero (02:00) or the Longhorn cleanup (03:30) |
+| 6 | node3 | C | Masters at least an hour apart, only with all three `Ready` |
+| 7 | node2 | C | First master in the inventory: `-e k3s_primary_control_node=false` is mandatory (7) |
+
+**Later, when `DiskWornOut` fires:** node-esp-1 (B).
 
 ## 4. Rules for every swap
 

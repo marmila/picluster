@@ -285,6 +285,48 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   back; `kubectl -n threatmap scale deploy --all --replicas=1`; on the VMs `docker start cowrie` and
   `sudo systemctl enable --now fluent-bit`.
 
+### Next steps (from 22 Nov evening)
+
+**Tonight, before the 02:00 UTC backup (node2):**
+- [ ] **Cluster back on `master`.** The Grafana folders test (PR #1003, merged) switched Flux to
+  `feature/grafana-folders`, which did not have the Velero threatmap exclusion (`b43bdbe4`). Point the
+  GitRepository back to master and check:
+  ```bash
+  GR_NAME="$(kubectl -n flux-system get gitrepository -o jsonpath='{range .items[?(@.spec.url=="https://github.com/marmila/picluster")]}{.metadata.name}{"
+"}{end}' | head -n1)"
+  kubectl -n flux-system patch gitrepository "${GR_NAME}" --type merge -p '{"spec":{"ref":{"name":"refs/heads/master","branch":null}}}'
+  flux reconcile source git "${GR_NAME}" -n flux-system && flux reconcile kustomization flux-system -n flux-system --with-source
+  flux get sources git -n flux-system                                                   # refs/heads/master@sha1:...
+  flux reconcile kustomization velero-config -n flux-system
+  kubectl -n velero get schedule full -o jsonpath='{.spec.template.excludedNamespaces}{"
+"}'   # ["threatmap"]
+  flux get kustomizations -A | tail -n +2 | awk '$5!="True"' | cut -c1-160                       # only the 2 suspended threatmap ones
+  ```
+- [ ] **`DiskWornOut` on the phone** (expected ~19:00 UTC, 4 disks): when it has arrived, silence it for 30 days:
+  `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool silence add alertname=DiskWornOut 'nodename=~"node4|node5|node6|node-esp-2"' --duration=30d --author=marmila --comment="Known worn disks, replacement planned" --alertmanager.url=http://localhost:9093`
+
+**23 Nov morning (node2):**
+- [ ] Nightly Velero backup `Completed`, no `threatmap` objects in it
+  (`velero backup describe <latest> --details | grep -c threatmap` → 0).
+- [ ] Keycloak Postgres daily backup `completed` (`kubectl -n databases get backups.postgresql.cnpg.io | tail -2`).
+- [ ] No `DiskWriteLatencyHigh` on healthy disks (node-esp-1, node1–node3) overnight; no `DiskMediaErrors`.
+- [ ] Threatmap still off: `kubectl -n threatmap get pods` empty, both MongoDB volumes `detached`.
+
+**23 Nov evening (node2):**
+- [ ] **Measure the saving:** rerun the write table in
+  [disk-replacement.md 2.4](disk-replacement.md#24-make-every-disk-last-longer-fewer-disk-writes). Expected about
+  200 GB/day (was 269). Note the new per-volume numbers there.
+
+**This week:**
+- [ ] **Decide the purchase** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list)): pick the Pi model
+  (MX500, else 870 EVO, else WD Red/Blue SA500; no Kingston, no SA510/QVO), **order the one 1 TB test drive**,
+  then the other 6 once node6 passes A5.
+- [ ] Before the node6 swap: pre-flight 4.1 and the Keycloak backup check in A1.
+- [ ] CoreDNS: one pod restarted around the 22 Nov DNS timeout (Flux `Could not resolve host`). Check its last
+  termination reason: `kubectl -n kube-system get pods -l app.kubernetes.io/name=coredns -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodeName} {.status.containerStatuses[0].restartCount} {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{"
+"}{end}'`.
+- [ ] Postmortem action 7 leftovers: Kafka ×3 and Prometheus volumes, which still have a replica on node5/node6.
+
 ---
 
 ## 2. node1 / RustFS follow-ups (read-only, node1)
