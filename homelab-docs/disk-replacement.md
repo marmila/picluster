@@ -63,6 +63,7 @@ Recommended models (both 2.5" SATA, DRAM cache):
 |---|---|---|---|
 | **Kingston DC600M** (data-center) | 876 TBW | 3,504 TBW | Power-loss protection makes `fsync` fast: best for etcd and Longhorn. First choice |
 | WD Red SA500 (NAS) | 350 TBW (500 GB) | 1,300 TBW (2 TB) | Cheaper alternative |
+| Crucial MX500 | 180 TBW (500 GB) | 700 TBW (2 TB) | Cheapest that is fine: DRAM cache, low power, common on Pis. Only the **2 TB** for Longhorn nodes / node1 and **500 GB** for masters. At this cluster's rates (node5 ~55 TB/year, masters ~23 TB/year) that is 8–12 years. Firmware M3CR043 or newer (`smartctl -i`) |
 
 For comparison, node-esp-2's MX500 500 GB is rated 180 TBW and had written about 187 TB.
 
@@ -90,8 +91,8 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 
 | Qty | Item | For |
 |---|---|---|
-| 5 | Kingston DC600M **1.92 TB** 2.5" SATA (or WD Red SA500 2 TB) | node-esp-1, node-esp-2, node5, node6, node1 |
-| 3 | Kingston DC600M **480 GB** 2.5" SATA (or WD Red SA500 500 GB) | node2, node3, node4 |
+| 5 | Kingston DC600M **1.92 TB** 2.5" SATA (or WD Red SA500 2 TB, or Crucial MX500 2 TB) | node-esp-1, node-esp-2, node5, node6, node1 |
+| 3 | Kingston DC600M **480 GB** 2.5" SATA (or WD Red SA500 500 GB, or Crucial MX500 500 GB) | node2, node3, node4 |
 | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | node5 |
 
 Before ordering, check the max power line of the exact model in its datasheet (condition 2).
