@@ -4,9 +4,9 @@
     {
       "description": ["Actions Runner Controller Group"],
       "groupName": "Actions Runner Controller",
-      "matchPackagePatterns": [
-        "gha-runner-scale-set-controller",
-        "gha-runner-scale-set"
+      "matchPackageNames": [
+        "/gha-runner-scale-set-controller/",
+        "/gha-runner-scale-set/"
       ],
       "matchDatasources": ["helm", "docker"],
       "group": {
@@ -17,7 +17,7 @@
     {
       "description": ["Flux Group"],
       "groupName": "Flux",
-      "matchPackagePatterns": ["fluxcd"],
+      "matchPackageNames": ["/fluxcd/"],
       "matchDatasources": ["docker", "helm", "github-tags"],
       "versioning": "semver",
       "group": {
@@ -28,7 +28,7 @@
     {
       "description": ["Schema Registry Group"],
       "groupName": "Schema-Registry",
-      "matchPackagePatterns": ["schema-registry"],
+      "matchPackageNames": ["/schema-registry/"],
       "matchDatasources": ["helm"],
       "group": {
         "commitMessageTopic": "{{{groupName}}} group"
@@ -38,7 +38,7 @@
     {
       "description": ["System Upgrade Controller Group"],
       "groupName": "System Upgrade Controller",
-      "matchPackagePatterns": ["system-upgrade-controller"],
+      "matchPackageNames": ["/system-upgrade-controller/"],
       "matchDatasources": ["docker", "github-releases"],
       "group": {
         "commitMessageTopic": "{{{groupName}}} group"
@@ -82,12 +82,18 @@
       "group": { "commitMessageTopic": "{{{groupName}}} group" }
     },
     {
-      "description": ["Prometheus Operator CRDs Group"],
-      "groupName": "Prometheus Operator CRDs",
-      "matchDepNames": [
-        "prometheus-operator-crd",
-        "ghcr.io/prometheus-community/charts/prometheus-operator-crds"
+      // kube-prometheus-stack runs with crds: Skip, so its CRDs come only from the
+      // prometheus-operator-crds chart (appVersion = exact prometheus-operator version).
+      // The kps chart, the CRDs chart (Flux) and the CRDs chart in the k3s install role
+      // must move in the same PR, majors included, or the operator skews against its CRDs.
+      // From upstream 824913332.
+      "description": ["Prometheus Operator Group: kube-prometheus-stack + its CRDs"],
+      "groupName": "Prometheus Operator",
+      "matchPackageNames": [
+        "/kube-prometheus-stack/",
+        "/prometheus-operator-crd/"
       ],
+      "separateMajorMinor": false,
       "group": { "commitMessageTopic": "{{{groupName}}} group" }
     },
     // Critical infrastructure: kept out of the weekly "all non-major" bundle

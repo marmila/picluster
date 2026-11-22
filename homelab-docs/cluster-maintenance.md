@@ -76,7 +76,8 @@ Rules are applied in the order the presets are listed. A later rule overrides an
 | **Critical, automerged:** `Vault`, `CloudNativePG`, `Istio` | one PR per component | Monday | **Renovate**, one per weekday (Tue / Wed / Thu), releases at least 7 days old |
 | **Critical, manual:** `k3s`, `Longhorn`, `Cilium`, `Flux` (operator), `Flux distribution` (the cluster's Flux version), `system-upgrade-controller` | one PR per component | Monday | **you, one at a time** |
 | **Tool groups:** `Helm CLI`, `kubectl`, `Velero CLI` | the same tool pinned in several files (mise, Dockerfile, Ansible) bumped together | Monday | **Renovate** (automerge) |
-| **Prometheus Operator CRDs** | CRD chart and CRD version bumped together | Monday | you, any time |
+| **Prometheus Operator** | kube-prometheus-stack chart + prometheus-operator-crds chart (Flux and the k3s install role), majors included, always in one PR so the operator never skews against its CRDs | Monday | minor/patch: **Renovate** (Monday); major: **you** |
+| **Disabled majors** | Elasticsearch 9, cp-schema-registry 8, MongoDB 9: on-disk/wire format changes need a migration plan, so Renovate never proposes them | never | — |
 | **tooling** | `.mise.toml` workstation tools and GitHub Actions (minor/patch) | Monday | **Renovate** (automerge after CI passes) |
 | **Grafana dashboards** | dashboard revision bumps | any time | **Renovate** (automerge) |
 | **Majors** (`type/major`) | one PR per package | any time | **you, after reading release notes** |
