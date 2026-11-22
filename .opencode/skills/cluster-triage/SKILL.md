@@ -7,6 +7,12 @@ description: Use when the Pi cluster is unhealthy — pods failing, Flux not rec
 
 A read-only investigation procedure. Do not propose a fix until the failing layer is identified.
 
+With a focus (an alert, or a question from the operator), do not run the whole sweep: go to the
+layer of that problem and dig. Each finding leads to the next check, until the cause is backed by
+quoted evidence. Before writing a cause, test it: what else would be true if it were right? A cause
+that explains one failure but contradicts the rest (one volume failed, the others in the same bucket
+uploaded fine) is wrong or incomplete.
+
 ## Preconditions
 
 - A valid kubeconfig. Confirm the target first:
@@ -132,16 +138,30 @@ kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp \
 kubectl -n velero get backupstoragelocations.velero.io
 ```
 
-The error details need the Velero CLI, which runs only through `kubectl exec` (not allowed for a
-read-only agent, and not installed on node2). Give a person these commands instead:
+Error details without the Velero CLI (it needs `kubectl exec`, which the agent cannot use). Read them
+from the places Velero and Longhorn record them:
 
 ```bash
-kubectl -n velero exec deploy/velero -c velero -- /velero backup describe <name> --details
-kubectl -n velero exec deploy/velero -c velero -- /velero backup logs <name> | grep -i "level=error"
+# Velero's own log lines for the backup
+kubectl -n velero logs deploy/velero -c velero --since=24h | grep <backup> | grep -iE "level=(error|warning)" | tail -20
+# Volume snapshots that never became ready, and why
+kubectl get volumesnapshots -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,READY:.status.readyToUse,ERR:.status.error.message | grep -v true
+# Longhorn uploads to RustFS (k3s-longhorn) that failed: the S3 error is in .status.error
+kubectl -n longhorn-system get backups.longhorn.io -o custom-columns=NAME:.metadata.name,VOL:.status.volumeName,STATE:.status.state,CREATED:.metadata.creationTimestamp,ERR:.status.error | grep -vi completed
+kubectl -n longhorn-system get backupvolumes.longhorn.io
 ```
 
-A single `PartiallyFailed` with one `connection reset by peer` error is usually transient: the next
-nightly run decides.
+`backupvolumes.longhorn.io` shows `LASTBACKUPAT` per volume: a volume that stopped advancing is the
+one that fails. To find which pod reported an upload error, grep the instance-manager logs
+(`kubectl -n longhorn-system logs <instance-manager pod> --since=24h | grep -i <error>`).
+
+- A single `PartiallyFailed` with one `connection reset by peer` error is usually transient: the next
+  nightly run decides.
+- An S3 error (`NoSuchBucket`, HTTP 500, timeouts) from Longhorn while other volumes upload fine:
+  RustFS on node1 struggling, not a missing bucket. Check node1's disk load in step 10 at the time of
+  the error; `BACKUP-004` step 3a. RustFS logs are on node1 (`/var/log/rustfs/`): Not checked, give
+  the person the grep from `MINIO-001` step 2.
+- For a person, the full details: `kubectl -n velero exec deploy/velero -c velero -- /velero backup describe <name> --details`.
 
 ### 8. Gateway, TLS and DNS
 
@@ -171,6 +191,21 @@ kubectl -n grafana get pods
 
 If Prometheus targets are missing, use runbook `OBS-001`; for Loki ingestion use `OBS-004`.
 
+Log history (Loki, read-only through the API server proxy). List the labels first, then query; the
+query must be URL-encoded (`jq -rn --arg q '<LogQL>' '$q|@uri'` prints it). `since` takes 1h, 6h, 24h;
+for a past window use `start=` and `end=` in RFC 3339 instead.
+
+```bash
+L="/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1"
+kubectl get --raw "${L}/labels" | jq -r '.data[]'
+kubectl get --raw "${L}/label/namespace/values" | jq -r '.data[]'
+# {namespace="velero"} |~ "(?i)error", last 6 hours
+kubectl get --raw "${L}/query_range?query=%7Bnamespace%3D%22velero%22%7D%20%7C~%20%22%28%3Fi%29error%22&since=6h&limit=50" | jq -r '.data.result[].values[] | .[1]' | tail -50
+```
+
+Use it for pods that restarted or were replaced (their logs are gone from `kubectl logs`) and for
+what happened before an alert started. If the label is not `namespace`, use the one `/labels` lists.
+
 ### 10. External services
 
 Vault, RustFS and the OpenWrt gateway run **outside** the cluster, so they will not appear as
@@ -198,6 +233,19 @@ P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:
 kubectl get --raw "${P}sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%7D%29" \
   | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.mountpoint) \(.value[1] | tonumber | floor)%"'
 ```
+
+Disk load. node1 has one disk for the OS, Vault and RustFS; when it is busy near 100%, RustFS times
+out and S3 clients (Longhorn, Velero, Loki, CNPG) get errors. Busy % now, and over a past window
+(`query_range` with `start`, `end` in RFC 3339 UTC and `step=300`):
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+kubectl get --raw "${P}100%20%2A%20rate%28node_disk_io_time_seconds_total%7Bjob%3D%22node-exporter%22%2Cdevice%3D~%22sd%5Ba-z%5D%7Cnvme%5B0-9%5Dn%5B0-9%5D%7Cmmcblk%5B0-9%5D%22%7D%5B5m%5D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%2Cnodename%3D%22node1%22%7D"   | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.device) busy=\(.value[1] | tonumber | floor)%"'
+```
+
+Drop `,nodename="node1"` (`%2Cnodename%3D%22node1%22`) for all hosts. For the history, replace
+`query?query=` with `query_range?start=<from>&end=<to>&step=300&query=` and read
+`.data.result[].values[]`.
 
 - On node1, `/storage` is a folder on `/`, so only `/` is listed; it holds the RustFS buckets (Longhorn
   and Velero backups, Loki, Tempo). Above 80% it is urgent: no eviction there, the disk fills until
@@ -234,6 +282,7 @@ blocking most Kustomizations (`kubectl get clustersecretstore vault-backend`).
 | Served cert does not match secret | Stale secret / wrong gateway listener | `NET-008` |
 | Keycloak login broken, CNPG unhealthy | Database failover or config drift | `KEYCLOAK-006`, `KEYCLOAK-008` |
 | S3 backups failing | RustFS outage or credentials | `MINIO-001`, `MINIO-003` |
+| Longhorn backup `Error` with `NoSuchBucket`, other volumes fine, bucket exists | node1 disk saturated during the nightly backups, RustFS times out | `BACKUP-004` step 3a, `MINIO-001` |
 | Elasticsearch red/yellow | Disk watermark, node loss, shard allocation | `ELASTIC-001` |
 
 ## Stop conditions
@@ -251,11 +300,13 @@ Hand off to the runbook as soon as the failing layer is clear. Escalate to the u
 Report only what is abnormal, in this shape:
 
 ```
-Symptom:  <what the user sees>
-Evidence: <commands + key lines of output>
-Layer:    <nodes | system | flux | helm | workloads | storage | gateway | observability | external>
-Cause:    <most likely cause, confidence>
-Next:     <runbook ID and first step>
+Symptom:     <what the user sees>
+Evidence:    <key output lines, with timestamps>
+Layer:       <nodes | system | flux | helm | workloads | storage | gateway | observability | external>
+Cause:       <cause, confidence high/medium/low, and the evidence behind it>
+Checked:     <what was ruled out>
+Not checked: <what was out of reach, with the command for a person>
+Next:        <runbook ID and first step>
 ```
 
 If everything is healthy, say so explicitly and list the checks that passed. Do not invent problems.

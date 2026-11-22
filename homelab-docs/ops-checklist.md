@@ -176,14 +176,23 @@ Causes found in the config, most important first:
   ```bash
   kubectl -n sre-triage logs deploy/sre-triage --since=168h | grep -E "triage (start|end)|Triage failed" | tail -30
   ```
-- [ ] Decide and implement (explain first), candidates:
-  - prompt: deep-dive the most recent alert group first (newest `startsAt`), full sweep only on request;
-    report in sections up to ~8,000 characters (parts already supported);
-  - timeout 900–1200 s; optionally Opus for triage (cost per run vs daily limit 20);
-  - allow read-only `awk`, `sed -n`, `cut`; PromQL URL-encoding hint with `jq -rn --arg q '...' '$q|@uri'`;
-  - Loki read access (Role `services/proxy` GET in `loki`, LogQL recipes in the skill);
-  - add the missing CRD groups to `sre-triage-read`.
-- [ ] After the change: tap Triage on a real alert and compare the report with one from before.
+- [x] Decided and implemented 2026-11-22 (timeout, model and allow list unchanged: not the bottleneck):
+  - prompt (`docker/sre-triage/agents.json`, needs the image rebuild): focus on the operator's request or
+    the newest alert, follow the evidence, test each cause before writing it, report with Checked and
+    Not checked, up to ~6000 characters (parts already supported);
+  - skill: Velero/Longhorn error details without `kubectl exec`, Loki recipes, node1 disk busy %, the
+    NoSuchBucket failure mode;
+  - RBAC: Loki `services/proxy` GET in `loki`; CRD groups strimzi, istio, envoy gateway, keycloak,
+    mongodb, grafana operator, opentelemetry.
+  - The Triage button still sends only `triage`: ntfy does not template action bodies, so a plain tap
+    now means "the newest alert".
+- [ ] Deployed: the pod runs the new image (`kubectl -n sre-triage get deploy sre-triage -o jsonpath='{.spec.template.spec.containers[0].image}'`)
+  and Loki answers through the proxy as the agent:
+  ```bash
+  kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/labels" --as=system:serviceaccount:sre-triage:sre-triage | jq -r '.data[]' | head
+  ```
+- [ ] After the change: ask the agent "Why did the 21 and 22 Nov backups fail?" and compare with the 22 Nov
+  report (it said "bucket missing"). Turns and duration should go up (`triage end:` log line).
 
 ### 22 Nov: Velero backups PartiallyFailed (Elasticsearch volume)
 `full-20261121` and `full-20261122` PartiallyFailed, `VeleroNoRecentBackup` critical. Only the Elasticsearch
