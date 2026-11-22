@@ -29,9 +29,13 @@ SMART on 2026-11-22 (all nodes):
 | node6 | Crucial BX500 240 GB, USB | **100%** `FAILING_NOW` | none | Longhorn |
 | node5 | Crucial BX500 480 GB, USB | **100%** `FAILING_NOW` | 92 CRC (adapter/cable) | Longhorn |
 | node4 | Crucial BX500 240 GB, USB | **100%** `FAILING_NOW` | none | etcd |
-| node3 | 240 GB, USB | 47% | none | etcd |
-| node2 | 240 GB, USB | 35% | 10 CRC | etcd |
-| node1 | 240 GB, USB | 37% | 7 CRC | Vault, RustFS, DNS |
+| node3 | Crucial BX500 240 GB, USB | 47% | none | etcd |
+| node2 | Crucial BX500 240 GB, USB | 35% | 10 CRC | etcd |
+| node1 | Crucial BX500 240 GB, USB | 37% | 7 CRC | Vault, RustFS, DNS |
+
+Models confirmed with `smartctl -i`: `CT240BX500SSD1` (firmware M6CR056) on node1–node4, `CT240BX500SSD1` on node6,
+`CT480BX500SSD1` on node5 and node-esp-1, `CT500MX500SSD1` on node-esp-2. **Do not buy BX500 again**: DRAM-less
+(recent batches QLC), it collapses under sustained writes long before its rated life.
 | node-esp-1 | Crucial BX500 480 GB, SATA | 34% | none | Longhorn (ES + Prometheus copies) |
 
 Budget DRAM-less drives (BX500) without TRIM (the Pi USB bridges report `DISC-MAX 0B`) wear out in about two
