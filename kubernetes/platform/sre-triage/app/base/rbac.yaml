@@ -58,6 +58,16 @@ rules:
       - upgrade.cattle.io
       - snapshot.storage.k8s.io
       - cilium.io
+      # Added 2026-11-22 (triage reports had blind spots on these apps)
+      - kafka.strimzi.io
+      - core.strimzi.io
+      - networking.istio.io
+      - security.istio.io
+      - gateway.envoyproxy.io
+      - k8s.keycloak.org
+      - mongodbcommunity.mongodb.com
+      - grafana.integreatly.org
+      - opentelemetry.io
     resources: ["*"]
     verbs: [get, list, watch]
 ---
@@ -103,6 +113,36 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: sre-triage-prometheus-proxy
+subjects:
+  - kind: ServiceAccount
+    name: sre-triage
+    namespace: sre-triage
+---
+# Loki log history through the API server proxy, GET only (query, labels). The gateway has no auth
+# and Loki runs single-tenant, so no tenant header is needed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sre-triage-loki-proxy
+  namespace: loki
+rules:
+  - apiGroups: [""]
+    resources: [services/proxy]
+    resourceNames:
+      - loki-gateway
+      - loki-gateway:80
+      - loki-gateway:http-metrics
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sre-triage-loki-proxy
+  namespace: loki
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sre-triage-loki-proxy
 subjects:
   - kind: ServiceAccount
     name: sre-triage

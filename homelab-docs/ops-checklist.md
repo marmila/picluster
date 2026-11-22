@@ -128,8 +128,8 @@ sudo sh -c 'du -sh /storage/rustfs/k3s-longhorn'
   [the node1 postmortem](../postmortems/incident-2026-11-15-node1-disk-rustfs-loki-orphans.md).
 
 ### 20 Nov (node2): temperature alerts and weekly digest live
-- [ ] Rules loaded, nothing firing (all nodes far below the thresholds). Not checked yet: the mixins
-  Kustomization was in the Flux cascade during the test; run the `rules` and `firing` lines below.
+- [x] Rules loaded, nothing firing. 2026-11-22: `node-temperature` and `weekly-digest` PrometheusRules in
+  `kube-prom-stack` (37h), no `NodeTemperature*`, `RaspberryPiSoftTempLimit` or `WeeklyDigestMissing` alert.
 - [x] CronJob, Secret and ConfigMap exist; a test run sends the digest to the phone (2026-11-20, 18:49).
 - [x] 20 Nov nightly Velero backup Completed (first since the 19 Nov orphan cleanup), 18 and 19 Nov too.
 
@@ -143,7 +143,8 @@ echo "== velero =="; kubectl -n velero get backups.velero.io -o custom-columns=N
 ```
 
 ### 21 Nov (node2): Tempo ingester stable
-- [ ] Restart count unchanged since the new limit, memory well below 1536Mi, pod requests 1Gi.
+- [x] Restart count unchanged since the new limit, memory well below 1536Mi, pod requests 1Gi. 2026-11-22:
+  0 restarts, limit 1536Mi, 187Mi used.
 
 ```bash
 kubectl -n tempo get pod tempo-ingester-0 -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount,NODE:.spec.nodeName,REQ:.spec.containers[0].resources.requests.memory,LIM:.spec.containers[0].resources.limits.memory
@@ -164,22 +165,86 @@ Causes found in the config, most important first:
    k8s.keycloak.org, mongodbcommunity.mongodb.com, grafana.integreatly.org, opentelemetry.io. No host access
    (by design; node metrics cover part of it).
 
-- [ ] **Measure first** (node2): turns, cost, timeouts and refused commands of the last runs:
+- [x] **Measure first** (node2): turns, cost, timeouts and refused commands of the last runs.
+  2026-11-22, 13 runs since 19 Nov: every run ends by itself in **12-32 s** (limit 600 s), 6-25 turns,
+  $0.09-0.26, `denied=[]` every time, no timeouts. So budget (cause 2) and tool refusals (cause 3) are not
+  what makes reports shallow: the agent stops early by choice. Free-text requests do reach it ("focusing on
+  this request from the operator: ..."); only the Triage button carries no alert. What limited the 22 Nov
+  backup report was cause 4: it could not read the Velero error details or RustFS on node1, so it guessed
+  ("bucket missing", medium confidence). Fix order: prompt (go deep, verify before concluding, say what it
+  could not check), then read gaps, then the alert context on the button.
   ```bash
   kubectl -n sre-triage logs deploy/sre-triage --since=168h | grep -E "triage (start|end)|Triage failed" | tail -30
   ```
-- [ ] Decide and implement (explain first), candidates:
-  - prompt: deep-dive the most recent alert group first (newest `startsAt`), full sweep only on request;
-    report in sections up to ~8,000 characters (parts already supported);
-  - timeout 900–1200 s; optionally Opus for triage (cost per run vs daily limit 20);
-  - allow read-only `awk`, `sed -n`, `cut`; PromQL URL-encoding hint with `jq -rn --arg q '...' '$q|@uri'`;
-  - Loki read access (Role `services/proxy` GET in `loki`, LogQL recipes in the skill);
-  - add the missing CRD groups to `sre-triage-read`.
-- [ ] After the change: tap Triage on a real alert and compare the report with one from before.
+- [x] Decided and implemented 2026-11-22 (timeout, model and allow list unchanged: not the bottleneck):
+  - prompt (`docker/sre-triage/agents.json`, needs the image rebuild): focus on the operator's request or
+    the newest alert, follow the evidence, test each cause before writing it, report with Checked and
+    Not checked, up to ~6000 characters (parts already supported);
+  - skill: Velero/Longhorn error details without `kubectl exec`, Loki recipes, node1 disk busy %, the
+    NoSuchBucket failure mode;
+  - RBAC: Loki `services/proxy` GET in `loki`; CRD groups strimzi, istio, envoy gateway, keycloak,
+    mongodb, grafana operator, opentelemetry.
+  - The Triage button still sends only `triage`: ntfy does not template action bodies, so a plain tap
+    now means "the newest alert".
+- [x] Deployed 2026-11-22 (`sha-6bc59c2`, Flux on master): the pod runs the new image (`kubectl -n sre-triage get deploy sre-triage -o jsonpath='{.spec.template.spec.containers[0].image}'`)
+  and Loki answers through the proxy as the agent:
+  ```bash
+  kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/labels" --as=system:serviceaccount:sre-triage:sre-triage | jq -r '.data[]' | head
+  ```
+- [x] After the change: ask the agent "Why did the 21 and 22 Nov backups fail?" and compare with the 22 Nov
+  report (it said "bucket missing"). 2026-11-22: 3 min 26 s (was 32 s), 22 turns, $0.31 API-equivalent
+  (Pro plan usage, not billed); found node1 sda 81-88% busy 02:10-03:00 both nights in Prometheus, tested
+  the cause, listed Not checked. Report reached ntfy in parts. One `awk` refused (skill now says `jq`).
+  It also found the failed `longhorn-snapshot-cleanup` of 21 Nov (ES purge HTTP 500 during the backup
+  window): CronJob moved 03:30 → 06:30 UTC.
+
+### 22 Nov: Velero backups PartiallyFailed (Elasticsearch volume)
+`full-20261121` and `full-20261122` PartiallyFailed, `VeleroNoRecentBackup` critical. Only the Elasticsearch
+Longhorn backup failed, both nights (02:44 and 03:14 UTC) with `NoSuchBucket`, although `k3s-longhorn` exists
+and has no orphaned objects. **Cause: node1's single disk saturates during the backups.** `/var/log/rustfs/`
+(RustFS does not log to the journal) shows `Io error: timeout` every night 02:00-04:00 UTC since at least
+12 Nov; requests took 52-65 s and returned 500 or `NoSuchBucket`. The hourly bucket-metrics walk made it worse
+(22 Nov: walk started 03:14:23, error 03:14:44; `IOSchedulingClass=idle` does nothing with `mq-deadline`).
+Also: node1 runs RustFS **`1.0.0-beta.7`** while git says `1.0.4` (bumped 1 Nov, never deployed).
+Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
+
+- [x] **Manual backup `full-manual-6gsmq`** Completed, ES `LASTBACKUPAT` 2026-11-22T06:47 (clears
+  `VeleroNoRecentBackup`).
+- [x] **RustFS logs at the failure times:** I/O timeouts on `.rustfs.sys/config/iam/`, 500s after 52-65 s.
+- [x] **Timer out of the backup window** (committed 22 Nov): hourly at :15, paused 02:00-04:59 UTC;
+  `RustFSBucketMetricsMissing` 3 h → 5 h.
+- [ ] **Apply the timer before 02:00 UTC** (pimaster, then node1; `--limit node1` skips the k3s plays):
+  ```bash
+  cd ~/picluster && git pull && ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node1
+  ```
+  ```bash
+  sudo systemctl daemon-reload && sudo systemctl restart rustfs-bucket-metrics.timer && systemctl list-timers rustfs-bucket-metrics.timer --no-pager
+  ```
+  NEXT shows `:15`. The pimaster `--check` dry run of `deploy_rustfs.yml` fails on `cert_path` by design
+  (certbot is skipped in check mode); the real run is fine.
+- [ ] **Upgrade RustFS to 1.0.4**, by day, after a clean night. 1.0.1 "protect single-disk foreground latency",
+  1.0.2 "warn on stalled local disk operations" and several delete-residue fixes apply here; startup runs
+  IAM/metadata migrations, so save `.rustfs.sys` first (node1, then pimaster, then node1):
+  ```bash
+  sudo tar czf ~/rustfs-sys-$(date +%F).tgz -C /storage/rustfs .rustfs.sys && ls -la ~/rustfs-sys-*.tgz
+  ```
+  ```bash
+  cd ~/picluster && make deploy-rustfs
+  ```
+  ```bash
+  /usr/local/bin/rustfs --version | head -1; rc ls picluster/; sudo tail -5 /var/log/rustfs/$(sudo ls -t /var/log/rustfs | head -1)
+  ```
+- [ ] **Next nightly backups** (23 and 24 Nov) Completed with 0 errors, and fewer timeouts (node1):
+  ```bash
+  sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE '"timestamp":"[0-9-]+T[0-9]{2}' | cut -c14- | sort | uniq -c | tail -6
+  ```
+  If ES still fails, or timeouts stay in the hundreds after the upgrade: a separate disk for `/storage` on node1
+  (postmortem action 11) and the upstream report (action 10).
 
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
-- [ ] It no longer lists `tempo-ingester-0`, and no Velero failure (the 15 Nov one is out of the window).
+- [ ] It no longer lists `tempo-ingester-0`. It will still show the 21/22 Nov Velero failures (7-day window).
+- [ ] Not woken by `RustFSBucketMetricsMissing` at night (threshold now 5 h for the 01:15 → 05:15 gap).
 
 ### 27 Nov: RustFS growth in the digest
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
@@ -253,6 +318,9 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
 - [ ] **Hardware:** node1/node6 power cables; keep an eye on node3.
 - [ ] **Small items:** vendor the SUC files; check the Kafka 4.3.0/4.3.1 pin;
   `RaspberryPiUnderVoltage` alert only after 2 dips.
-- [ ] **Open Renovate PRs (16, limit 20):** decide merge or close for each (2026-11-20 list: 6 GitHub Actions majors #746 #747 #748 #984 #985 #986; Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
+- [ ] **RustFS bumps are not applied by Flux:** after Renovate changes `rustfs_server_version` (or
+  `rustfs_cli_version`), run `make deploy-rustfs` on pimaster and check `rustfs --version` on node1.
+  Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov.
+- [ ] **Open Renovate PRs (10, limit 20):** the 6 GitHub Actions majors were merged by 22 Nov. Decide merge or close for each (Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.

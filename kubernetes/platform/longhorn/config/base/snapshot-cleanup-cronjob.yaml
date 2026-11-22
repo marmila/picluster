@@ -18,7 +18,9 @@ spec:
   # (5) at once with HTTP 500 "concurrent snapshot purge limit reached"; firing them all together
   # left 110 GB unpurged on Prometheus (2026-11-14).
   # It exits 1 on any other API error, a purge error or a timeout, so KubeJobFailed fires.
-  schedule: "30 3 * * *"
+  # 06:30 UTC, after the backup window: at 03:30 it ran into the nightly Velero/Longhorn backups (02:00 UTC,
+  # the Elasticsearch upload can run past 03:30) and on 2026-11-21 the ES purge failed with HTTP 500.
+  schedule: "30 6 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid

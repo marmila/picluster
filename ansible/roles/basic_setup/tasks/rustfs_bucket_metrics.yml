@@ -31,7 +31,9 @@
       [Service]
       Type=oneshot
       ExecStart=/usr/local/bin/rustfs_bucket_metrics {{ rustfs_server_datadirs | first }}
-      # Walks every bucket: lowest CPU and disk priority, so RustFS is not slowed down.
+      # Walks every bucket at the lowest CPU priority. IOSchedulingClass=idle only works with the bfq
+      # scheduler; node1's disk uses mq-deadline, so the walk competes with RustFS for I/O. The timer
+      # therefore skips the backup window.
       Nice=19
       IOSchedulingClass=idle
       TimeoutStartSec=30min
@@ -45,12 +47,14 @@
     content: |
       # Managed by Ansible (basic_setup/tasks/rustfs_bucket_metrics.yml)
       [Unit]
-      Description=Export RustFS bucket metrics every hour
+      Description=Export RustFS bucket metrics every hour, except during the nightly backups
 
       [Timer]
-      OnBootSec=5min
-      OnUnitActiveSec=1h
+      # Hourly at :15, except 02:00-04:59 UTC: the Velero/Longhorn backups (02:00 UTC) saturate
+      # node1's disk, and the walk made RustFS time out (NoSuchBucket on 2026-11-22 03:14).
+      OnCalendar=*-*-* 00,01,05..23:15:00
       RandomizedDelaySec=2min
+      Persistent=false
 
       [Install]
       WantedBy=timers.target
