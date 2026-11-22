@@ -105,7 +105,7 @@ Do the steps in this order. Steps marked **fork** don't exist upstream, or work 
 | 12 | `make k3s-install` | K3s masters (node2–4) and workers | kubeconfig ends up in the runner |
 | 13 | `make k3s-bootstrap` | installs Flux, which deploys everything from `master` | `make k3s-bootstrap-dev` for the dev overlay |
 | 14 | `make admin-cli` | flux CLI on node2, at the cluster's Flux version | **fork**. `ADMIN_CLI_HOST=node3` for another node |
-| 15 | `make node-config-update` | kubelet config, journald on non-k3s hosts, Pi throttling, **RustFS bucket metrics on node1** | **fork**. Steps 2 and 9 do not install the RustFS timer; only this target does |
+| 15 | `make node-config-update` | kubelet config, journald on non-k3s hosts, Pi throttling, **RustFS bucket metrics on node1**, **SMART metrics on all nodes** | **fork**. Steps 2 and 9 do not install the RustFS timer; only this target does |
 | 16 | `make os-backup` | first restic backup | upstream |
 
 `make init` runs steps 6, 7, 9, 11, 12 and 13 in one go: `os-upgrade nodes-setup external-services
@@ -144,7 +144,8 @@ Run it after changing:
 - `k3s_kubelet_config` (for example the image GC thresholds);
 - the journald limit;
 - the Pi throttling script;
-- the RustFS bucket metrics script.
+- the RustFS bucket metrics script;
+- the SMART metrics script (`smart_metrics`, all nodes).
 
 It restarts k3s only on nodes whose kubelet config changed, one at a time, and waits for each to be Ready.
 
@@ -295,3 +296,6 @@ Only run these on purpose, after a backup check:
   - `install_fluxcd_cli.yml`: the flux CLI.
 - **New node1 metrics:** `rustfs_bucket_metrics` (hourly systemd timer, `/var/lib/node_exporter/rustfs_buckets.prom`),
   alerted by `RustFSBucketGrowingFast`, `RustFSOrphanedData` and `RustFSBucketMetricsMissing` (runbook CLUSTER-012).
+- **New disk SMART metrics on all nodes:** `basic_setup/tasks/smart_metrics.yml` installs `smartmontools` (smartd
+  disabled) and the `smart_metrics` script (15-minute systemd timer, `/var/lib/node_exporter/smartmon.prom`),
+  alerted by `node-smart-rules.yaml` (runbook CLUSTER-018, [alerting.md](alerting.md#disk-health-smart-alerts)).

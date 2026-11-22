@@ -249,6 +249,17 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 ### 27 Nov: RustFS growth in the digest
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
 
+### 22 Nov: SMART disk alerts (`ea8a1db2`, [alerting.md](alerting.md#disk-health-smart-alerts), runbook CLUSTER-018)
+- [ ] **Install on the nodes** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Until then
+  `DiskSmartMetricsMissing` fires for every node after about an hour.
+- [ ] **Check one Pi** (node5): `systemctl list-timers smart-metrics.timer` and
+  `grep -v "^#" /var/lib/node_exporter/smartmon.prom | grep -E "lifetime|healthy|read_ok|devices|id=\"199\""`
+  (expect lifetime 100, CRC 92, `read_ok` 1). Same on node-esp-2 (no `-d sat`, internal SATA) and node1.
+- [ ] **Silence the known worn disks** until each swap: `DiskWornOut` for node4, node5, node6, node-esp-2
+  (and `DiskSmartFailing` if it fires on the BX500s).
+- [ ] **Write latency baseline:** after a quiet day, check that `DiskWriteLatencyHigh` (100 ms for 15 min) does
+  not fire on healthy disks (node-esp-1, node1–3); raise the threshold if it does.
+
 ---
 
 ## 2. node1 / RustFS follow-ups (read-only, node1)

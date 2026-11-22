@@ -25,6 +25,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `KubeAPIDown`, `KubeNodeUnreachable` | `CLUSTER-014` | On a Pi node, check under-voltage first: `sudo vcgencmd get_throttled` |
 | `RaspberryPiUnderVoltage`, `RaspberryPiThrottled`, `RaspberryPiThrottleMetricsMissing` | `CLUSTER-016` | Usually a loose or weak power cable. Linux tools show the normal CPU frequency; only `vcgencmd` shows the real one |
 | `NodeTemperatureHigh`, `NodeTemperatureCritical`, `RaspberryPiSoftTempLimit`, `NodeTemperatureMetricsMissing` | `CLUSTER-017` | Several nodes hot at once: the room or cabinet. One node: a busy pod (`kubectl top pods -A --sort-by=cpu`) or the fan. On a Pi, get_throttled `0x8` is heat, `0x1` power (`CLUSTER-016`). On HP minis the `thermal_thermal_zone0` chip is the chipset, not the CPU |
+| `DiskSmartFailing`, `DiskMediaErrors`, `DiskWornOut`, `DiskCrcErrorsIncreasing`, `DiskWriteLatencyHigh`, `DiskSmartMetricsMissing` | `CLUSTER-018` | Wear and media errors: the flash, plan a swap (`homelab-docs/disk-replacement.md`); with media errors evict Longhorn replicas first. CRC: cable, USB-SATA adapter or power, not the flash. Slow writes: a worn disk or a write burst (Longhorn rebuild, Velero 02:00). Known worn on 2026-11-22: node4, node5, node6, node-esp-2 |
 | `WeeklyDigestMissing` | `homelab-docs/alerting.md` (Weekly digest) | CronJob `sre-triage/weekly-digest`: check `kubectl -n sre-triage get cronjob,jobs` and the last job log |
 | `KubeNodeNotReady`, `KubeletDown` | `CLUSTER-011`, `CLUSTER-014` | |
 | `RustFSBucketGrowingFast`, `RustFSOrphanedData`, `RustFSBucketMetricsMissing` | `CLUSTER-012` | node1 buckets (step 7). Growing fast: usually a backup that now includes a big volume. Orphaned data: RustFS left data without `xl.meta` after a delete (Loki, Velero archives); only the step 7 / `OBS-004` step 6 procedures remove it, on node1 by a person |
@@ -62,6 +63,7 @@ annotation and at the end of their description, so it appears in the ntfy messag
 | `CLUSTER-015` | A k3s upgrade stopped part-way: plan not complete, nodes on different versions, node left cordoned |
 | `CLUSTER-016` | A Raspberry Pi reports under-voltage or a throttled CPU; a Pi is slow for no visible reason |
 | `CLUSTER-017` | A node runs hot: temperature alerts, Pi soft temperature limit, a node slow while its fan is off |
+| `CLUSTER-018` | A disk is worn, failing (SMART), losing data, has CRC errors, or writes slowly; a node slow with high iowait |
 
 ### GitOps and release — `runbooks/cluster/gitops-release.md`
 
