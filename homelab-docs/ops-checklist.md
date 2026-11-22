@@ -10,6 +10,13 @@ RustFS disk and `rc` on **node1**.
 
 ## Done
 
+### 22 Nov 2026
+- [x] **Trading agent Phase 0** (PR #997, [trading-agent.md](trading-agent.md)): Freqtrade TrendFollow4h in
+  dry-run from the private repo `marmila/trading-agent`, Vault secrets `trading/*`, Flux deploy key, new LAN-only
+  `lan-gateway` (Envoy, 10.0.0.70, wildcard cert) with FreqUI on https://freqtrade.homelab.marmilan.com and an
+  IONOS A record. Backtest gate passed (out of sample PF 1.87, DD 6.2%); `adx_min` 22. Dry-run clock started
+  2026-11-22. CI `validate_flux.py` now skips Kustomizations sourced from other repos.
+
 ### 14 Nov 2026
 - [x] **Longhorn snapshot bloat fixed:**
   - Longhorn deletes the Velero backup snapshot right after the upload; the cleanup job fails on errors (`d4eaa57f`).
@@ -241,6 +248,10 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   If ES still fails, or timeouts stay in the hundreds after the upgrade: a separate disk for `/storage` on node1
   (postmortem action 11) and the upstream report (action 10).
 
+### Weekly from 29 Nov: trading bot dry-run
+- [ ] FreqUI Dashboard: state `running`, closed trades, profit; pod `1/1` with no restarts
+  (`kubectl -n trading get pod`). Go-live review not before mid-January 2027 and 20–30 closed trades.
+
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
 - [ ] It no longer lists `tempo-ingester-0`. It will still show the 21/22 Nov Velero failures (7-day window).
@@ -322,5 +333,9 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
   `rustfs_cli_version`), run `make deploy-rustfs` on pimaster and check `rustfs --version` on node1.
   Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov.
 - [ ] **Open Renovate PRs (10, limit 20):** the 6 GitHub Actions majors were merged by 22 Nov. Decide merge or close for each (Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
+- [ ] **Trading agent next steps** ([trading-agent.md](trading-agent.md)): alerts for the bot (blackbox probe
+  on `/api/v1/ping`, PrometheusRule bot down / restarts, ntfy); Postgres (CloudNativePG) for the trade DB;
+  WireGuard client subnet check (FreqUI reachable over the VPN?); Phase 2 MCP server behind Keycloak;
+  Phase 3 Claude supervisor; Phase 4 Binance key + static IP only after the gates.
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.
