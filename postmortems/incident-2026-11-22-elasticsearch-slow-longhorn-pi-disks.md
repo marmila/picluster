@@ -52,6 +52,9 @@ Times are UTC.
 | 11-22 ~12:57 | Live patch: Fluentd HPA `maxReplicas: 2`. Committed to master as `bad01d8b9` |
 | 11-22 13:00 | node5 load 50 (4 cores), IO pressure some 99.5% / full 51%; node6 load 20, IO full 30% |
 | 11-22 ~13:05 | ES volume set to 2 replicas, node5 replica deleted. Volume `healthy`, write test 0.8 s (25.7 MB/s). Fluentd back to 2 pods on node-esp-1 / node-esp-2 |
+| 11-22 ~13:15 | node5 recovered (51.9 MB/s, 3.6 ms). node6 still choking: w_await 1.1–1.4 s, 92–95% util, `systemctl` timing out. Kafka broker 1 volume rebuilding onto node6 (59%), Prometheus volume rebuilding onto node5 (1%) |
+| 11-22 ~13:20 | Prometheus down: liveness probe timeouts on its volume, 5 restarts, no Service endpoints |
+| 11-22 ~13:25 | Prometheus volume set to 2 replicas, node5 replica (rebuilding) deleted, volume `healthy`. Kafka broker 1 rebuild had finished (node6 copy `RW`, left alone). Postgres-Keycloak-1 and Kafka broker 2 (small volumes) left to rebuild |
 
 ---
 
@@ -126,7 +129,7 @@ the only signal, and degraded volumes after a rebuild are common enough to be ig
 | # | Action | Status |
 |---|---|---|
 | 1 | Fluentd HPA `maxReplicas: 2` | Done (`bad01d8b9`) |
-| 2 | Elasticsearch volume on the amd64 nodes only (2 replicas) | Done live (Longhorn volume CR). Make it durable: Longhorn disk tag `fast` on node-esp-1/2 and a StorageClass with `diskSelector: fast` for write-heavy volumes (Elasticsearch, Prometheus, Loki, Kafka), or `numberOfReplicas`/selectors per volume |
+| 2 | Elasticsearch and Prometheus volumes on the amd64 nodes only (2 replicas) | Done live (Longhorn volume CRs, guarded: deleted only Pi replicas with ≥2 `RW` copies elsewhere). With 4 storage nodes (2 amd64, 2 Pis) every 3-replica volume must keep a copy on a Pi, so rebuilds will keep landing there. Make it durable: Longhorn disk tag `fast` on node-esp-1/2 and a StorageClass with `diskSelector: fast` for write-heavy volumes (Elasticsearch, Prometheus, Loki, Kafka), or `numberOfReplicas`/selectors per volume |
 | 3 | Pi USB SSDs get no TRIM (bridge `DISC-MAX 0B`). Try enabling UNMAP on the bridge (`provisioning_mode=unmap` via a udev rule for its USB ID, then `fstrim -v /storage`); if the bridge refuses it, keep write-heavy replicas off the Pis (action 2). Install `smartmontools` on the Pis to read drive health. Check node6 the same way | Open: node5 checked (link and drive fine at normal load, no TRIM); node6 pending |
 | 4 | Fluentd node affinity to `kubernetes.io/arch: amd64` (or prefer node-esp-*), so the aggregator stays off the Pi disks | Open |
 | 5 | Alert on Fluentd output retries (`rate(fluentd_output_status_retry_count[15m]) > 0` for 30 min, per output) | Open |
