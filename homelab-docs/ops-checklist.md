@@ -177,9 +177,36 @@ Causes found in the config, most important first:
   - add the missing CRD groups to `sre-triage-read`.
 - [ ] After the change: tap Triage on a real alert and compare the report with one from before.
 
+### 22 Nov: Velero backups PartiallyFailed (Elasticsearch volume)
+`full-20261121` and `full-20261122` PartiallyFailed, `VeleroNoRecentBackup` critical. Only the Elasticsearch
+Longhorn backup failed, both nights (02:44 and 03:14 UTC, a different new block each time) with
+`NoSuchBucket`, although `k3s-longhorn` exists (since 9 Aug, 80 GB), has no orphaned objects, and every other
+volume uploaded to it in the same run. RustFS: no restart since 14 Nov, but node1 runs **`1.0.0-beta.7`**
+while git says `1.0.4` (bumped 1 Nov, never deployed). RustFS logs are in `/var/log/rustfs/`, not the
+journal. Runbooks: BACKUP-004 step 3a, MINIO-001.
+
+- [ ] **Manual backup `full-manual-6gsmq`** (started 22 Nov) Completed, ES `LASTBACKUPAT` today (node2):
+  ```bash
+  kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors,WARN:.status.warnings | tail -2
+  kubectl -n longhorn-system get backupvolumes.longhorn.io | grep -E "NAME|pvc-a6e3a543"
+  ```
+- [ ] **RustFS logs at the failure times** (node1):
+  ```bash
+  sudo sh -c 'cat /var/log/rustfs/*; zcat -f /var/log/rustfs/*.gz' 2>/dev/null | grep -E "2026-11-21T02:4[345]|2026-11-22T03:1[45]" | cut -c1-250 | sort | uniq -c | sort -rn | head -15
+  ```
+- [ ] **Upgrade RustFS to the git version**, by day, after the manual backup. Dry run first, then the real one
+  (pimaster); S3 is down for a few seconds, clients retry:
+  ```bash
+  cd ~/picluster && git pull && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml --check --diff 2>&1 | grep -E "TASK|changed|version|PLAY RECAP" | tail -40
+  make deploy-rustfs
+  ```
+  Then on node1: `/usr/local/bin/rustfs --version | head -1` shows `1.0.4`, `rc ls picluster/` lists 6 buckets.
+- [ ] **Next nightly backups** (23 and 24 Nov) Completed with 0 errors. If ES fails again on 1.0.4: report
+  upstream with the log lines (postmortem 11-15 actions 10 and 12).
+
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
-- [ ] It no longer lists `tempo-ingester-0`, and no Velero failure (the 15 Nov one is out of the window).
+- [ ] It no longer lists `tempo-ingester-0`. It will still show the 21/22 Nov Velero failures (7-day window).
 
 ### 27 Nov: RustFS growth in the digest
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
@@ -253,6 +280,9 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
 - [ ] **Hardware:** node1/node6 power cables; keep an eye on node3.
 - [ ] **Small items:** vendor the SUC files; check the Kafka 4.3.0/4.3.1 pin;
   `RaspberryPiUnderVoltage` alert only after 2 dips.
-- [ ] **Open Renovate PRs (16, limit 20):** decide merge or close for each (2026-11-20 list: 6 GitHub Actions majors #746 #747 #748 #984 #985 #986; Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
+- [ ] **RustFS bumps are not applied by Flux:** after Renovate changes `rustfs_server_version` (or
+  `rustfs_cli_version`), run `make deploy-rustfs` on pimaster and check `rustfs --version` on node1.
+  Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov.
+- [ ] **Open Renovate PRs (10, limit 20):** the 6 GitHub Actions majors were merged by 22 Nov. Decide merge or close for each (Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.

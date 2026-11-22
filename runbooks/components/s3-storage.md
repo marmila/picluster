@@ -10,28 +10,46 @@ Runbook ID: `MINIO-001`
 Owner: Platform Storage
 Severity: `SEV-1` or `SEV-2`
 
-Objective: Restore MinIO availability and S3 operations.
+Objective: Restore RustFS availability and S3 operations.
 
-Procedure:
+Background: RustFS runs outside the cluster, as the systemd service `rustfs` on node1 (data in
+`/storage/rustfs` on the root disk, API `https://object-store.homelab.marmilan.com:9091`). It is installed by
+`make deploy-rustfs` (role `ricsanfre.rustfs`, version `rustfs_server_version` in `ansible/vars/picluster.yml`).
+Its logs go to `/var/log/rustfs/` at level `error` (`/etc/rustfs/rustfs.conf`), **not** to the journal.
 
-1. Check MinIO pods, service endpoints, and logs.
+Procedure (on node1):
+
+1. Service, version and disk:
 
 ```bash
-kubectl -n minio get pods,svc,endpoints
-kubectl -n minio logs deploy/minio --tail=200
+systemctl status rustfs --no-pager | head -5
+systemctl show rustfs -p ActiveEnterTimestamp,NRestarts
+/usr/local/bin/rustfs --version | head -1   # must match rustfs_server_version in git
+df -h /
 ```
 
-2. Validate object store credentials and TLS configuration.
-3. Check backing storage health and capacity.
-4. Confirm client operations using `mc` (list buckets, put/get object).
-5. Reconcile MinIO manifests if configuration drift is suspected.
+2. Logs around the time of the client error:
+
+```bash
+sudo ls -la /var/log/rustfs/
+sudo sh -c 'cat /var/log/rustfs/*' | grep "<YYYY-MM-DDTHH:MM>" | head -20
+```
+
+3. Client view: `rc ls picluster/` lists the buckets (`k3s-barman`, `k3s-loki`, `k3s-longhorn`, `k3s-tempo`,
+   `k3s-velero`, `restic`).
+4. TLS: an expired certificate fails every client, see `NET-009`.
+5. A client reports `NoSuchBucket` but step 3 lists the bucket: RustFS answered a wrong error for a short
+   time (seen 2026-11-21/22 on a long Longhorn upload, node1 still on `1.0.0-beta.7` while git said `1.0.4`).
+   Do not recreate the bucket. Bring RustFS to the git version (`make deploy-rustfs` on pimaster, by day)
+   and retry the client (Longhorn/Velero: `BACKUP-004` step 3a).
+6. Only if the bucket is really missing: recreate it with `terraform/minio` (needs an explicit `tofu apply`).
 
 Verify:
 
-- MinIO API and console endpoints respond.
-- Backup systems and S3 clients recover.
+- `rc ls picluster/` works and the blackbox `object-store` probe is up (no `ExternalEndpointDown`).
+- Backup systems and S3 clients recover (Velero `BackupStorageLocation` Available, Longhorn backup target
+  `available=true`, CNPG `ContinuousArchiving=True`).
 
 Rollback:
 
-1. Revert recent MinIO config/image changes in Git.
-2. Reconcile MinIO Kustomization.
+1. Set `rustfs_server_version` back to the previous release in git and run `make deploy-rustfs` again.

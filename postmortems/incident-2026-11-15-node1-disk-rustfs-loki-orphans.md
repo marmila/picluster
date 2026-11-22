@@ -139,6 +139,7 @@ separate disk for `/storage` if it goes above about 70% again.
 | 9 | Treat `NodeRootDiskFillingUp` on node1 as urgent: Vault and RustFS depend on it | Done: CLUSTER-012 step 7 |
 | 10 | Report the leftover data copies to RustFS upstream, with the folder layout as evidence | Open, optional. More evidence 2026-11-19: Velero's deletes of its large backup archives leave the data the same way |
 | 11 | Separate disk for `/storage` on node1 | Not needed now; revisit above about 70% |
+| 12 | Run the RustFS version git says. Found 2026-11-22: node1 still on `1.0.0-beta.7` (June build) although Renovate set `1.0.4` on 2026-11-01 (`2381727fd`); `make deploy-rustfs` was never run after the bump. The same night RustFS answered `NoSuchBucket` for an existing bucket (BACKUP-004 step 3a). RustFS logs are in `/var/log/rustfs/`, not the journal (MINIO-001) | Open: upgrade by day, then check the bug still occurs before reporting upstream (action 10) |
 
 ## Open questions
 

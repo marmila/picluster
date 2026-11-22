@@ -137,6 +137,7 @@ kubectl -n velero get backupstoragelocations.velero.io
 | What you see | Meaning | Go to |
 | --- | --- | --- |
 | BackupStorageLocation `Unavailable` | Velero cannot reach RustFS | `MINIO-001`, `NET-009` if the certificate expired |
+| Longhorn backup `Error` with `NoSuchBucket`, but `rc ls picluster/` on node1 lists `k3s-longhorn` | RustFS answered a wrong error for a short time; the bucket is fine | Step 3a. Do **not** recreate the bucket |
 | Last backup `PartiallyFailed` | Some items failed, often volume snapshots | Step 3 |
 | Last backup `Failed` | The whole backup failed | Step 3 |
 | No backup created since yesterday | Schedule paused or Velero not running | Step 4 |
@@ -159,6 +160,26 @@ kubectl get volumesnapshots -A | grep -v "true" | head
    each nightly backup was ~50 GB of new data on node1 (root disk 86%, 2026-11-15). On a PVC created before
    that change, add the label by hand:
    `kubectl -n kube-prom-stack label pvc <prometheus pvc> velero.io/exclude-from-backup=true`.
+
+3a. Longhorn backup `NoSuchBucket` while the bucket exists (seen 2026-11-21 and 11-22, Elasticsearch only).
+   Longhorn retries a block 3 times within seconds, then marks the whole volume backup `Error`. The largest
+   volume (Elasticsearch, 50 Gi) is the one still uploading late in the run, so it is the one that hits a short
+   RustFS error. The other volumes of the same run are fine. The Velero backup then waits for the snapshot
+   until `ItemOperationTimeout` (4 h) and ends `PartiallyFailed`; leave it, the TTL removes it.
+
+   ```bash
+   # node2: which volume, which key, when
+   kubectl -n longhorn-system get backups.longhorn.io -o custom-columns=NAME:.metadata.name,STATE:.status.state,CREATED:.metadata.creationTimestamp,ERR:.status.error | grep -vi completed
+   # node1: bucket present, RustFS version against git (ansible/vars/picluster.yml rustfs_server_version)
+   rc ls picluster/
+   /usr/local/bin/rustfs --version | head -1
+   # node1: RustFS logs go to /var/log/rustfs/, not to the journal
+   sudo sh -c 'cat /var/log/rustfs/*' | grep "<time of the error, e.g. 2026-11-22T03:14>" | head
+   ```
+
+   If node1 runs an older RustFS than git, run `make deploy-rustfs` on pimaster by day (S3 is down for a few
+   seconds; clients retry). Then take a manual backup (step 5) and check that the volume's `LASTBACKUPAT` in
+   `kubectl -n longhorn-system get backupvolumes.longhorn.io` is today.
 
 4. Velero not running or schedule paused:
 
