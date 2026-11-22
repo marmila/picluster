@@ -75,7 +75,12 @@ During the incident node5 did 220 kB/s at 88% utilisation with 300 ms per write.
 the Fluentd pods were gone (13:15), the same disk did **51.9 MB/s at 28% utilisation, 3.6 ms per write**. The drive and
 the USB link are fine (`uas` driver, 5000M link); it collapses only under sustained writes.
 
-The reason it collapses: **TRIM never reaches the SSD.** The USB bridge reports `DISC-MAX 0B` (`lsblk -D`), so
+**node5's SSD is worn out** (SMART, 13:55): Crucial BX500 480 GB (`CT480BX500SSD1`, DRAM-less),
+`Percent_Lifetime_Remain` 100% used, flagged `FAILING_NOW`; `Total_LBAs_Written` 207,093,951,520 × 512 B ≈ **106 TB**
+in 16,673 power-on hours (1.9 years; rated 120 TBW); average block erase count 1,394. No reallocated or uncorrectable
+sectors yet. `UDMA_CRC_Error_Count` 92 (cable/USB adapter). Longhorn replicas wrote about 55 TB a year to it.
+
+A second reason it collapses: **TRIM never reaches the SSD.** The USB bridge reports `DISC-MAX 0B` (`lsblk -D`), so
 `fstrim.timer` runs every week and "succeeds" but discards nothing. Without TRIM a cheap SSD (`00SSD1`) runs out of
 clean blocks under sustained writes and its garbage collection stalls every write. A rebuild storm (Elasticsearch 12 GB
 plus Loki plus MongoDB onto node5), the Kafka broker and 3 Fluentd pods were enough. node6 has the same model; its check
@@ -131,6 +136,7 @@ the only signal, and degraded volumes after a rebuild are common enough to be ig
 | 1 | Fluentd HPA `maxReplicas: 2` | Done (`bad01d8b9`) |
 | 2 | Elasticsearch and Prometheus volumes on the amd64 nodes only (2 replicas) | Done live (Longhorn volume CRs, guarded: deleted only Pi replicas with ≥2 `RW` copies elsewhere). With 4 storage nodes (2 amd64, 2 Pis) every 3-replica volume must keep a copy on a Pi, so rebuilds will keep landing there. Make it durable: Longhorn disk tag `fast` on node-esp-1/2 and a StorageClass with `diskSelector: fast` for write-heavy volumes (Elasticsearch, Prometheus, Loki, Kafka), or `numberOfReplicas`/selectors per volume |
 | 3 | Pi USB SSDs get no TRIM (bridge `DISC-MAX 0B`). Try enabling UNMAP on the bridge (`provisioning_mode=unmap` via a udev rule for its USB ID, then `fstrim -v /storage`); if the bridge refuses it, keep write-heavy replicas off the Pis (action 2). Install `smartmontools` on the Pis to read drive health. Check node6 the same way | Open: node5 checked (link and drive fine at normal load, no TRIM); node6 pending |
+| 3b | Replace node5's SSD (worn out, `FAILING_NOW`) and probably node6's (same family, check SMART) with DRAM-cache, high-endurance drives (e.g. Samsung 870 EVO / Crucial MX500); evict node5's Longhorn replicas first | Open |
 | 4 | Fluentd node affinity to `kubernetes.io/arch: amd64` (or prefer node-esp-*), so the aggregator stays off the Pi disks | Open |
 | 5 | Alert on Fluentd output retries (`rate(fluentd_output_status_retry_count[15m]) > 0` for 30 min, per output) | Open |
 | 6 | Alert on node IO pressure (`node_pressure_io_stalled_seconds_total` rate > 0.5 for 15 min) | Open |
