@@ -250,11 +250,15 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
 
 ### 22 Nov: SMART disk alerts (`ea8a1db2`, [alerting.md](alerting.md#disk-health-smart-alerts), runbook CLUSTER-018)
-- [ ] **Install on the nodes** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Until then
-  `DiskSmartMetricsMissing` fires for every node after about an hour.
-- [ ] **Check one Pi** (node5): `systemctl list-timers smart-metrics.timer` and
+- [x] **Install on the nodes** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Done 22 Nov:
+  all 8 nodes report (`smartmon_device_info`). Flux only picked the rules up after
+  `flux reconcile source git flux-system` (source interval 1h); `node-smart.rules` loaded (57 groups).
+- [x] **Check one Pi** (node5): `systemctl list-timers smart-metrics.timer` and
   `grep -v "^#" /var/lib/node_exporter/smartmon.prom | grep -E "lifetime|healthy|read_ok|devices|id=\"199\""`
-  (expect lifetime 100, CRC 92, `read_ok` 1). Same on node-esp-2 (no `-d sat`, internal SATA) and node1.
+  (expect lifetime 100, CRC 92, `read_ok` 1). Done 22 Nov: as expected. All 8 match the SMART table in
+  disk-replacement.md (wear node4/5/6 100%, node-esp-2 109%; health PASSED everywhere; old error totals only).
+  Write latency 0-4 ms on healthy disks, 43 ms on node6. `DiskWornOut` pending for node4, node5, node6,
+  node-esp-2.
 - [ ] **Silence the known worn disks** until each swap: `DiskWornOut` for node4, node5, node6, node-esp-2
   (and `DiskSmartFailing` if it fires on the BX500s).
 - [ ] **Write latency baseline:** after a quiet day, check that `DiskWriteLatencyHigh` (100 ms for 15 min) does
