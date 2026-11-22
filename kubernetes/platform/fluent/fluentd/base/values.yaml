@@ -15,7 +15,10 @@ replicaCount: 1
 autoscaling:
   enabled: true
   minReplicas: 1
-  maxReplicas: 100
+  # Capped: with CPU requests set (a76e48ec8) the HPA works, and during an
+  # Elasticsearch outage the retries alone pushed it to 12 pods (2026-11-22),
+  # each with 8 ES flush threads, making the outage worse. 2 is enough for bursts.
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 80
 
 # Resource requests are required by the HPA (without a CPU request the
