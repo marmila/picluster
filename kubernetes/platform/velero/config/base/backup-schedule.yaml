@@ -8,6 +8,10 @@ spec:
     hooks: {}
     includedNamespaces:
     - '*'
+    # threatmap disabled 2026-11-22 (suspended, scaled to 0): no backup of its
+    # namespace or MongoDB volume. Remove to back it up again after re-enabling.
+    excludedNamespaces:
+    - threatmap
     includedResources:
     - '*'
     includeClusterResources: true

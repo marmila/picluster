@@ -161,6 +161,10 @@ kubectl get volumesnapshots -A | grep -v "true" | head
    that change, add the label by hand:
    `kubectl -n kube-prom-stack label pvc <prometheus pvc> velero.io/exclude-from-backup=true`.
 
+   The `threatmap` namespace is not backed up either (`excludedNamespaces` in the `full` schedule) since it was
+   disabled on 2026-11-22. Its last backups expire with the 72 h TTL; after that its MongoDB data exists only
+   on Longhorn. Remove the exclusion before re-enabling threatmap if its data should be backed up again.
+
 3a. Longhorn backup `NoSuchBucket` while the bucket exists (seen 2026-11-21 and 11-22, Elasticsearch only).
    node1 has one disk for the OS and RustFS, and the nightly backups saturate it: `/var/log/rustfs/` shows
    `Io error: timeout` every night between 02:00 and 04:00 UTC (seen since at least 2026-11-12). When RustFS

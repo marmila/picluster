@@ -274,7 +274,8 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   deployment by name), `kubectl -n threatmap scale deploy --all --replicas=0`,
   `kubectl -n threatmap scale statefulset mongodb --replicas=0`. Honeypots stopped on both Oracle VMs
   (`docker stop cowrie`, `systemctl disable --now fluent-bit`).
-  **Re-enable:** remove both `suspend: true`, push, scale the operator back to 1, then the operator brings MongoDB
+  Velero skips the `threatmap` namespace (`excludedNamespaces` in the `full` schedule).
+  **Re-enable:** remove both `suspend: true` and the Velero exclusion, push, scale the operator back to 1, then the operator brings MongoDB
   back; `kubectl -n threatmap scale deploy --all --replicas=1`; on the VMs `docker start cowrie` and
   `sudo systemctl enable --now fluent-bit`.
 
