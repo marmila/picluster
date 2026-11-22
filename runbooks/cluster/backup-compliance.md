@@ -137,7 +137,7 @@ kubectl -n velero get backupstoragelocations.velero.io
 | What you see | Meaning | Go to |
 | --- | --- | --- |
 | BackupStorageLocation `Unavailable` | Velero cannot reach RustFS | `MINIO-001`, `NET-009` if the certificate expired |
-| Longhorn backup `Error` with `NoSuchBucket`, but `rc ls picluster/` on node1 lists `k3s-longhorn` | RustFS answered a wrong error for a short time; the bucket is fine | Step 3a. Do **not** recreate the bucket |
+| Longhorn backup `Error` with `NoSuchBucket`, but `rc ls picluster/` on node1 lists `k3s-longhorn` | node1's disk was saturated during the backup; RustFS timed out reading its own metadata and answered a wrong error. The bucket is fine | Step 3a. Do **not** recreate the bucket |
 | Last backup `PartiallyFailed` | Some items failed, often volume snapshots | Step 3 |
 | Last backup `Failed` | The whole backup failed | Step 3 |
 | No backup created since yesterday | Schedule paused or Velero not running | Step 4 |
@@ -162,9 +162,13 @@ kubectl get volumesnapshots -A | grep -v "true" | head
    `kubectl -n kube-prom-stack label pvc <prometheus pvc> velero.io/exclude-from-backup=true`.
 
 3a. Longhorn backup `NoSuchBucket` while the bucket exists (seen 2026-11-21 and 11-22, Elasticsearch only).
-   Longhorn retries a block 3 times within seconds, then marks the whole volume backup `Error`. The largest
-   volume (Elasticsearch, 50 Gi) is the one still uploading late in the run, so it is the one that hits a short
-   RustFS error. The other volumes of the same run are fine. The Velero backup then waits for the snapshot
+   node1 has one disk for the OS and RustFS, and the nightly backups saturate it: `/var/log/rustfs/` shows
+   `Io error: timeout` every night between 02:00 and 04:00 UTC (seen since at least 2026-11-12). When RustFS
+   cannot read its own metadata in time it answers `NoSuchBucket` or HTTP 500. Longhorn retries a block 3 times
+   within seconds, then marks the whole volume backup `Error`. The largest volume (Elasticsearch, 50 Gi) is the
+   one still uploading late in the run, so it is the one that fails; the other volumes are fine. On 2026-11-22
+   the hourly `rustfs-bucket-metrics` walk started at 03:14:23 and the error came at 03:14:44, so the timer now
+   skips 02:00-04:59 UTC. The Velero backup then waits for the snapshot
    until `ItemOperationTimeout` (4 h) and ends `PartiallyFailed`; leave it, the TTL removes it.
 
    ```bash
@@ -178,7 +182,9 @@ kubectl get volumesnapshots -A | grep -v "true" | head
    ```
 
    If node1 runs an older RustFS than git, run `make deploy-rustfs` on pimaster by day (S3 is down for a few
-   seconds; clients retry). Then take a manual backup (step 5) and check that the volume's `LASTBACKUPAT` in
+   seconds; clients retry). Count the nightly timeouts with
+   `sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE '"timestamp":"[0-9-]+T[0-9]{2}' | cut -c14- | sort | uniq -c | tail`.
+   Then take a manual backup (step 5) and check that the volume's `LASTBACKUPAT` in
    `kubectl -n longhorn-system get backupvolumes.longhorn.io` is today.
 
 4. Velero not running or schedule paused:

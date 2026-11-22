@@ -38,8 +38,9 @@ sudo sh -c 'cat /var/log/rustfs/*' | grep "<YYYY-MM-DDTHH:MM>" | head -20
 3. Client view: `rc ls picluster/` lists the buckets (`k3s-barman`, `k3s-loki`, `k3s-longhorn`, `k3s-tempo`,
    `k3s-velero`, `restic`).
 4. TLS: an expired certificate fails every client, see `NET-009`.
-5. A client reports `NoSuchBucket` but step 3 lists the bucket: RustFS answered a wrong error for a short
-   time (seen 2026-11-21/22 on a long Longhorn upload, node1 still on `1.0.0-beta.7` while git said `1.0.4`).
+5. A client reports `NoSuchBucket` but step 3 lists the bucket: RustFS timed out on node1's disk and answered a wrong
+   error (seen 2026-11-21/22 during the nightly backup, `Io error: timeout` in the logs; node1 still on
+   `1.0.0-beta.7` while git said `1.0.4`).
    Do not recreate the bucket. Bring RustFS to the git version (`make deploy-rustfs` on pimaster, by day)
    and retry the client (Longhorn/Velero: `BACKUP-004` step 3a).
 6. Only if the bucket is really missing: recreate it with `terraform/minio` (needs an explicit `tofu apply`).

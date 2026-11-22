@@ -179,34 +179,51 @@ Causes found in the config, most important first:
 
 ### 22 Nov: Velero backups PartiallyFailed (Elasticsearch volume)
 `full-20261121` and `full-20261122` PartiallyFailed, `VeleroNoRecentBackup` critical. Only the Elasticsearch
-Longhorn backup failed, both nights (02:44 and 03:14 UTC, a different new block each time) with
-`NoSuchBucket`, although `k3s-longhorn` exists (since 9 Aug, 80 GB), has no orphaned objects, and every other
-volume uploaded to it in the same run. RustFS: no restart since 14 Nov, but node1 runs **`1.0.0-beta.7`**
-while git says `1.0.4` (bumped 1 Nov, never deployed). RustFS logs are in `/var/log/rustfs/`, not the
-journal. Runbooks: BACKUP-004 step 3a, MINIO-001.
+Longhorn backup failed, both nights (02:44 and 03:14 UTC) with `NoSuchBucket`, although `k3s-longhorn` exists
+and has no orphaned objects. **Cause: node1's single disk saturates during the backups.** `/var/log/rustfs/`
+(RustFS does not log to the journal) shows `Io error: timeout` every night 02:00-04:00 UTC since at least
+12 Nov; requests took 52-65 s and returned 500 or `NoSuchBucket`. The hourly bucket-metrics walk made it worse
+(22 Nov: walk started 03:14:23, error 03:14:44; `IOSchedulingClass=idle` does nothing with `mq-deadline`).
+Also: node1 runs RustFS **`1.0.0-beta.7`** while git says `1.0.4` (bumped 1 Nov, never deployed).
+Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 
-- [ ] **Manual backup `full-manual-6gsmq`** (started 22 Nov) Completed, ES `LASTBACKUPAT` today (node2):
+- [x] **Manual backup `full-manual-6gsmq`** Completed, ES `LASTBACKUPAT` 2026-11-22T06:47 (clears
+  `VeleroNoRecentBackup`).
+- [x] **RustFS logs at the failure times:** I/O timeouts on `.rustfs.sys/config/iam/`, 500s after 52-65 s.
+- [x] **Timer out of the backup window** (committed 22 Nov): hourly at :15, paused 02:00-04:59 UTC;
+  `RustFSBucketMetricsMissing` 3 h → 5 h.
+- [ ] **Apply the timer before 02:00 UTC** (pimaster, then node1; `--limit node1` skips the k3s plays):
   ```bash
-  kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors,WARN:.status.warnings | tail -2
-  kubectl -n longhorn-system get backupvolumes.longhorn.io | grep -E "NAME|pvc-a6e3a543"
+  cd ~/picluster && git pull && ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node1
   ```
-- [ ] **RustFS logs at the failure times** (node1):
   ```bash
-  sudo sh -c 'cat /var/log/rustfs/*; zcat -f /var/log/rustfs/*.gz' 2>/dev/null | grep -E "2026-11-21T02:4[345]|2026-11-22T03:1[45]" | cut -c1-250 | sort | uniq -c | sort -rn | head -15
+  sudo systemctl daemon-reload && sudo systemctl restart rustfs-bucket-metrics.timer && systemctl list-timers rustfs-bucket-metrics.timer --no-pager
   ```
-- [ ] **Upgrade RustFS to the git version**, by day, after the manual backup. Dry run first, then the real one
-  (pimaster); S3 is down for a few seconds, clients retry:
+  NEXT shows `:15`. The pimaster `--check` dry run of `deploy_rustfs.yml` fails on `cert_path` by design
+  (certbot is skipped in check mode); the real run is fine.
+- [ ] **Upgrade RustFS to 1.0.4**, by day, after a clean night. 1.0.1 "protect single-disk foreground latency",
+  1.0.2 "warn on stalled local disk operations" and several delete-residue fixes apply here; startup runs
+  IAM/metadata migrations, so save `.rustfs.sys` first (node1, then pimaster, then node1):
   ```bash
-  cd ~/picluster && git pull && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml --check --diff 2>&1 | grep -E "TASK|changed|version|PLAY RECAP" | tail -40
-  make deploy-rustfs
+  sudo tar czf ~/rustfs-sys-$(date +%F).tgz -C /storage/rustfs .rustfs.sys && ls -la ~/rustfs-sys-*.tgz
   ```
-  Then on node1: `/usr/local/bin/rustfs --version | head -1` shows `1.0.4`, `rc ls picluster/` lists 6 buckets.
-- [ ] **Next nightly backups** (23 and 24 Nov) Completed with 0 errors. If ES fails again on 1.0.4: report
-  upstream with the log lines (postmortem 11-15 actions 10 and 12).
+  ```bash
+  cd ~/picluster && make deploy-rustfs
+  ```
+  ```bash
+  /usr/local/bin/rustfs --version | head -1; rc ls picluster/; sudo tail -5 /var/log/rustfs/$(sudo ls -t /var/log/rustfs | head -1)
+  ```
+- [ ] **Next nightly backups** (23 and 24 Nov) Completed with 0 errors, and fewer timeouts (node1):
+  ```bash
+  sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE '"timestamp":"[0-9-]+T[0-9]{2}' | cut -c14- | sort | uniq -c | tail -6
+  ```
+  If ES still fails, or timeouts stay in the hundreds after the upgrade: a separate disk for `/storage` on node1
+  (postmortem action 11) and the upstream report (action 10).
 
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
 - [ ] It no longer lists `tempo-ingester-0`. It will still show the 21/22 Nov Velero failures (7-day window).
+- [ ] Not woken by `RustFSBucketMetricsMissing` at night (threshold now 5 h for the 01:15 → 05:15 gap).
 
 ### 27 Nov: RustFS growth in the digest
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).

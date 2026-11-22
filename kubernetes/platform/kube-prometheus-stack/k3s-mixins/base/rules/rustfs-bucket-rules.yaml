@@ -43,12 +43,12 @@ spec:
     - alert: RustFSBucketMetricsMissing
       annotations:
         summary: No RustFS bucket metrics from node1.
-        description: The RustFS bucket metrics file on node1 is older than 3 hours or missing, so bucket growth and orphaned data would not be noticed. Check `systemctl status rustfs-bucket-metrics.service` on node1. Runbook CLUSTER-012 step 7.
+        description: The RustFS bucket metrics file on node1 is older than 5 hours or missing, so bucket growth and orphaned data would not be noticed. Check `systemctl status rustfs-bucket-metrics.service` on node1. Runbook CLUSTER-012 step 7.
         runbook: CLUSTER-012
         runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-012
-      # Hourly timer: 3 hours = two missed runs.
+      # Hourly timer, paused 02:00-04:59 UTC (01:15 -> 05:15 gap): 5 hours = one missed run after the gap.
       expr: |
-        (time() - node_textfile_mtime_seconds{job="node-exporter",file=~".*rustfs_buckets.prom"} > 10800)
+        (time() - node_textfile_mtime_seconds{job="node-exporter",file=~".*rustfs_buckets.prom"} > 18000)
         or
         absent(node_textfile_mtime_seconds{job="node-exporter",file=~".*rustfs_buckets.prom"})
       for: 30m

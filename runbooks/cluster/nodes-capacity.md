@@ -247,7 +247,7 @@ sudo sh -c 'nice -n 19 ionice -c3 du -sh /storage/rustfs/* | sort -h'          #
    | `k3s-velero`, `k3s-tempo`, `k3s-barman`, `restic` | a few GB in total | Check the tool's own retention; for `k3s-velero` also orphaned archives (below) |
 
    Per-bucket numbers without `du`: Prometheus has `rustfs_bucket_size_bytes`, `rustfs_bucket_orphan_objects` and
-   `rustfs_bucket_orphan_bytes` per bucket, written every hour by the `rustfs-bucket-metrics` timer on node1
+   `rustfs_bucket_orphan_bytes` per bucket, written hourly at :15 (paused 02:00-04:59 UTC, the backup window) by the `rustfs-bucket-metrics` timer on node1
    (`ansible/roles/basic_setup/tasks/rustfs_bucket_metrics.yml`). Alerts: `RustFSBucketGrowingFast` (more than 5 GB
    in 24h), `RustFSOrphanedData` (more than 2 GB orphaned for 6h), `RustFSBucketMetricsMissing`.
 
