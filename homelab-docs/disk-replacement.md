@@ -27,16 +27,16 @@ SMART on 2026-11-22 (all nodes):
 |---|---|---|---|---|
 | node-esp-2 | Crucial MX500 500 GB, SATA | **109%** | **1,754 reported uncorrectable, 6 offline uncorrectable, 2 reallocations** | Longhorn (ES + Prometheus copies) |
 | node6 | Crucial BX500 240 GB, USB | **100%** `FAILING_NOW` | none | Longhorn |
-| node5 | Crucial BX500 480 GB, USB | **100%** `FAILING_NOW` | 92 CRC (adapter/cable) | Longhorn |
+| node5 | Crucial BX500 480 GB, USB | **100%** `FAILING_NOW` | 92 CRC (old, not increasing: see 2.2) | Longhorn |
 | node4 | Crucial BX500 240 GB, USB | **100%** `FAILING_NOW` | none | etcd |
 | node3 | Crucial BX500 240 GB, USB | 47% | none | etcd |
 | node2 | Crucial BX500 240 GB, USB | 35% | 10 CRC | etcd |
 | node1 | Crucial BX500 240 GB, USB | 37% | 7 CRC | Vault, RustFS, DNS |
+| node-esp-1 | Crucial BX500 480 GB, SATA | 34% | none | Longhorn (ES + Prometheus copies) |
 
 Models confirmed with `smartctl -i`: `CT240BX500SSD1` (firmware M6CR056) on node1–node4, `CT240BX500SSD1` on node6,
 `CT480BX500SSD1` on node5 and node-esp-1, `CT500MX500SSD1` on node-esp-2. **Do not buy BX500 again**: DRAM-less
 (recent batches QLC), it collapses under sustained writes long before its rated life.
-| node-esp-1 | Crucial BX500 480 GB, SATA | 34% | none | Longhorn (ES + Prometheus copies) |
 
 Budget DRAM-less drives (BX500) without TRIM (the Pi USB bridges report `DISC-MAX 0B`) wear out in about two
 years under Longhorn and etcd writes, and slow to hundreds of milliseconds per write long before they fail. That
@@ -97,13 +97,20 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 1. **2.5" SATA** drive (not NVMe, not mSATA, not M.2).
 2. **Max power ≤ 4 W** in the drive's datasheet: the Pi 4 gives about 1.2 A (6 W) to all its USB ports
    together. Use the official 3 A power supply and nothing else on the Pi's USB ports.
-3. **One new StarTech adapter of the same model for node5** (its current one logs 92 CRC errors).
+3. **node5's adapter stays.** Its drive shows 92 CRC errors, but they are old. Tested on 2026-11-22:
+   - reading 33 GB raw from the disk ran at 354 MB/s and the CRC count stayed at 92;
+   - the SATA Phy counters (`smartctl -l sataphy`: ICRC, R_ERR, COMRESET) were all 0 after 8 days of uptime,
+     including that day's incident load;
+   - the link was `uas` at 5000M, the kernel log showed no USB/UAS errors in 7 days, and `vcgencmd get_throttled`
+     returned `0x0`.
+
+   A spare StarTech adapter of the same model is optional.
 4. The `fio` + `dmesg` check in procedure A5 stays as a **check after each swap**, not a reason to wait before
    buying.
 
 ### 2.3 Shopping list
 
-**Phase 1, buy now: 4 drives + 1 adapter.** Pick one option.
+**Phase 1, buy now: 4 drives** (+ 1 optional spare adapter). Pick one option.
 
 | Option | Qty | Drive | Size | For |
 |---|---|---|---|---|
@@ -117,7 +124,7 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 | | 1 | WD Red SA500 2.5" SATA | **500 GB** | node4 |
 | **E: Kingston DC600M** (best, most expensive) | 3 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-2, node6, node5 |
 | | 1 | Kingston DC600M 2.5" SATA | **480 GB** | node4 |
-| **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter (USB 3.2 Gen 1 / 5 Gbps, UAS), same model as the others | | node5 |
+| **All options, optional** | 1 | StarTech USB 3.0 to 2.5" SATA adapter (USB 3.2 Gen 1 / 5 Gbps, UAS), same model as the others | | spare (node5's tested OK) |
 
 **Phase 2, later (not now):** 1 × 1 TB for node-esp-1, 1 × 1 TB for node1, 2 × 500 GB for node2 and node3, same
 model as phase 1. Buy each when SMART monitoring (postmortem action 3c) reports it near its end.
@@ -136,9 +143,9 @@ model as phase 1. Buy each when SMART monitoring (postmortem action 3c) reports 
 | | 3 | WD Red SA500 2.5" SATA | **500 GB** | node2, node3, node4 |
 | **E: Kingston DC600M** (best, most expensive) | 5 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-1, node-esp-2, node5, node6, node1 |
 | | 3 | Kingston DC600M 2.5" SATA | **480 GB** | node2, node3, node4 |
-| **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | | node5 |
+| **All options, optional** | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | | spare |
 
-Total per option: **8 drives** (5 × 1 TB class + 3 × 500 GB class) + **1 adapter**. For more Longhorn space take
+Total per option: **8 drives** (5 × 1 TB class + 3 × 500 GB class), plus an optional spare adapter. For more Longhorn space take
 **2 TB** (MX500 / KC600 / 870 EVO / SA500) or **1.92 TB** (DC600M) instead of the 1 TB class: same procedure, about double the
 price of those 5 drives.
 
@@ -162,7 +169,7 @@ One node per day at most. Each swap waits for Longhorn to be fully healthy befor
 |---|---|---|---|
 | 1 | node6 | A | Worst Pi disk; first run of the new drive in a Pi adapter (A5 check) |
 | 2 | node-esp-2 | B | Disk with errors. After node6, so its ES/Prometheus copies move to a healthy disk |
-| 3 | node5 | A | Worn; new adapter too |
+| 3 | node5 | A | Worn (adapter tested OK, kept) |
 | 4 | node4 | C | Worn etcd disk |
 
 **Phase 2 (later, when SMART warns):** node-esp-1 (B), node3 (C), node2 (C: first master in the inventory, see the
@@ -272,7 +279,7 @@ The `node-password` secret must go, or k3s rejects the reinstalled node ("Node p
 
 ### A4. Image the new SSD
 
-Put the new SSD in node6's adapter (node5: in the new adapter) and connect it to the laptop.
+Put the new SSD in the node's adapter and connect it to the laptop.
 
 **Laptop (Windows):**
 
@@ -569,7 +576,7 @@ When node6, node-esp-2 and node5 run on new disks:
 |---|---|---|---|---|---|---|
 | 1 | node6 | StarTech `14b0:0207` | | | | |
 | 2 | node-esp-2 | internal SATA | | | | |
-| 3 | node5 | new StarTech (old `14b0:0207`, CRC errors) | | | | |
+| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | | | | |
 | 4 | node-esp-1 | internal SATA | | | | |
 | 5 | node4 | StarTech `14b0:0206` | | | | |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
