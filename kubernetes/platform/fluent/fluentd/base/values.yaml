@@ -4,7 +4,8 @@
 image:
   repository: "ghcr.io/marmila/fluentd-aggregator"
   pullPolicy: "Always"
-  tag: "v1.18-kafka"
+  # Built by .github/workflows/build-fluentd.yml from docker/fluentd/Dockerfile (amd64 + arm64)
+  tag: "v1.20.1-kafka"
 
 # Deploy fluentd as deployment
 kind: "Deployment"
@@ -16,6 +17,19 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
+
+# Resource requests are required by the HPA (without a CPU request the
+# autoscaler shows <unknown> / FailedGetResourceMetric). Usage on 2026-11-22:
+# ~36m CPU and ~226Mi. The 100m request keeps the effective target at 80m, so
+# the aggregator stays at 1 replica and only scales on real bursts. The 1Gi
+# memory limit leaves room for buffer spikes. From upstream a76e48ec8.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
 
 # Do not create serviceAccount and RBAC. Fluentd does not need to get access to kubernetes API.
 serviceAccount:
@@ -112,6 +126,12 @@ volumes:
     configMap:
       name: fluentd-template
       defaultMode: 0777
+  # File-buffer storage for the ES and Loki outputs (upstream a76e48ec8). Per-POD
+  # and bounded, so a jammed output cannot grow memory without limit. Survives a
+  # container restart, not a POD reschedule.
+  - name: fluentd-buffer
+    emptyDir:
+      sizeLimit: 1Gi
 
 volumeMounts:
   - name: etcfluentd-template
@@ -119,6 +139,8 @@ volumeMounts:
   - mountPath: /etc/fluent/certs
     name: fluentd-tls
     readOnly: true
+  - mountPath: /var/log/fluent/buffer
+    name: fluentd-buffer
 
 # Probes - fluentd takes a few seconds to start, need initial delay
 livenessProbe:

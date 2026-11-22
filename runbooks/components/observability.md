@@ -165,6 +165,15 @@ curl -sG "$PROM/api/v1/query" --data-urlencode 'query=fluentd_output_status_retr
 The fix is on the output side, not the input side: set `overflow_action` on the Loki store, or give
 Loki its own `<match>` with a bounded buffer, so one jammed sink cannot starve the other.
 
+As of 2026-11-22 both stores use a **file buffer** on a 1 GiB `emptyDir`
+(`/var/log/fluent/buffer/{es,loki}`, `total_limit_size 400MB` each) with
+`overflow_action drop_oldest_chunk`. Overflow now drops the oldest chunks of the jammed store only
+and never raises `BufferOverflowError` into the shared `copy`, so a Loki outage no longer stalls
+Elasticsearch (and vice versa). The trade-off is deliberate: under a long sink outage the oldest
+records of *that* sink are dropped instead of the whole batch being lost. The buffer survives a
+container restart but not a POD reschedule (the aggregator is a `Deployment` with an HPA).
+The Kafka outputs (threatmap `attack-events`) keep their memory buffers.
+
 **Confirming that one host is actually shipping**
 
 `fluentd_input_status_num_records_total` is emitted by a `prometheus` filter **after** `in_forward`
@@ -183,6 +192,25 @@ kubectl -n fluent logs deploy/fluentd --since=10m | grep -c 'skip invalid event'
 Then confirm at the destination (`host="<name>"` in Loki, or the index in Elasticsearch): the input
 counter proves the aggregator accepted the batch, not that it reached a sink.
 
+
+Common cause: unbounded label cardinality.
+
+`429 maximum active stream limit exceeded` and an OOM-looping ingester usually mean one label
+value is unbounded, not that the ingester is undersized. `host` is the usual culprit: an upstream
+parse failure puts a blob (often a full JSON log line) in `host`, and every distinct value becomes
+a new stream.
+
+```bash
+# in-memory streams for the ingester (a healthy homelab is dozens, not thousands)
+kubectl -n loki get --raw "/api/v1/namespaces/loki/pods/loki-write-0:3100/proxy/metrics" \
+  | grep -E '^loki_ingester_memory_streams'
+```
+
+Fluentd drops records whose `host` is not a plain hostname before the Loki output
+(`@OUTPUT_LOKI`); those records still reach Elasticsearch. If the count is still in the thousands,
+the malformed streams are persisted in the ingester WAL and are replayed on every restart: check
+`msg="Recovered from WAL segments"`. Clearing `/var/loki/wal` while the ingester is stopped
+discards them, at the cost of the unflushed Loki copy (Elasticsearch keeps the full history).
 
 Verify:
 
