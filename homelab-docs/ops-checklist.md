@@ -303,7 +303,14 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   flux get kustomizations -A | tail -n +2 | awk '$5!="True"' | cut -c1-160                       # only the 2 suspended threatmap ones
   ```
 - [ ] **`DiskWornOut` on the phone** (expected ~19:00 UTC, 4 disks): when it has arrived, silence it for 30 days:
-  `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-alertmanager-0 -c alertmanager -- amtool silence add alertname=DiskWornOut 'nodename=~"node4|node5|node6|node-esp-2"' --duration=30d --author=marmila --comment="Known worn disks, replacement planned" --alertmanager.url=http://localhost:9093`
+  `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool silence add alertname=DiskWornOut 'nodename=~"node4|node5|node6|node-esp-2"' --duration=30d --author=marmila --comment="Known worn disks, replacement planned" --alertmanager.url=http://localhost:9093`
+
+- [ ] **Silence `FluxResourceSuspended` for 90 days** (until about 20 Feb 2027): it fires after 24 h for
+  `threatmap-app`, `mongodb-community-operator-app` and HelmRelease `mongodb-community-operator`, suspended on
+  purpose. Its text says to resume them: do not, that restarts threatmap.
+  `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool silence add alertname=FluxResourceSuspended 'name=~"threatmap-app|mongodb-community-operator-app|mongodb-community-operator"' --duration=90d --author=marmila --comment="threatmap disabled on purpose 2026-11-22: do NOT resume" --alertmanager.url=http://localhost:9093`.
+  When it expires: re-enable threatmap, or remove it for good (the two `suspend: true` lines, the Velero
+  exclusion and, if unused, the MongoDB operator).
 
 **23 Nov morning (node2):**
 - [ ] Nightly Velero backup `Completed`, no `threatmap` objects in it
