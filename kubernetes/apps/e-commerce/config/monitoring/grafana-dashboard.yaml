@@ -5,7 +5,7 @@ metadata:
   name: e-commerce-apm
 spec:
   allowCrossNamespaceImport: true
-  folder: E-Commerce
+  folderUID: e-commerce
   instanceSelector:
     matchLabels:
       dashboards: grafana

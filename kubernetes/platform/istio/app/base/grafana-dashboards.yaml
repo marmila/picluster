@@ -4,7 +4,7 @@ metadata:
   name: istio-control-plane
 spec:
   allowCrossNamespaceImport: true
-  folder: Istio
+  folderUID: istio
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -21,7 +21,7 @@ metadata:
   name: istio-mesh
 spec:
   allowCrossNamespaceImport: true
-  folder: Istio
+  folderUID: istio
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -38,7 +38,7 @@ metadata:
   name: istio-performance
 spec:
   allowCrossNamespaceImport: true
-  folder: Istio
+  folderUID: istio
   instanceSelector:
     matchLabels:
       dashboards: grafana

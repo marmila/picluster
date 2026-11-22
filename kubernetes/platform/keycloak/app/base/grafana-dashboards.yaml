@@ -4,7 +4,7 @@ metadata:
   name: keycloak-planning
 spec:
   allowCrossNamespaceImport: true
-  folder: Keycloak
+  folderUID: keycloak
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -19,7 +19,7 @@ metadata:
   name: keycloak-troubleshooting
 spec:
   allowCrossNamespaceImport: true
-  folder: Keycloak
+  folderUID: keycloak
   instanceSelector:
     matchLabels:
       dashboards: grafana

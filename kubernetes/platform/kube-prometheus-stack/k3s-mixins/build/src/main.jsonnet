@@ -94,7 +94,7 @@ local grafanaDashboardResource(folder, name, json) = {
   },
   spec: {
     allowCrossNamespaceImport: true,
-    folder: folder,
+    folderUID: std.asciiLower(std.strReplace(folder, ' ', '-')),
     instanceSelector: {
       matchLabels: {
         dashboards: 'grafana',

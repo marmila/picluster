@@ -5,3 +5,4 @@ namespace: grafana
 resources:
   - grafana-externalsecret.yaml
   - grafana.yaml
+  - grafana-folders.yaml

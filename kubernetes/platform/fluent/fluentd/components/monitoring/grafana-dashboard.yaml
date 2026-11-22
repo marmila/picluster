@@ -10,7 +10,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: dashboard-fluentd-fluentd
     key: fluentd.json

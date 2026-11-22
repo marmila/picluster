@@ -11,7 +11,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-cruise-control
     key: strimzi-cruise-control.json
@@ -28,7 +28,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka-bridge
     key: strimzi-kafka-bridge.json
@@ -45,7 +45,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka-connect
     key: strimzi-kafka-connect.json
@@ -62,7 +62,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka-exporter
     key: strimzi-kafka-exporter.json
@@ -79,7 +79,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka-mirror-maker-2
     key: strimzi-kafka-mirror-maker-2.json
@@ -96,7 +96,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka-oauth
     key: strimzi-kafka-oauth.json
@@ -113,7 +113,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kafka
     key: strimzi-kafka.json
@@ -130,7 +130,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-kraft
     key: strimzi-kraft.json
@@ -147,7 +147,7 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  folder: Strimzi
+  folderUID: strimzi
   configMapRef:
     name: strimzi-operators
     key: strimzi-operators.json

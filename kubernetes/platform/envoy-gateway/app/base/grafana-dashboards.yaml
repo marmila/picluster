@@ -4,7 +4,7 @@ metadata:
   name: envoy-proxy
 spec:
   allowCrossNamespaceImport: true
-  folder: Envoy-Gateway
+  folderUID: envoy-gateway
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -19,7 +19,7 @@ metadata:
   name: envoy-gateway
 spec:
   allowCrossNamespaceImport: true
-  folder: Envoy-Gateway
+  folderUID: envoy-gateway
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -34,7 +34,7 @@ metadata:
   name: envoy-overview
 spec:
   allowCrossNamespaceImport: true
-  folder: Envoy-Gateway
+  folderUID: envoy-gateway
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -51,7 +51,7 @@ metadata:
   name: envoy-upstream
 spec:
   allowCrossNamespaceImport: true
-  folder: Envoy-Gateway
+  folderUID: envoy-gateway
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -68,7 +68,7 @@ metadata:
   name: envoy-downstream
 spec:
   allowCrossNamespaceImport: true
-  folder: Envoy-Gateway
+  folderUID: envoy-gateway
   instanceSelector:
     matchLabels:
       dashboards: grafana

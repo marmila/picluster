@@ -4,7 +4,7 @@ metadata:
   name: cloudnative-pg
 spec:
   allowCrossNamespaceImport: true
-  folder: Databases
+  folderUID: databases
   instanceSelector:
     matchLabels:
       dashboards: grafana

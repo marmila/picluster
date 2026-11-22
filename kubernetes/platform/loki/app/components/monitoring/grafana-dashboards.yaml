@@ -8,7 +8,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-1
     key: loki-operational.json
@@ -22,7 +22,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-2
     key: loki-writes.json
@@ -36,7 +36,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-2
     key: loki-reads.json
@@ -50,7 +50,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-2
     key: loki-writes-resources.json
@@ -64,7 +64,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-2
     key: loki-reads-resources.json
@@ -78,7 +78,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-1
     key: loki-chunks.json
@@ -92,7 +92,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-2
     key: loki-retention.json
@@ -106,7 +106,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-1
     key: loki-deletion.json
@@ -120,7 +120,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Observability
+  folderUID: observability
   configMapRef:
     name: loki-dashboards-1
     key: loki-logs.json

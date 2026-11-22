@@ -1,0 +1,214 @@
+# One GrafanaFolder per dashboard folder, with a fixed UID.
+# Dashboards point at these with spec.folderUID instead of spec.folder (title).
+# With spec.folder the operator creates the folder on the fly, and dashboards synced
+# at the same moment (after a restart) each created their own copy: duplicate folders.
+# folderUID works across namespaces, so dashboards in any namespace can use these.
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-backup
+spec:
+  title: Backup
+  uid: backup
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-cilium
+spec:
+  title: Cilium
+  uid: cilium
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-dns
+spec:
+  title: DNS
+  uid: dns
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-databases
+spec:
+  title: Databases
+  uid: databases
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-e-commerce
+spec:
+  title: E-Commerce
+  uid: e-commerce
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-envoy-gateway
+spec:
+  title: Envoy-Gateway
+  uid: envoy-gateway
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-flux
+spec:
+  title: Flux
+  uid: flux
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-grafana
+spec:
+  title: Grafana
+  uid: grafana
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-istio
+spec:
+  title: Istio
+  uid: istio
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-keycloak
+spec:
+  title: Keycloak
+  uid: keycloak
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-kube-vip
+spec:
+  title: Kube-Vip
+  uid: kube-vip
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-kubernetes
+spec:
+  title: Kubernetes
+  uid: kubernetes
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-logging
+spec:
+  title: Logging
+  uid: logging
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-node-exporter
+spec:
+  title: Node Exporter
+  uid: node-exporter
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-observability
+spec:
+  title: Observability
+  uid: observability
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-router
+spec:
+  title: Router
+  uid: router
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-secret-management
+spec:
+  title: Secret Management
+  uid: secret-management
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-storage
+spec:
+  title: Storage
+  uid: storage
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: folder-strimzi
+spec:
+  title: Strimzi
+  uid: strimzi
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
