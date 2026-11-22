@@ -58,6 +58,9 @@ metadata:
   name: mongodb-community-operator-app
   namespace: flux-system
 spec:
+  # Suspended 2026-11-22 with threatmap-app (the only MongoDB in use): the
+  # operator is scaled to 0 by hand so it does not restart threatmap's MongoDB.
+  suspend: true
   interval: 30m
   targetNamespace: databases
   sourceRef:

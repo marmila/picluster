@@ -4,6 +4,12 @@ metadata:
   name: threatmap-app
   namespace: flux-system
 spec:
+  # Disabled 2026-11-22 to cut disk writes (MongoDB ~27 GB/day on the worn disks).
+  # Suspended, not removed: removing it would prune the namespace and the MongoDB
+  # volume. Workloads were scaled to 0 by hand (homelab-docs/ops-checklist.md).
+  # To re-enable: delete this line and the one in databases-app.yaml
+  # (mongodb-community-operator-app), push, then scale back up.
+  suspend: true
   interval: 30m
   targetNamespace: threatmap
   sourceRef:
