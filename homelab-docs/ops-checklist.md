@@ -302,10 +302,10 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 "}'   # ["threatmap"]
   flux get kustomizations -A | tail -n +2 | awk '$5!="True"' | cut -c1-160                       # only the 2 suspended threatmap ones
   ```
-- [ ] **`DiskWornOut` on the phone** (expected ~19:00 UTC, 4 disks): when it has arrived, silence it for 30 days:
+- [x] **`DiskWornOut` silenced** 22 Nov until 22 Dec 2026 (silence `e33eec49`; swap the disks before it ends or extend it):
   `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool silence add alertname=DiskWornOut 'nodename=~"node4|node5|node6|node-esp-2"' --duration=30d --author=marmila --comment="Known worn disks, replacement planned" --alertmanager.url=http://localhost:9093`
 
-- [ ] **Silence `FluxResourceSuspended` for 90 days** (until about 20 Feb 2027): it fires after 24 h for
+- [x] **`FluxResourceSuspended` silenced** 22 Nov until 20 Feb 2027 (silence `1d710e92`): it fires after 24 h for
   `threatmap-app`, `mongodb-community-operator-app` and HelmRelease `mongodb-community-operator`, suspended on
   purpose. Its text says to resume them: do not, that restarts threatmap.
   `kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool silence add alertname=FluxResourceSuspended 'name=~"threatmap-app|mongodb-community-operator-app|mongodb-community-operator"' --duration=90d --author=marmila --comment="threatmap disabled on purpose 2026-11-22: do NOT resume" --alertmanager.url=http://localhost:9093`.
