@@ -85,7 +85,23 @@ sectors yet. `UDMA_CRC_Error_Count` 92 (cable/USB adapter). Longhorn replicas wr
 hours (2.4 years; rated 80 TBW). No reallocated/uncorrectable sectors, 0 CRC errors. It is the disk that kept 700–1,400 ms
 write latency at under 200 kB/s. Installing a small package on it (`iotop`) took minutes in the `man-db` trigger.
 
-A second reason it collapses: **TRIM never reaches the SSD.** The USB bridge reports `DISC-MAX 0B` (`lsblk -D`), so
+**SMART on every node (14:10):**
+
+| Node | Drive | Lifetime used | Errors | Holds | Verdict |
+|---|---|---|---|---|---|
+| node-esp-2 | Crucial MX500 500 GB (SATA) | **109%** (erase count 1,640, ≈187 TB written) | **1,754 reported uncorrectable, 6 offline uncorrectable, 2 reallocation events** | Longhorn (ES + Prometheus copies) | Replace first |
+| node6 | Crucial BX500 240 GB (USB) | 100%, `FAILING_NOW` | none | Longhorn | Replace |
+| node5 | Crucial BX500 480 GB (USB) | 100%, `FAILING_NOW` | 92 CRC | Longhorn | Replace, plus USB adapter |
+| node4 | Crucial BX500 240 GB (USB) | 100%, `FAILING_NOW` (erase count 1,467) | none | etcd | Replace |
+| node3 | 240 GB (USB) | 47% | none | etcd | OK |
+| node2 | 240 GB (USB) | 35% | 10 CRC | etcd | OK |
+| node1 | 240 GB (USB) | 37% | 7 CRC | Vault, RustFS | OK |
+| node-esp-1 | Crucial BX500 480 GB (SATA) | 34% | none | Longhorn (ES + Prometheus copies) | OK |
+
+The fleet wears through budget SSDs in about two years under Longhorn and etcd writes. After this incident ES and
+Prometheus run on 2 replicas, one on node-esp-2's failing drive.
+
+A second reason the Pi disks collapse: **TRIM never reaches the SSD.** The USB bridge reports `DISC-MAX 0B` (`lsblk -D`), so
 `fstrim.timer` runs every week and "succeeds" but discards nothing. Without TRIM a cheap SSD (`00SSD1`) runs out of
 clean blocks under sustained writes and its garbage collection stalls every write. A rebuild storm (Elasticsearch 12 GB
 plus Loki plus MongoDB onto node5), the Kafka broker and 3 Fluentd pods were enough. node6 has the same model; its check
