@@ -4,7 +4,7 @@ metadata:
   name: grafana-dashboard-namespace-by-workload
 spec:
   allowCrossNamespaceImport: true
-  folder: Kubernetes
+  folderUID: kubernetes
   instanceSelector:
     matchLabels:
       dashboards: grafana

@@ -4,7 +4,7 @@ metadata:
   name: flux-cluster
 spec:
   allowCrossNamespaceImport: true
-  folder: Flux
+  folderUID: flux
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -16,7 +16,7 @@ metadata:
   name: flux-control-plane
 spec:
   allowCrossNamespaceImport: true
-  folder: Flux
+  folderUID: flux
   instanceSelector:
     matchLabels:
       dashboards: grafana

@@ -5,7 +5,7 @@ metadata:
   name: grafana-dashboard-kube-vip
 spec:
   allowCrossNamespaceImport: true
-  folder: Kube-Vip
+  folderUID: kube-vip
   instanceSelector:
     matchLabels:
       dashboards: grafana

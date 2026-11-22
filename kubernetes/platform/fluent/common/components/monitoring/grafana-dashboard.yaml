@@ -8,7 +8,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  folder: Logging
+  folderUID: logging
   grafanaCom:
     id: 7752
     revision: 6

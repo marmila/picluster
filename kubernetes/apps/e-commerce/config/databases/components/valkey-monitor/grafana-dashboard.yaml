@@ -9,7 +9,7 @@ metadata:
   name: valkey
 spec:
   allowCrossNamespaceImport: true
-  folder: Databases
+  folderUID: databases
   instanceSelector:
     matchLabels:
       dashboards: grafana

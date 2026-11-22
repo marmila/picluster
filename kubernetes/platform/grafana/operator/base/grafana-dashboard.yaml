@@ -3,7 +3,7 @@ kind: GrafanaDashboard
 metadata:
   name: grafana-operator
 spec:
-  folder: Grafana
+  folderUID: grafana
   instanceSelector:
     matchLabels:
       dashboards: grafana

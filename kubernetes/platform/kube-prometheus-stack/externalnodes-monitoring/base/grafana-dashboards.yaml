@@ -4,7 +4,7 @@ metadata:
   name: bind-exporter
 spec:
   allowCrossNamespaceImport: true
-  folder: DNS
+  folderUID: dns
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -21,7 +21,7 @@ metadata:
   name: openwrt
 spec:
   allowCrossNamespaceImport: true
-  folder: Router
+  folderUID: router
   instanceSelector:
     matchLabels:
       dashboards: grafana
