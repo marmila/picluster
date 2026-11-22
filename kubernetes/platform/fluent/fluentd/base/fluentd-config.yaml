@@ -237,17 +237,39 @@ data:
             customize_template {"<<shard>>": "1","<<replica>>": "0", "<<TAG>>":"${index_name}"}
             remove_keys index_name
             <buffer tag, index_name>
+                @type file
+                path /var/log/fluent/buffer/es
                 flush_thread_count "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_FLUSH_THREAD_COUNT'] || '8'}"
                 flush_interval "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_FLUSH_INTERVAL'] || '5s'}"
                 chunk_limit_size "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_CHUNK_LIMIT_SIZE'] || '2M'}"
-                queue_limit_length "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_QUEUE_LIMIT_LENGTH'] || '32'}"
+                total_limit_size 400MB
                 retry_max_interval "#{ENV['FLUENT_ELASTICSEARCH_BUFFER_RETRY_MAX_INTERVAL'] || '30'}"
                 retry_forever true
+                # Do not raise BufferOverflowError into the shared `@type copy`
+                # (which would fail the Loki store too). Drop the oldest queued
+                # chunks for THIS store only; bounded by total_limit_size.
+                overflow_action drop_oldest_chunk
             </buffer>
         </match>
     </label>
     # Loki Output
     <label @OUTPUT_LOKI>
+        # `host` is used as a Loki label, so it must have bounded cardinality:
+        # every distinct value becomes a separate stream. If an upstream parser
+        # fails, `host` can receive an arbitrary blob - typically a whole JSON
+        # log line - and the number of streams explodes until the ingester hits
+        # "maximum active stream limit exceeded" and runs out of memory.
+        #
+        # Drop records whose `host` is not a plain hostname. They are still
+        # delivered to Elasticsearch through @OUTPUT_ES, which does not use
+        # `host` as a label, so no log content is lost. (upstream 84daeff1)
+        <filter **>
+            @type grep
+            <exclude>
+                key host
+                pattern /[^A-Za-z0-9._-]/
+            </exclude>
+        </filter>
         <match **>
             @type loki
             @id out_loki_kube
@@ -266,12 +288,17 @@ data:
                 filename
             </label>
             <buffer>
+                @type file
+                path /var/log/fluent/buffer/loki
                 flush_thread_count 8
                 flush_interval 5s
                 chunk_limit_size 2M
-                queue_limit_length 32
+                total_limit_size 400MB
                 retry_max_interval 30
                 retry_forever true
+                # Isolated from the Elasticsearch store: overflow drops the
+                # oldest Loki chunks instead of throwing and failing the copy.
+                overflow_action drop_oldest_chunk
             </buffer>
         </match>
     </label>
