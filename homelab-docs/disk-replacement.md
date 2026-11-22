@@ -70,8 +70,13 @@ Models (all 2.5" SATA with DRAM cache), with rated endurance (TBW) at the two si
 | Model | 500 GB class | 1 TB class | Notes |
 |---|---|---|---|
 | **Crucial MX500** | 180 TBW (500 GB) | 360 TBW (1 TB) | **Cheapest that is fine.** Low power, common on Pis. At this cluster's rates (node5 ~55 TB/year, masters ~23 TB/year) about 6–8 years, longer once writes are reduced (2.4). Firmware M3CR043 or newer (`smartctl -i`) |
-| WD Red SA500 (NAS) | 350 TBW (500 GB) | 600 TBW (1 TB) | Middle: about twice the endurance of the MX500 |
+| Kingston KC600 | 300 TBW (512 GB) | 600 TBW (1 TB) | Good budget option, often cheap; twice the MX500's endurance |
+| Samsung 870 EVO | 300 TBW (500 GB) | 600 TBW (1 TB) | Very common; same endurance as the KC600 |
+| WD Red SA500 (NAS) | 350 TBW (500 GB) | 600 TBW (1 TB) | NAS drive, same class |
 | Kingston DC600M (data-center) | 876 TBW (480 GB) | 1,752 TBW (960 GB) | Best: power-loss protection (fast `fsync` for etcd/Longhorn), highest endurance, most expensive |
+
+**Avoid** (no DRAM cache or QLC flash): Crucial BX500 (the drive that wore out here), Kingston A400, Samsung 870
+QVO, WD Green, Crucial P-series, no-brand drives.
 
 For comparison, node-esp-2's MX500 500 GB is rated 180 TBW and had written about 187 TB, as the busiest Longhorn
 node with the smallest drive.
@@ -104,9 +109,13 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 |---|---|---|---|---|
 | **A: Crucial MX500** (cheapest that is fine) | 3 | Crucial MX500 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
 | | 1 | Crucial MX500 2.5" SATA | **500 GB** | node4 |
-| **B: WD Red SA500** (middle) | 3 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
+| **B: Kingston KC600** (budget, more endurance) | 3 | Kingston KC600 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
+| | 1 | Kingston KC600 2.5" SATA | **512 GB** | node4 |
+| **C: Samsung 870 EVO** (common) | 3 | Samsung 870 EVO 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
+| | 1 | Samsung 870 EVO 2.5" SATA | **500 GB** | node4 |
+| **D: WD Red SA500** (NAS) | 3 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-2, node6, node5 |
 | | 1 | WD Red SA500 2.5" SATA | **500 GB** | node4 |
-| **C: Kingston DC600M** (best, most expensive) | 3 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-2, node6, node5 |
+| **E: Kingston DC600M** (best, most expensive) | 3 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-2, node6, node5 |
 | | 1 | Kingston DC600M 2.5" SATA | **480 GB** | node4 |
 | **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter (USB 3.2 Gen 1 / 5 Gbps, UAS), same model as the others | | node5 |
 
@@ -119,14 +128,18 @@ model as phase 1. Buy each when SMART monitoring (postmortem action 3c) reports 
 |---|---|---|---|---|
 | **A: Crucial MX500** (cheapest that is fine) | 5 | Crucial MX500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
 | | 3 | Crucial MX500 2.5" SATA | **500 GB** | node2, node3, node4 |
-| **B: WD Red SA500** (middle) | 5 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| **B: Kingston KC600** (budget, more endurance) | 5 | Kingston KC600 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Kingston KC600 2.5" SATA | **512 GB** | node2, node3, node4 |
+| **C: Samsung 870 EVO** (common) | 5 | Samsung 870 EVO 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| | 3 | Samsung 870 EVO 2.5" SATA | **500 GB** | node2, node3, node4 |
+| **D: WD Red SA500** (NAS) | 5 | WD Red SA500 2.5" SATA | **1 TB** | node-esp-1, node-esp-2, node5, node6, node1 |
 | | 3 | WD Red SA500 2.5" SATA | **500 GB** | node2, node3, node4 |
-| **C: Kingston DC600M** (best, most expensive) | 5 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-1, node-esp-2, node5, node6, node1 |
+| **E: Kingston DC600M** (best, most expensive) | 5 | Kingston DC600M 2.5" SATA | **960 GB** | node-esp-1, node-esp-2, node5, node6, node1 |
 | | 3 | Kingston DC600M 2.5" SATA | **480 GB** | node2, node3, node4 |
 | **All options** | 1 | StarTech USB 3.0 to 2.5" SATA adapter, same model as the others | | node5 |
 
 Total per option: **8 drives** (5 × 1 TB class + 3 × 500 GB class) + **1 adapter**. For more Longhorn space take
-**2 TB** (MX500 / SA500) or **1.92 TB** (DC600M) instead of the 1 TB class: same procedure, about double the
+**2 TB** (MX500 / KC600 / 870 EVO / SA500) or **1.92 TB** (DC600M) instead of the 1 TB class: same procedure, about double the
 price of those 5 drives.
 
 Before ordering, check the max power line of the exact model in its datasheet (condition 2).
