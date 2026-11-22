@@ -1,0 +1,81 @@
+---
+# Export SMART data of every node's physical disk (wear, health, media and CRC
+# errors) as Prometheus metrics through the node-exporter textfile collector,
+# every 15 minutes.
+# Read by:
+# - node1: host node_exporter (prometheus.prometheus.node_exporter role, whose
+#   default textfile directory is /var/lib/node_exporter)
+# - k3s nodes: node-exporter DaemonSet (hostPath mount, kube-prometheus-stack values)
+# Alerts: kube-prometheus-stack/k3s-mixins/base/rules/node-smart-rules.yaml
+
+# No recommends: smartmontools recommends a mail transport (postfix).
+- name: Install smartmontools
+  ansible.builtin.apt:
+    name: smartmontools
+    state: present
+    install_recommends: false
+    update_cache: true
+    cache_valid_time: 3600
+
+# smartd would also scan the Longhorn iSCSI disks and try to send mail;
+# Prometheus does the monitoring.
+- name: Disable smartd
+  ansible.builtin.systemd_service:
+    name: smartmontools
+    enabled: false
+    state: stopped
+
+- name: Create node-exporter textfile directory
+  # No owner or mode: on node1 the node_exporter role owns this directory.
+  ansible.builtin.file:  # noqa risky-file-permissions
+    path: /var/lib/node_exporter
+    state: directory
+
+- name: Copy SMART metrics script
+  ansible.builtin.copy:
+    src: scripts/smart_metrics
+    dest: /usr/local/bin/smart_metrics
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create SMART metrics service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/smart-metrics.service
+    content: |
+      # Managed by Ansible (basic_setup/tasks/smart_metrics.yml)
+      [Unit]
+      Description=Export disk SMART data for node-exporter
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/smart_metrics
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create SMART metrics timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/smart-metrics.timer
+    content: |
+      # Managed by Ansible (basic_setup/tasks/smart_metrics.yml)
+      [Unit]
+      Description=Export disk SMART data every 15 minutes
+
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=15min
+      AccuracySec=30s
+
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable and start SMART metrics timer
+  ansible.builtin.systemd_service:
+    name: smart-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true

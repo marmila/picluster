@@ -732,3 +732,101 @@ References:
 - `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-temperature-rules.yaml`
 - `homelab-docs/alerting.md` (Node temperature alerts, Weekly digest)
 - `CLUSTER-016` for under-voltage on a Pi
+
+## CLUSTER-018 Disk Health (SMART) and Slow Disk
+
+<a id="runbook-cluster-018"></a>
+Runbook ID: `CLUSTER-018`
+Owner: Platform
+Severity: `SEV-2` (`SEV-1` when `DiskSmartFailing` or `DiskMediaErrors` fires on a node holding Longhorn
+replicas, etcd or node1's Vault/RustFS)
+
+Objective: Find out whether a node's disk is worn, failing, badly connected or only busy, and move data off it
+before it fails or slows the cluster down.
+
+Alerts:
+
+| Alert | Fires when | Severity | Means |
+| --- | --- | --- | --- |
+| `DiskSmartFailing` | `smartctl -H` says FAILED for 30m | critical | The drive expects to fail |
+| `DiskMediaErrors` | attribute 5, 187, 196, 197 or 198 grew in the last 24h | critical | Flash failing, data may be lost |
+| `DiskWornOut` | rated life used ≥ 80% for 1h | warning | Plan the replacement |
+| `DiskCrcErrorsIncreasing` | attribute 199 (UDMA CRC) grew in the last hour | warning | Cable, adapter, port or power, not the flash |
+| `DiskWriteLatencyHigh` | average write over 100 ms for 15m (with at least 1 write/s) | warning | Disk worn or saturated |
+| `DiskSmartMetricsMissing` | `smartmon.prom` older than 1h, missing, or a disk unreadable | warning | Monitoring blind on that node |
+
+Background: on 2026-11-22 node4, node5 and node6 (Crucial BX500, DRAM-less) were at 100% of their rated life
+and node-esp-2 (MX500) at 109% with 1,754 uncorrectable errors; node5 and node6 stalled Elasticsearch through
+Longhorn ([postmortem](../../postmortems/incident-2026-11-22-elasticsearch-slow-longhorn-pi-disks.md)). The
+metrics come from `/usr/local/bin/smart_metrics`, run every 15 minutes by the `smart-metrics` timer on every node
+(Ansible `basic_setup/tasks/smart_metrics.yml`). Error alerts only count new errors: old totals (node5's 92 CRC
+errors) do not fire.
+
+Procedure:
+
+1. All disks at a glance. On node2:
+
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+q() { kubectl get --raw "${P}$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$1")" \
+  | python3 -c 'import sys,json;[print(r["metric"].get("nodename",r["metric"].get("instance")), r["metric"].get("device",""), r["metric"].get("name",""), round(float(r["value"][1]),3)) for r in json.load(sys.stdin)["data"]["result"]]'; }
+J='* on (instance) group_left (nodename) node_uname_info{job="node-exporter"}'
+echo "== lifetime used %";  q "smartmon_lifetime_used_percent $J"
+echo "== health (0 = FAILED)"; q "smartmon_device_smart_healthy $J"
+echo "== error counters"; q "smartmon_attr_raw_value{id=~\"5|187|196|197|198|199\"} $J"
+echo "== write latency s"; q "(rate(node_disk_write_time_seconds_total[5m]) / rate(node_disk_writes_completed_total[5m]) and on (instance, device) smartmon_device_info) $J"
+```
+
+2. On the node itself (Pis: `-d sat`, the disk is behind the USB-SATA adapter; HP minis: no `-d`):
+
+```bash
+sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|firmware|result|Percent|Realloc|Uncorrect|Pending|CRC|Total_LBAs"
+sudo smartctl -l devstat -d sat /dev/sda | grep -i "endurance"
+sudo dmesg -T | grep -iE "uas|reset|abort|I/O error|blk_update" | tail -10
+```
+
+3. By alert:
+   - **`DiskWornOut`**: not urgent by itself. Order the replacement and follow
+     [disk-replacement.md](../../homelab-docs/disk-replacement.md) (procedure A, B, C or D by node). Until then
+     keep heavy pods and new Longhorn replicas off the node if `DiskWriteLatencyHigh` also fires.
+   - **`DiskSmartFailing` or `DiskMediaErrors`**: move the data off now. On a Longhorn node, evict its replicas
+     (disk-replacement.md step A1/B1) and wait for 0 degraded volumes. On a master, take an etcd snapshot
+     (C1). On node1, check the last Velero/Vault backups and plan procedure D soon. Then replace the disk.
+   - **`DiskCrcErrorsIncreasing`**: the link, not the flash. Check power first (Pi:
+     `sudo vcgencmd get_throttled`, `0x0` is fine, otherwise `CLUSTER-016`), then reseat the adapter, try the
+     other blue USB 3 port, then another adapter. Test, read-only:
+
+     ```bash
+     sudo smartctl -A -d sat /dev/sda | grep -i crc
+     sudo smartctl -l sataphy -d sat /dev/sda          # ICRC / R_ERR / COMRESET since boot
+     lsusb -t | grep -i -B1 -A1 storage                 # Driver=uas, 5000M
+     sudo dd if=/dev/sda of=/dev/null bs=4M count=8000 iflag=direct status=progress   # ~350 MB/s on a Pi
+     sudo smartctl -A -d sat /dev/sda | grep -i crc     # must not have grown
+     ```
+
+     node5 passed this on 2026-11-22 (CRC 92 before and after, all Phy counters 0).
+   - **`DiskWriteLatencyHigh`**: is it a burst or the disk? Check what writes (`kubectl -n longhorn-system get
+     volumes.longhorn.io | grep -v healthy` for a rebuild, Velero at 02:00, Longhorn snapshot cleanup at 03:30)
+     and the wear (step 1). Latency high with wear ≥ 100% or with no burst: the disk is worn out, as on
+     node5/node6 on 2026-11-22; keep heavy pods off it (`homelab-docs/disk-replacement.md` 4.2) and replace it.
+   - **`DiskSmartMetricsMissing`**: on the node
+     `systemctl status smart-metrics.timer smart-metrics.service; sudo /usr/local/bin/smart_metrics; cat /var/lib/node_exporter/smartmon.prom | head`.
+     `smartmon_read_ok 0` on a Pi usually means the adapter stopped passing SMART (or UAS reset): see
+     `dmesg`. Not installed yet: `make node-config-update` on pimaster.
+
+Verify:
+
+- Error alerts: no new growth over the next 24 hours (they resolve on their own once the counters stop).
+- After a swap, step 1 shows the new serial with low wear, health 1 and latency of a few milliseconds.
+
+Rollback:
+
+1. Uncordon the node or resume Longhorn scheduling if you stopped it
+   (`kubectl -n longhorn-system patch nodes.longhorn.io <node> --type merge -p '{"spec":{"allowScheduling":true,"evictionRequested":false}}'`).
+
+References:
+
+- `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-smart-rules.yaml`
+- `ansible/roles/basic_setup/scripts/smart_metrics`, `ansible/roles/basic_setup/tasks/smart_metrics.yml`
+- `homelab-docs/disk-replacement.md`, `homelab-docs/alerting.md` (Disk health (SMART) alerts)
+- `CLUSTER-016` for power problems on a Pi

@@ -1,0 +1,133 @@
+# Disk health (SMART) and disk write latency. Not generated from the mixins
+# (generate.sh writes to build/src/templates, so this file is not overwritten).
+#
+# SMART metrics come from /var/lib/node_exporter/smartmon.prom, written every
+# 15 minutes on every node by Ansible (basic_setup/tasks/smart_metrics.yml).
+# Until 2026-11-22 SMART was only read by hand: node4, node5 and node6 were at
+# 100% of their rated life and node-esp-2 at 109% with 1,754 uncorrectable
+# errors, and the worn Pi disks stalled Elasticsearch, before anyone looked
+# (postmortems/incident-2026-11-22-elasticsearch-slow-longhorn-pi-disks.md,
+# homelab-docs/disk-replacement.md).
+#
+# Error alerts compare with the value 1 day (1 hour for CRC) earlier, so old
+# counts (node5's 92 CRC errors, node-esp-2's uncorrectable errors) do not
+# fire, only new ones. The serial label keeps a new disk from being compared
+# with the old one.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: k8s
+  name: node-smart
+  namespace: monitoring
+spec:
+  groups:
+  - name: node-smart.rules
+    rules:
+    - alert: DiskSmartFailing
+      annotations:
+        summary: SMART health of {{ $labels.device }} on {{ $labels.nodename }} is FAILED.
+        description: The disk's own SMART self-assessment (smartctl -H) of {{ $labels.device }} (serial {{ $labels.serial }}) on {{ $labels.nodename }} says FAILED. The drive expects to fail. Move data off it and replace it (homelab-docs/disk-replacement.md). Runbook CLUSTER-018.
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      expr: |
+        (smartmon_device_smart_healthy == 0)
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 30m
+      labels:
+        severity: critical
+    - alert: DiskMediaErrors
+      annotations:
+        summary: New media errors on {{ $labels.device }} of {{ $labels.nodename }}.
+        description: 'SMART attribute {{ $labels.id }} {{ $labels.name }} of {{ $labels.device }} (serial {{ $labels.serial }}) on {{ $labels.nodename }} grew by {{ $value | printf "%.0f" }} in the last 24 hours. Reallocated, pending or uncorrectable sectors mean the flash is failing and data may already be lost. Move Longhorn replicas off the node and replace the disk. Runbook CLUSTER-018.'
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      # 5 Reallocated, 187 Reported_Uncorrect, 196 Reallocated_Event,
+      # 197 Current_Pending, 198 Offline_Uncorrectable.
+      expr: |
+        (
+          smartmon_attr_raw_value{id=~"5|187|196|197|198"}
+          - smartmon_attr_raw_value{id=~"5|187|196|197|198"} offset 1d
+          > 0
+        )
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      labels:
+        severity: critical
+    - alert: DiskWornOut
+      annotations:
+        summary: '{{ $labels.device }} on {{ $labels.nodename }} has used {{ $value | printf "%.0f" }}% of its rated life.'
+        description: '{{ $labels.device }} (serial {{ $labels.serial }}) on {{ $labels.nodename }} has used {{ $value | printf "%.0f" }}% of its rated write endurance (SMART, source {{ $labels.source }}). Worn DRAM-less drives slow to hundreds of milliseconds per write before they fail: that stalled node5 and node6 on 2026-11-22. Plan the replacement (homelab-docs/disk-replacement.md). Runbook CLUSTER-018.'
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      expr: |
+        (smartmon_lifetime_used_percent >= 80)
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 1h
+      labels:
+        severity: warning
+    - alert: DiskCrcErrorsIncreasing
+      annotations:
+        summary: New CRC errors on {{ $labels.device }} of {{ $labels.nodename }}.
+        description: '{{ $labels.device }} (serial {{ $labels.serial }}) on {{ $labels.nodename }} logged {{ $value | printf "%.0f" }} new CRC errors in the last hour (UDMA_CRC_Error_Count). Data was corrupted on the way between disk and host and resent: a bad cable, USB-SATA adapter, port or power supply, not the flash. Runbook CLUSTER-018.'
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      expr: |
+        (
+          smartmon_attr_raw_value{id="199"}
+          - smartmon_attr_raw_value{id="199"} offset 1h
+          > 0
+        )
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      labels:
+        severity: warning
+    - alert: DiskWriteLatencyHigh
+      annotations:
+        summary: Writes to {{ $labels.device }} on {{ $labels.nodename }} take {{ $value | humanizeDuration }} on average.
+        description: Average write latency of {{ $labels.device }} on {{ $labels.nodename }} has been {{ $value | humanizeDuration }} for 15 minutes (a healthy SSD takes a few milliseconds). Longhorn replicas, etcd and Elasticsearch on this node slow down with it. Usually a worn disk, sometimes a burst of writes (Longhorn rebuild, backup). Runbook CLUSTER-018.
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      # Physical disks only (those in smartmon_device_info): Longhorn's iSCSI
+      # volumes are sdX devices too, and their latency includes the network.
+      # At least 1 write per second, so a few slow writes on an idle disk do
+      # not count.
+      expr: |
+        (
+          (
+            rate(node_disk_write_time_seconds_total{job="node-exporter"}[5m])
+            / rate(node_disk_writes_completed_total{job="node-exporter"}[5m])
+            > 0.1
+          )
+          and on (instance, device) (rate(node_disk_writes_completed_total{job="node-exporter"}[5m]) > 1)
+          and on (instance, device) smartmon_device_info
+        )
+        * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+      for: 15m
+      labels:
+        severity: warning
+    - alert: DiskSmartMetricsMissing
+      annotations:
+        summary: No SMART data from {{ $labels.nodename }}.
+        description: The SMART metrics of {{ $labels.nodename }} are older than 1 hour, missing, or smartctl could not read a disk, so a worn or failing disk on this node would not be noticed. Check the smart-metrics timer. Runbook CLUSTER-018.
+        runbook: CLUSTER-018
+        runbook_url: https://github.com/marmila/picluster/blob/master/runbooks/cluster/nodes-capacity.md#runbook-cluster-018
+      # Stale file, a node (Pi or HP mini; not the armv7l gateway) without the
+      # file, no disk found, or a disk smartctl could not read.
+      expr: |
+        (
+          (
+            (time() - node_textfile_mtime_seconds{job="node-exporter",file=~".*smartmon.prom"} > 3600)
+            or
+            (smartmon_devices == 0)
+            or
+            (smartmon_read_ok == 0)
+          )
+          * on (instance) group_left (nodename) node_uname_info{job="node-exporter"}
+        )
+        or
+        (
+          node_uname_info{job="node-exporter",machine=~"aarch64|x86_64"}
+          unless on (instance) node_textfile_mtime_seconds{job="node-exporter",file=~".*smartmon.prom"}
+        )
+      for: 1h
+      labels:
+        severity: warning

@@ -568,7 +568,10 @@ When node6, node-esp-2 and node5 run on new disks:
    ```
 2. Spread existing replicas over the bigger disks: Longhorn setting `replica-auto-balance` to `best-effort` (in
    `kubernetes/platform/longhorn/app/base/values.yaml`, `defaultSettings.replicaAutoBalance`), one PR.
-3. SMART monitoring and a wear alert on every node (postmortem action 3c), so the next worn disk raises an alert.
+3. SMART monitoring and a wear alert on every node (postmortem action 3c): **done 2026-11-22**
+   (`DiskWornOut` at 80%, plus health, media error, CRC and write latency alerts; runbook
+   [CLUSTER-018](../runbooks/cluster/nodes-capacity.md#runbook-cluster-018)). Phase 2 drives are bought when
+   `DiskWornOut` fires for them.
 
 ## 10. Progress
 

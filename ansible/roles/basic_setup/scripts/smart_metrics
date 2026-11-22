@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Export SMART data of the node's physical disks for the node-exporter
+textfile collector. Run every 15 minutes by smart-metrics.timer (root:
+smartctl needs raw device access).
+
+Until 2026-11-22 SMART was only read by hand: four SSDs (node4, node5, node6,
+node-esp-2) had reached 100% or more of their rated life, and node-esp-2 had
+1,754 uncorrectable errors, before anyone looked
+(postmortems/incident-2026-11-22-elasticsearch-slow-longhorn-pi-disks.md).
+
+Disks: lsblk, transport sata, usb or nvme only. Longhorn volumes are iSCSI
+disks (/dev/sdX too) and are skipped. Pi disks sit behind a USB-SATA bridge
+and need "-d sat".
+
+If lsblk fails, the script exits without touching the file, so the file goes
+stale and DiskSmartMetricsMissing fires.
+
+Alerts: kube-prometheus-stack/k3s-mixins/base/rules/node-smart-rules.yaml
+"""
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+DIR = "/var/lib/node_exporter"
+OUT = os.path.join(DIR, "smartmon.prom")
+
+# Wear attributes, in order of preference after the ATA device statistics
+# "Percentage Used Endurance Indicator". (id, name, how to read it):
+#   raw: raw value is the percentage used (Crucial/Micron 202)
+#   norm: normalized value is the percentage left, so used = 100 - value
+WEAR_ATTRS = [
+    (202, "Percent_Lifetime_Remain", "raw"),   # Crucial / Micron
+    (231, "SSD_Life_Left", "norm"),            # Kingston, WD and others
+    (177, "Wear_Leveling_Count", "norm"),      # Samsung
+    (233, "Media_Wearout_Indicator", "norm"),  # Intel
+]
+
+
+def esc(value):
+    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+
+def labels(**kv):
+    return "{" + ",".join(f'{k}="{esc(v)}"' for k, v in kv.items()) + "}"
+
+
+def disks():
+    out = subprocess.run(
+        ["lsblk", "-J", "-d", "-o", "NAME,TYPE,TRAN"],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    for dev in json.loads(out).get("blockdevices", []):
+        if dev.get("type") == "disk" and dev.get("tran") in ("sata", "usb", "nvme"):
+            yield dev["name"], dev["tran"]
+
+
+def smartctl(name, tran):
+    cmd = ["smartctl", "--json=c", "-i", "-H", "-A", "-l", "devstat"]
+    if tran == "usb":
+        cmd += ["-d", "sat"]
+    cmd.append("/dev/" + name)
+    # smartctl's exit code is a bit mask (bit 3 = disk failing, ...): not an
+    # error for this script, the JSON says what happened.
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    try:
+        return json.loads(res.stdout)
+    except ValueError:
+        return {}
+
+
+def lifetime_used(data, attrs):
+    """Percentage of rated life used, and where it was read from."""
+    for page in data.get("ata_device_statistics", {}).get("pages", []):
+        for entry in page.get("table", []):
+            if entry.get("name") == "Percentage Used Endurance Indicator" and "value" in entry:
+                return entry["value"], "devstat"
+    nvme = data.get("nvme_smart_health_information_log", {})
+    if "percentage_used" in nvme:
+        return nvme["percentage_used"], "nvme"
+    for attr_id, name, kind in WEAR_ATTRS:
+        attr = attrs.get(attr_id)
+        if attr and attr.get("name") == name:
+            if kind == "raw":
+                return attr["raw"]["value"], f"attr{attr_id}"
+            return 100 - attr["value"], f"attr{attr_id}"
+    return None, None
+
+
+def main():
+    found = list(disks())
+    metrics = {}  # metric name -> (help, [sample lines])
+
+    def add(metric, help_text, lbl, value):
+        metrics.setdefault(metric, (help_text, []))[1].append(f"{metric}{lbl} {value}")
+
+    for name, tran in found:
+        data = smartctl(name, tran)
+        serial = data.get("serial_number", "")
+        dev = labels(device=name, serial=serial)
+        ok = "smart_status" in data
+        add("smartmon_read_ok", "1 when smartctl returned SMART data for the disk.",
+            labels(device=name, serial=serial), int(ok))
+        if not ok:
+            continue
+        add("smartmon_device_info", "Disk model, serial and firmware (always 1).",
+            labels(device=name, serial=serial, model=data.get("model_name", ""),
+                   firmware=data.get("firmware_version", ""), transport=tran), 1)
+        add("smartmon_device_smart_healthy", "1 when the overall SMART self-assessment (smartctl -H) passed.",
+            dev, int(bool(data["smart_status"].get("passed"))))
+        if "current" in data.get("temperature", {}):
+            add("smartmon_temperature_celsius", "Disk temperature.", dev, data["temperature"]["current"])
+        if "hours" in data.get("power_on_time", {}):
+            add("smartmon_power_on_hours", "Power-on hours.", dev, data["power_on_time"]["hours"])
+
+        attrs = {a["id"]: a for a in data.get("ata_smart_attributes", {}).get("table", [])}
+        for attr_id, attr in sorted(attrs.items()):
+            lbl = labels(device=name, serial=serial, id=attr_id, name=attr.get("name", ""))
+            add("smartmon_attr_value", "Normalized SMART attribute value (higher is better).", lbl, attr["value"])
+            add("smartmon_attr_threshold", "SMART attribute failure threshold.", lbl, attr.get("thresh", 0))
+            add("smartmon_attr_raw_value", "Raw SMART attribute value (counter or vendor-specific).", lbl,
+                attr["raw"]["value"])
+            add("smartmon_attr_failing_now", "1 when the attribute is at or below its threshold now.", lbl,
+                int(attr.get("when_failed") == "now"))
+
+        used, source = lifetime_used(data, attrs)
+        if used is not None:
+            add("smartmon_lifetime_used_percent", "Percentage of the rated write endurance used (can exceed 100).",
+                labels(device=name, serial=serial, source=source), used)
+
+    add("smartmon_devices", "Physical disks found (lsblk transport sata, usb or nvme).", "", len(found))
+
+    # Write to a temporary file in the same directory, then rename, so
+    # node-exporter never reads a half-written file. Only *.prom files are read.
+    fd, tmp = tempfile.mkstemp(prefix=".smartmon.", dir=DIR)
+    try:
+        with os.fdopen(fd, "w") as f:
+            for metric, (help_text, lines) in metrics.items():
+                f.write(f"# HELP {metric} {help_text}\n# TYPE {metric} gauge\n")
+                f.write("\n".join(lines) + "\n")
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, OUT)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (subprocess.SubprocessError, OSError, ValueError) as exc:
+        print(f"smart_metrics: {exc}", file=sys.stderr)
+        sys.exit(1)

@@ -32,3 +32,6 @@
 
 - name: Limit systemd journal size
   ansible.builtin.include_tasks: journald.yml
+
+- name: Export disk SMART data for Prometheus
+  ansible.builtin.include_tasks: smart_metrics.yml

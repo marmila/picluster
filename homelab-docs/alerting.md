@@ -13,6 +13,7 @@ Contents:
 - [Terraform (tofu-controller) alerts](#terraform-tofu-controller-alerts)
 - [Backup, secrets, storage and scrape alerts](#backup-secrets-storage-and-scrape-alerts)
 - [Raspberry Pi under-voltage alerts](#raspberry-pi-under-voltage-alerts)
+- [Disk health (SMART) alerts](#disk-health-smart-alerts)
 - [Alerts and the sre agent](#alerts-and-the-sre-agent)
 - [Mixin rule escaping](#mixin-rule-escaping)
 
@@ -414,6 +415,51 @@ gateway (armv7l) exports no temperature. All point to runbook
 [CLUSTER-017](../runbooks/cluster/nodes-capacity.md#runbook-cluster-017).
 
 File: `kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-temperature-rules.yaml`.
+
+## Disk health (SMART) alerts
+
+Added 2026-11-22. Until then SMART was only read by hand: node4, node5 and node6 were at 100% of their rated
+life and node-esp-2 at 109% with 1,754 uncorrectable errors before anyone looked, and the worn Pi disks stalled
+Elasticsearch ([postmortem](../postmortems/incident-2026-11-22-elasticsearch-slow-longhorn-pi-disks.md),
+[disk replacement](disk-replacement.md)).
+
+How the values reach Prometheus:
+
+- Ansible installs `smartmontools` (no recommends; `smartd` disabled), `/usr/local/bin/smart_metrics` and the
+  systemd timer `smart-metrics` on all 8 nodes (`picluster` group). Every 15 minutes it writes
+  `/var/lib/node_exporter/smartmon.prom`, read by the textfile collector as for the throttling metrics above.
+- Disks: `lsblk` transport `sata`, `usb` or `nvme`. Longhorn's iSCSI volumes (also `/dev/sdX`) are skipped. Pi
+  disks are read through the USB-SATA bridge with `smartctl -d sat`.
+- Metrics (labels `device`, `serial`): `smartmon_device_info` (model, firmware, transport),
+  `smartmon_device_smart_healthy`, `smartmon_lifetime_used_percent` (label `source`: ATA device statistics
+  `devstat`, else attribute 202 Crucial/Micron, 231, 177 Samsung, 233 Intel), `smartmon_attr_value`,
+  `smartmon_attr_raw_value`, `smartmon_attr_threshold`, `smartmon_attr_failing_now` (labels `id`, `name`),
+  `smartmon_temperature_celsius`, `smartmon_power_on_hours`, `smartmon_read_ok`, `smartmon_devices`.
+
+Install or update it on existing nodes with `make node-config-update`.
+
+| Alert | Fires when | Severity |
+|---|---|---|
+| `DiskSmartFailing` | `smartctl -H` says FAILED for 30 minutes | critical |
+| `DiskMediaErrors` | reallocated, pending or uncorrectable count (attributes 5, 187, 196, 197, 198) grew in the last 24 hours | critical |
+| `DiskWornOut` | rated life used ≥ 80% for 1 hour | warning |
+| `DiskCrcErrorsIncreasing` | UDMA CRC count (attribute 199) grew in the last hour: cable, adapter, port or power | warning |
+| `DiskWriteLatencyHigh` | average write latency of a physical disk over 100 ms for 15 minutes, with at least 1 write/s (node-exporter `node_disk_*`) | warning |
+| `DiskSmartMetricsMissing` | a node's file is older than 1 hour, missing, has no disk, or a disk could not be read | warning |
+
+All point to runbook [CLUSTER-018](../runbooks/cluster/nodes-capacity.md#runbook-cluster-018). The error alerts
+compare with the value 1 day (CRC: 1 hour) earlier, so old totals such as node5's 92 CRC errors do not fire. The
+`serial` label keeps a new disk from being compared with the one it replaced. `DiskWornOut` fires for every disk
+already past 80% until it is replaced (on 2026-11-22: node4, node5, node6, node-esp-2).
+
+Files:
+
+```
+ansible/roles/basic_setup/scripts/smart_metrics
+ansible/roles/basic_setup/tasks/smart_metrics.yml
+ansible/update_node_config.yml                      # make node-config-update
+kubernetes/platform/kube-prometheus-stack/k3s-mixins/base/rules/node-smart-rules.yaml
+```
 
 ## Weekly digest
 

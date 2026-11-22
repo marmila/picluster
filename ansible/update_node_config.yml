@@ -4,6 +4,7 @@
 # - kubelet config (k3s_kubelet_config in vars/picluster.yml), e.g. image GC thresholds
 # - Raspberry Pi throttling metrics (basic_setup/tasks/rpi_throttle_metrics.yml)
 # - RustFS bucket metrics on node1 (basic_setup/tasks/rustfs_bucket_metrics.yml)
+# - disk SMART metrics on all nodes (basic_setup/tasks/smart_metrics.yml)
 #
 # The k3s roles copy kubelet.config but never restart k3s, so a changed config
 # would wait for the next reboot. This playbook restarts k3s only when the file
@@ -19,6 +20,16 @@
       ansible.builtin.include_role:
         name: basic_setup
         tasks_from: rpi_throttle_metrics.yml
+
+- name: Export disk SMART data for Prometheus
+  hosts: picluster
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install smartmontools and the SMART metrics script and timer
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: smart_metrics.yml
 
 - name: Export RustFS bucket sizes and orphaned data for Prometheus
   hosts: s3

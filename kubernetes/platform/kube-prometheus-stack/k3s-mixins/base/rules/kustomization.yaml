@@ -15,6 +15,7 @@ resources:
   - ./rpi-throttle-rules.yaml
   - ./rustfs-bucket-rules.yaml
   - ./node-temperature-rules.yaml
+  - ./node-smart-rules.yaml
   - ./weekly-digest-rules.yaml
 
 # Disable fluxcd substitution
