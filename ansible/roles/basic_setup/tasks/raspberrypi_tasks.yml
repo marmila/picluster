@@ -20,6 +20,9 @@
 - name: Export throttling state for Prometheus
   ansible.builtin.include_tasks: rpi_throttle_metrics.yml
 
+- name: Enable TRIM on the USB SSD
+  ansible.builtin.include_tasks: usb_ssd_trim.yml
+
 - name: Set GPU memory split to 16 MB
   ansible.builtin.lineinfile:
     path: /boot/firmware/config.txt

@@ -1,0 +1,46 @@
+---
+# Enable TRIM on the Raspberry Pi SSDs behind USB-SATA adapters.
+# The kernel does not trust USB bridges with UNMAP and leaves provisioning_mode
+# at "full", so fstrim fails ("the discard operation is not supported") and the
+# SSD never learns which blocks are free: more internal writes, faster wear.
+# The StarTech adapters (UAS) support UNMAP: sg_vpd -p lbpv reports LBPU 1 and
+# a maximum unmap LBA count of 4194240 (2 GiB with 512-byte blocks). Tested on
+# node6 on 2026-11-23: 184 GiB trimmed in 37 s, no errors.
+#
+# The udev rule sets provisioning_mode=unmap and caps discard_max_bytes at the
+# adapter limit (the kernel would allow 4 GiB per command). The weekly
+# fstrim.timer then trims every mounted filesystem.
+# The first trim of a disk that was never trimmed is a large I/O burst: run it
+# by hand, one node at a time (homelab-docs/disk-replacement.md).
+
+- name: Create udev rule enabling TRIM on USB SSD adapters
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/60-usb-ssd-trim.rules
+    content: |
+      # Managed by Ansible (basic_setup/tasks/usb_ssd_trim.yml)
+      {% for adapter in usb_ssd_trim_adapters %}
+      ACTION=="add|change", SUBSYSTEM=="scsi_disk", ATTRS{idVendor}=="{{ adapter.vendor }}", ATTRS{idProduct}=="{{ adapter.product }}", ATTR{provisioning_mode}="unmap", RUN+="/bin/sh -c 'for q in /sys/class/scsi_disk/%k/device/block/*/queue/discard_max_bytes; do echo {{ usb_ssd_trim_max_bytes }} > $$q; done'"
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0644"
+  register: usb_ssd_trim_rule
+
+- name: Apply udev rule to connected disks
+  ansible.builtin.shell: |
+    udevadm control --reload
+    # Only disks still at "full": the Longhorn iSCSI disks are already "unmap".
+    udevadm trigger --action=change --subsystem-match=scsi_disk --attr-match=provisioning_mode=full
+    udevadm settle
+  changed_when: true
+  when: usb_ssd_trim_rule.changed
+
+- name: Fail if the adapter has no TRIM after the rule
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat /sys/class/scsi_disk/*/provisioning_mode | sort | uniq -c
+    lsblk -D -d -n -o NAME,TRAN,DISC-MAX | awk '$2 == "usb" && $3 == "0B" { print "no TRIM: " $1; bad = 1 } END { exit bad }'
+  args:
+    executable: /bin/bash
+  register: usb_ssd_trim_check
+  changed_when: false

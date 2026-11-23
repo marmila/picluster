@@ -19,3 +19,17 @@ rpi_packages:
 
 # Maximum disk space for the systemd journal (journald SystemMaxUse)
 journald_system_max_use: 500M
+
+# USB-SATA adapters to enable TRIM on (tasks/usb_ssd_trim.yml). Find a new
+# adapter's IDs with lsusb; check UNMAP support first with
+# sg_vpd -p lbpv /dev/sda ("Unmap command supported (LBPU): 1").
+usb_ssd_trim_adapters:
+  # StarTech USB3S2SAT3CB (node1-3, node5, node6)
+  - vendor: "14b0"
+    product: "0207"
+  # StarTech, older revision (node4)
+  - vendor: "14b0"
+    product: "0206"
+# Bytes per discard command: the adapter's "Maximum unmap LBA count"
+# (sg_vpd -p bl) x 512.
+usb_ssd_trim_max_bytes: 2147450880

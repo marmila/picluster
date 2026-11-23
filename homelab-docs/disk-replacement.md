@@ -38,9 +38,12 @@ Models confirmed with `smartctl -i`: `CT240BX500SSD1` (firmware M6CR056) on node
 `CT480BX500SSD1` on node5 and node-esp-1, `CT500MX500SSD1` on node-esp-2. **Do not buy BX500 again**: DRAM-less
 (recent batches QLC), it collapses under sustained writes long before its rated life.
 
-Budget DRAM-less drives (BX500) without TRIM (the Pi USB bridges report `DISC-MAX 0B`) wear out in about two
-years under Longhorn and etcd writes, and slow to hundreds of milliseconds per write long before they fail. That
-stalled node5 and node6 on 2026-11-22.
+Budget DRAM-less drives (BX500) without TRIM wear out in about two years under Longhorn and etcd writes, and slow
+to hundreds of milliseconds per write long before they fail. That stalled node5 and node6 on 2026-11-22.
+
+The Pi disks never had TRIM: the kernel leaves USB bridges at `provisioning_mode=full` (`DISC-MAX 0B`), so
+`fstrim` failed and every SSD treated the whole disk as live data. The adapters do support it: TRIM is enabled
+since 2026-11-23 by a udev rule (2.2, condition 5). The first trim freed 184 GiB on node6.
 
 **4 disks are worn out** (node4, node5, node6, node-esp-2) and must be replaced now. The other 4 still have years
 left. The recommendation (2.3) is to buy **7 drives now**: the 4 worn ones plus node1, node2 and node3, so all six
@@ -124,6 +127,12 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
    A spare StarTech adapter of the same model is optional.
 4. The `fio` + `dmesg` check in procedure A5 stays as a **check after each swap**, not a reason to wait before
    buying.
+5. **TRIM must work through the adapter.** Both StarTech IDs support UNMAP over UAS (`sg_vpd -p lbpv /dev/sda`:
+   `Unmap command supported (LBPU): 1`; `sg_vpd -p bl`: maximum unmap LBA count 4194240, i.e. 2 GiB), but the
+   kernel does not enable it on USB bridges. The udev rule `/etc/udev/rules.d/60-usb-ssd-trim.rules`
+   (`basic_setup/tasks/usb_ssd_trim.yml`, adapter IDs in the role defaults) sets `provisioning_mode=unmap` and caps
+   `discard_max_bytes` at 2 GiB; the weekly `fstrim.timer` does the rest. A new adapter model needs its
+   `lsusb` ID added to `usb_ssd_trim_adapters` after the same `sg_vpd` check. Checked in A7.
 
 ### 2.3 Shopping list
 
@@ -268,7 +277,7 @@ sections 4–8.
 | 3. New disk | laptop or the node | Pi: image the SSD and write `user-data`/`network-config` (A4). Mini PC: fit the SSD, `make pxe-setup`, PXE boot (B4). node1: clone the old disk (D2) | node boots and answers SSH | 30–45 min |
 | 4. First boot check | the node | Pi: `lsusb -t` (uas, 5000M), `fio` + `dmesg` (A5, mandatory on the first Pi with the new model) | no `reset`/`abort` in `dmesg` | 10 min |
 | 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e k3s_primary_control_node=false`), `update_node_config.yml` | playbooks green | 20–30 min |
-| 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1 | all green | 10 min |
+| 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1; Pi: TRIM works (A7) | all green | 10 min |
 
 Then restore what was scaled down (4.2), uncordon the Pis if they were cordoned, and fill in the progress table (10).
 **Stop and ask** if any "done when" is not met: do not start the next node.
@@ -499,6 +508,14 @@ On node6, the SMART baseline for the progress table:
 ```bash
 sudo apt-get install -y -qq --no-install-recommends smartmontools
 sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+```
+
+On node6, TRIM (2.2, condition 5; the udev rule comes with `update_node_config.yml` in A6):
+```bash
+cat /sys/block/sda/device/scsi_disk/*/provisioning_mode          # unmap
+lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda                  # DISC-MAX 2G, not 0B
+sudo fstrim -v /storage && sudo fstrim -v /                      # "... trimmed", no error
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail        # no reset or I/O error
 ```
 
 ---

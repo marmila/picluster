@@ -249,6 +249,24 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 - [ ] **Write latency baseline:** after a quiet day, check that `DiskWriteLatencyHigh` (100 ms for 15 min) does
   not fire on healthy disks (node-esp-1, node1–3); raise the threshold if it does.
 
+### 23 Nov: TRIM on the Pi SSDs ([disk-replacement.md 2.2](disk-replacement.md#22-raspberry-pi-compatibility-checked-2026-11-22), condition 5)
+The Pi USB adapters support TRIM but the kernel had it off (`DISC-MAX 0B`, `fstrim` "not supported") since
+the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, no errors.
+- [ ] **Install the udev rule** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Check:
+  ```bash
+  ./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'cat /sys/block/sda/device/scsi_disk/*/provisioning_mode; lsblk -D -d -n -o NAME,DISC-MAX /dev/sda'
+  ```
+  Expect `unmap` and `2G` everywhere (node6 shows `4G` from the manual test until its next reboot; harmless).
+- [ ] **First trim by hand, one node at a time, at a quiet moment**, in this order: node5, node1, then the
+  masters node3, node4, node2 (etcd is on their root disk: wait until the node is `Ready` and quiet before the
+  next one). Not `fstrim -a`: it would also trim the Longhorn volumes mounted on the node.
+  ```bash
+  ./ansible-runner/ansible-runner.sh ansible node5 -b -m shell -a 's=$(date +%s); fstrim -v /storage; fstrim -v /; echo "took $(( $(date +%s)-s ))s"; dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail -5'
+  ```
+  Expect "... trimmed" and no `reset`/`I/O error`. Do all of them **before Monday 30 Nov**: that night the
+  weekly `fstrim.timer` would otherwise run the first (large) trim on every Pi at the same time.
+- [ ] **Afterwards:** compare `DiskWriteLatencyHigh` and the node5/node6 write latency with the 22 Nov baseline.
+
 ### 22 Nov: write reduction (worn disks)
 - [x] **Longhorn 1 replica, live patch (stays out of Git on purpose):** `postgres-keycloak-1`,
   `postgres-keycloak-2`, `loki/data-loki-write-0` → `numberOfReplicas: 1`, `dataLocality: best-effort` (saves

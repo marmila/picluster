@@ -5,6 +5,7 @@
 # - Raspberry Pi throttling metrics (basic_setup/tasks/rpi_throttle_metrics.yml)
 # - RustFS bucket metrics on node1 (basic_setup/tasks/rustfs_bucket_metrics.yml)
 # - disk SMART metrics on all nodes (basic_setup/tasks/smart_metrics.yml)
+# - TRIM on the Raspberry Pi USB SSDs (basic_setup/tasks/usb_ssd_trim.yml)
 #
 # The k3s roles copy kubelet.config but never restart k3s, so a changed config
 # would wait for the next reboot. This playbook restarts k3s only when the file
@@ -20,6 +21,11 @@
       ansible.builtin.include_role:
         name: basic_setup
         tasks_from: rpi_throttle_metrics.yml
+
+    - name: Enable TRIM on the USB SSD
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: usb_ssd_trim.yml
 
 - name: Export disk SMART data for Prometheus
   hosts: picluster
