@@ -298,13 +298,14 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   exclusion and, if unused, the MongoDB operator).
 
 **23 Nov morning (node2):**
-- [ ] Nightly Velero backup `Completed` ✓, but `grep -c threatmap` on `full-20261123020036` gives **10**.
-  Find out which objects (probably Flux objects in `flux-system` named `threatmap-*`, harmless; a threatmap
-  PVC or volume snapshot would not be).
+- [x] Nightly Velero backup `Completed`; namespace `threatmap` excluded. The 10 `grep` hits are objects in
+  other namespaces named `threatmap-*` (Kafka user and secrets, Flux Kustomizations and their events, the
+  blackbox probe); no threatmap PVC or volume.
 - [x] Keycloak Postgres daily backup `completed` (22 and 23 Nov) (`kubectl -n databases get backups.postgresql.cnpg.io | tail -2`).
-- [ ] No `DiskWriteLatencyHigh` on healthy disks (node-esp-1, node1–node3) overnight; no `DiskMediaErrors`.
-  23 Nov: no `DiskMediaErrors`; `DiskWriteLatencyHigh` on node5, node6 (worn, expected) and **node1**. Check
-  whether node1 fired only in the backup window (02:00-04:00 UTC, the known RustFS saturation).
+- [x] No `DiskWriteLatencyHigh` on healthy disks (node-esp-1, node1–node3) overnight; no `DiskMediaErrors`.
+  23 Nov: fired on node5 and node6 (worn, expected). node1 showed up in a 24 h `max_over_time(ALERTS)` but
+  never `firing` in the last 24 h, the backup night included: pending only, or the 22 Nov afternoon manual
+  bucket walk. Threshold stays.
 - [x] Threatmap still off: `kubectl -n threatmap get pods` empty, both MongoDB volumes `detached`.
 
 **23 Nov evening (node2):**
