@@ -43,7 +43,8 @@ to hundreds of milliseconds per write long before they fail. That stalled node5 
 
 The Pi disks never had TRIM: the kernel leaves USB bridges at `provisioning_mode=full` (`DISC-MAX 0B`), so
 `fstrim` failed and every SSD treated the whole disk as live data. The adapters do support it: TRIM is enabled
-since 2026-11-23 by a udev rule (2.2, condition 5). The first trim freed 184 GiB on node6.
+since 2026-11-23 by a udev rule (2.2, condition 5). The first trim, by hand on each Pi, freed 135–295 GiB per
+disk (about 1.4 TB in all), with no errors (results in ops-checklist.md, 23 Nov).
 
 **4 disks are worn out** (node4, node5, node6, node-esp-2) and must be replaced now. The other 4 still have years
 left. The recommendation (2.3) is to buy **7 drives now**: the 4 worn ones plus node1, node2 and node3, so all six

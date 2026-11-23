@@ -252,12 +252,13 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 ### 23 Nov: TRIM on the Pi SSDs ([disk-replacement.md 2.2](disk-replacement.md#22-raspberry-pi-compatibility-checked-2026-11-22), condition 5)
 The Pi USB adapters support TRIM but the kernel had it off (`DISC-MAX 0B`, `fstrim` "not supported") since
 the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, no errors.
-- [ ] **Install the udev rule** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Check:
+- [x] **Install the udev rule** (pimaster): `cd ~/picluster && git pull && make node-config-update`. Done 23 Nov:
+  all six `unmap`, `2G` (node6 `4G` from the manual test). Check:
   ```bash
   ./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'cat /sys/block/sda/device/scsi_disk/*/provisioning_mode; lsblk -D -d -n -o NAME,DISC-MAX /dev/sda'
   ```
   Expect `unmap` and `2G` everywhere (node6 shows `4G` from the manual test until its next reboot; harmless).
-- [ ] **First trim by hand, one node at a time, at a quiet moment**, in this order: node5, node1, then the
+- [x] **First trim by hand, one node at a time, at a quiet moment**, in this order: node5, node1, then the
   masters node3, node4, node2 (etcd is on their root disk: wait until the node is `Ready` and quiet before the
   next one). Not `fstrim -a`: it would also trim the Longhorn volumes mounted on the node.
   ```bash
@@ -265,6 +266,16 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   ```
   Expect "... trimmed" and no `reset`/`I/O error`. Do all of them **before Monday 30 Nov**: that night the
   weekly `fstrim.timer` would otherwise run the first (large) trim on every Pi at the same time.
+  Done 23 Nov, no errors, all nodes `Ready` after each:
+
+  | Node | `/storage` | `/` | Time |
+  |---|---|---|---|
+  | node6 (manual test) | 158.3 GiB | 25.8 GiB | 37 s |
+  | node5 | 266.9 GiB | 27.8 GiB | 52 s |
+  | node1 | 135.9 GiB | 0.4 GiB (root nearly full: RustFS) | 123 s |
+  | node3 | 169.8 GiB | 34.4 GiB | 42 s |
+  | node4 | 169.8 GiB | 34.1 GiB | 34 s |
+  | node2 | 169.8 GiB | 38.0 GiB | 25 s |
 - [ ] **Afterwards:** compare `DiskWriteLatencyHigh` and the node5/node6 write latency with the 22 Nov baseline.
 
 ### 22 Nov: write reduction (worn disks)
