@@ -216,7 +216,7 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 - [x] **Timer applied** on node1 (22 Nov, `update_node_config.yml --limit node1`; NEXT at `:15`).
 - [x] **Night of 23 Nov:** `full-20261123020036` Completed, 0 errors; ES `LASTBACKUPAT` 2026-11-23T02:01;
   snapshot cleanup Complete at 06:30. RustFS timeouts 260 (02h 252, 03h 8) against ~1,000 the night before.
-  Also 160 timeouts on 22 Nov 17:00-19:00 UTC, outside the window (likely the manual disk walk on node1).
+  Also 160 timeouts on 22 Nov 17:00-19:00 UTC, outside the window (the timer/metrics work on node1 that afternoon, a manual bucket walk; never run it 02:00-04:59 UTC).
 - [x] **RustFS upgraded to 1.0.4** (23 Nov, by day): `.rustfs.sys` saved to `~/rustfs-sys-2026-11-23.tgz` on
   node1, `make deploy-rustfs`, service active, 6 buckets listed.
 - [ ] **24 Nov backup** Completed with 0 errors, first night on 1.0.4; count the timeouts (node1):
@@ -227,8 +227,8 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   (postmortem action 11) and the upstream report (action 10). If clean, close action 11 as not needed.
 
 ### 23 Nov 08:00: first scheduled digest
-- [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
-- [ ] It no longer lists `tempo-ingester-0`. It will still show the 21/22 Nov Velero failures (7-day window).
+- [x] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
+- [x] It no longer lists `tempo-ingester-0` (no restarts). It will still show the 21/22 Nov Velero failures (7-day window).
 - [ ] Not woken by `RustFSBucketMetricsMissing` at night (threshold now 5 h for the 01:15 → 05:15 gap).
 
 ### 27 Nov: RustFS growth in the digest
