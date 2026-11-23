@@ -213,33 +213,18 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 - [x] **RustFS logs at the failure times:** I/O timeouts on `.rustfs.sys/config/iam/`, 500s after 52-65 s.
 - [x] **Timer out of the backup window** (committed 22 Nov): hourly at :15, paused 02:00-04:59 UTC;
   `RustFSBucketMetricsMissing` 3 h → 5 h.
-- [ ] **Apply the timer before 02:00 UTC** (pimaster, then node1; `--limit node1` skips the k3s plays):
-  ```bash
-  cd ~/picluster && git pull && ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node1
-  ```
-  ```bash
-  sudo systemctl daemon-reload && sudo systemctl restart rustfs-bucket-metrics.timer && systemctl list-timers rustfs-bucket-metrics.timer --no-pager
-  ```
-  NEXT shows `:15`. The pimaster `--check` dry run of `deploy_rustfs.yml` fails on `cert_path` by design
-  (certbot is skipped in check mode); the real run is fine.
-- [ ] **Upgrade RustFS to 1.0.4**, by day, after a clean night. 1.0.1 "protect single-disk foreground latency",
-  1.0.2 "warn on stalled local disk operations" and several delete-residue fixes apply here; startup runs
-  IAM/metadata migrations, so save `.rustfs.sys` first (node1, then pimaster, then node1):
-  ```bash
-  sudo tar czf ~/rustfs-sys-$(date +%F).tgz -C /storage/rustfs .rustfs.sys && ls -la ~/rustfs-sys-*.tgz
-  ```
-  ```bash
-  cd ~/picluster && make deploy-rustfs
-  ```
-  ```bash
-  /usr/local/bin/rustfs --version | head -1; rc ls picluster/; sudo tail -5 /var/log/rustfs/$(sudo ls -t /var/log/rustfs | head -1)
-  ```
-- [ ] **Next nightly backups** (23 and 24 Nov) Completed with 0 errors, and fewer timeouts (node1):
+- [x] **Timer applied** on node1 (22 Nov, `update_node_config.yml --limit node1`; NEXT at `:15`).
+- [x] **Night of 23 Nov:** `full-20261123020036` Completed, 0 errors; ES `LASTBACKUPAT` 2026-11-23T02:01;
+  snapshot cleanup Complete at 06:30. RustFS timeouts 260 (02h 252, 03h 8) against ~1,000 the night before.
+  Also 160 timeouts on 22 Nov 17:00-19:00 UTC, outside the window (likely the manual disk walk on node1).
+- [x] **RustFS upgraded to 1.0.4** (23 Nov, by day): `.rustfs.sys` saved to `~/rustfs-sys-2026-11-23.tgz` on
+  node1, `make deploy-rustfs`, service active, 6 buckets listed.
+- [ ] **24 Nov backup** Completed with 0 errors, first night on 1.0.4; count the timeouts (node1):
   ```bash
   sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE '"timestamp":"[0-9-]+T[0-9]{2}' | cut -c14- | sort | uniq -c | tail -6
   ```
-  If ES still fails, or timeouts stay in the hundreds after the upgrade: a separate disk for `/storage` on node1
-  (postmortem action 11) and the upstream report (action 10).
+  If ES fails again, or the 02h count stays in the hundreds: a separate disk for `/storage` on node1
+  (postmortem action 11) and the upstream report (action 10). If clean, close action 11 as not needed.
 
 ### 23 Nov 08:00: first scheduled digest
 - [ ] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
