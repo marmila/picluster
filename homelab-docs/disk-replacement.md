@@ -52,7 +52,7 @@ disk (about 1.4 TB in all), with no errors (results in ops-checklist.md, 23 Nov)
 left. Writes were reduced (2.4: 269 → 177 GB/day) and the Pis have TRIM, so every disk lasts longer.
 
 **Decided 2026-11-23** (retail SSD shortage, Nov 2026: shops often stock only BX500 and Kingston A400): buy
-**2 drives first** (2.3, step 1): a 1 TB for node6 (the Pi test drive; sizes from measured writes, 2.1.3) and a used enterprise 960 GB for node-esp-2
+**2 drives first** (2.3, step 1): a 2 TB for node6 (the Pi test drive; sizes from measured writes, 2.1.3) and a used enterprise 960 GB for node-esp-2
 (the busiest worn disk: ~60 GB/day of Elasticsearch and Prometheus writes on 109% wear). Then node5 and node4;
 node1, node3, node2 and node-esp-1 when their `DiskWornOut` fires or a good price shows up. Sizes stay as in 2.1.1.
 
@@ -67,8 +67,8 @@ Only drives **with DRAM cache and TLC flash** (2.1.2).
 
 | Node | Role | Now (wear 2026-11-22) | **New size** | Buy | Why |
 |---|---|---|---|---|---|
-| node6 | Longhorn worker (Pi) | BX500 240 GB, 100% | **1 TB** | **now** | worn out; 1 TB holds only with ES/Prometheus off the Pis (2.1.3) |
-| node5 | Longhorn worker (Pi) | BX500 480 GB, 100% | **1 TB** | **now** | worn out; same condition |
+| node6 | Longhorn worker (Pi) | BX500 240 GB, 100% | **2 TB** (1 TB minimum) | **now** | worn out; endurance margin for new apps (2.1.3) |
+| node5 | Longhorn worker (Pi) | BX500 480 GB, 100% | **2 TB** (1 TB minimum) | **now** | worn out; same |
 | node4 | master, etcd (Pi) | BX500 240 GB, 100% | **1 TB** (500 GB minimum) | **now** | worn out; etcd needs endurance: 1 TB lasts twice as long (2.1.3) |
 | node-esp-2 | Longhorn worker (x86) | MX500 500 GB, 109%, 1,754 errors | **960 GB enterprise** | **now** | worn out, media errors; ~230 GB/day (2.1.3) |
 | node1 | Vault, RustFS, DNS (Pi) | BX500 240 GB, 37% | **1 TB** | now (recommended) | no second copy of Vault/RustFS/DNS; RustFS needs room |
@@ -92,9 +92,9 @@ rest when needed.
 | 1 | **Crucial MX500** | `CT1000MX500SSD1` / `CT500MX500SSD1` | 360 / 180 | Same family the adapters run today. Crucial left retail in Feb 2026: leftover stock only, check the seller. About €120 for 1 TB (Trovaprezzi, Nov 2026) |
 | 2 | **Samsung 870 EVO** | `MZ-77E1T0B/EU` / `MZ-77E500B/EU` | 600 / 300 | Most common SSD on Pi 4s. **Not** the 870 **QVO** |
 | 3 | **WD Red SA500** or **WD Blue SA500** | Red `WDS100T1R0A` / `WDS500G1R0A`; Blue `WDS100T2B0A` / `WDS500G2B0A` | 600 / 350 (Red), 400 / 200 (Blue) | **Not** the WD Blue **SA510** (no DRAM) |
-| 4 | **Crucial BX500**, only if 1–3 are out of stock | `CT1000BX500SSD1` (1 TB, 360 TBW; €247 on Amazon, 23 Nov 2026). Never 240/480/500 GB | 720 / 360 | Last fallback (shortage, Nov 2026). DRAM-less: fine as long as Elasticsearch and Prometheus stay off the Pis (growth condition in 2.1.3), with TRIM on. Treat as a consumable: `DiskWornOut` tells when |
+| 4 | **Crucial BX500**, only if 1–3 are out of stock | `CT2000BX500SSD1` (2 TB, 720 TBW, €247) for the Pi workers; `CT1000BX500SSD1` (1 TB, 360 TBW, €149) for masters and node1 (Amazon, 23 Nov 2026). Never 240/480/500 GB | 720 / 360 | Last fallback (shortage, Nov 2026). DRAM-less: fine as long as Elasticsearch and Prometheus stay off the Pis (growth condition in 2.1.3), with TRIM on. Treat as a consumable: `DiskWornOut` tells when |
 
-2 TB part numbers, not needed with the growth condition (2.1.3), only if Pi workers ever get heavy volumes again: MX500 `CT2000MX500SSD1` (700 TBW), 870 EVO `MZ-77E2T0B/EU` (1,200),
+2 TB part numbers (Pi workers, 2.1.3): MX500 `CT2000MX500SSD1` (700 TBW), 870 EVO `MZ-77E2T0B/EU` (1,200),
 WD Red SA500 `WDS200T1R0A` (1,300), BX500 `CT2000BX500SSD1` (720). All within the Pi's 4 W power budget.
 
 **Never a Kingston A400** on the Pis, even when it is the only drive in stock: often not recognised behind these
@@ -148,13 +148,14 @@ GB/day. Two findings:
 - **Mini PCs: a used enterprise drive.** A new one (Kingston DC600M) costs €727 (Amazon, 23 Nov 2026): too much.
   Fallback: a 600 TBW consumer 1 TB (KC600, 870 EVO, WD Red SA500), about 7 years at today's load, 3.5 if it
   doubles.
-- **Pi workers: 1 TB (decided 2026-11-23)**, with the growth condition below. The ~156 GB/day "sustained" figure
+- **Pi workers (node5, node6): 2 TB BX500 (decided 2026-11-23)**, €247 against €149 for 1 TB: about 6 years even if
+  heavy volumes land on a Pi again, more with the growth condition below. 1 TB is the minimum, and only with that
+  condition. The ~156 GB/day "sustained" figure
   for node5 is inflated: the 7-day average includes the 22 Nov incident rebuilds (288 GB that day) and the
   lifetime average includes the months when Elasticsearch and Prometheus had copies on node5. On the last day
   node5 wrote 31 GB and node6 37 GB. With Elasticsearch and Prometheus kept on the mini PCs, a Pi worker writes
   about 30–60 GB/day, 60–120 doubled: a 1 TB MX500/BX500 (360 TBW) lasts **8–16 years**. Only if they land on a
-  Pi again does it drop to about 3 years, hence the condition. 2 TB (part numbers above) is not needed: the
-  BX500 1 TB already costs €247 (Amazon, 23 Nov 2026).
+  Pi again does it drop to about 3 years; the 2 TB covers that case too, for €98 more per drive.
 - **Masters: 1 TB** (500 GB is half the life).
 - **node1: 1 TB**, for space (RustFS); wear is not a concern there once the root disk is no longer full.
 
@@ -234,7 +235,7 @@ spare StarTech USB 3.0 to 2.5" SATA adapter of the same model is optional).
 
 | Qty | For | Buy (first one in stock) | Swap |
 |---|---|---|---|
-| 1 | **node6** (Pi test drive) | **1 TB**: Crucial BX500 `CT1000BX500SSD1` (in stock, €247) or MX500 `CT1000MX500SSD1`; WD Red SA500 `WDS100T1R0A` / 870 EVO `MZ-77E1T0B/EU` if cheaper. Never a Kingston | 1st (procedure A) |
+| 1 | **node6** (Pi test drive) | **2 TB**: Crucial BX500 `CT2000BX500SSD1` (in stock, €247) or MX500 `CT2000MX500SSD1`. Minimum 1 TB (`CT1000BX500SSD1`, €149). Never a Kingston | 1st (procedure A) |
 | 1 | **node-esp-2** (x86) | used enterprise 960 GB (2.1.2 mini PC table: PM883, PM893, S4510, Micron 5300/5400), health ≥ 95%. Fallback new: KC600 `SKC600/1024G` or another 600 TBW 1 TB. Not DC600M at €727, not BX500, not A400 | 2nd (procedure B) |
 
 If only one can be bought now, buy node-esp-2's: it is the disk with media errors and the heaviest writes.
@@ -255,14 +256,15 @@ mixing models is fine):
 
 | Qty | Size | For |
 |---|---|---|
-| 1 | 1 TB | node5 |
+| 1 | 2 TB (BX500 `CT2000BX500SSD1`, or the node6 model) | node5 |
 | 1 | 1 TB (500 GB only if 1 TB is unaffordable, and never a BX500 below 1 TB) | node4 (etcd) |
 
 **Step 3, later** (when their `DiskWornOut` fires, or at a good price): node1, node3 and node2 1 TB,
 node-esp-1 960 GB enterprise. Their wear on 2026-11-22: 34–47%.
 
-Cost (Amazon, 23 Nov 2026; prices move fast during the shortage): Crucial BX500 1 TB €247; Kingston DC600M 960 GB
-€727 (too much: look for a used enterprise drive instead). The 3 worn Pis at 1 TB about €740, plus node-esp-2.
+Cost (Amazon, 23 Nov 2026; prices move fast during the shortage): Crucial BX500 1 TB €149, 2 TB €247; Kingston
+DC600M 960 GB €727 (too much: look for a used enterprise drive instead). The 3 worn Pis: 2 × 2 TB + 1 × 1 TB =
+**€643**, plus node-esp-2.
 
 **When each drive arrives**, before using it (any Linux machine, or a Pi through the adapter):
 

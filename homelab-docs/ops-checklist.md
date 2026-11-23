@@ -366,9 +366,8 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
   Intel D3-S4510 `SSDSC2KB960G8`, Micron 5300/5400 PRO. Seller shows SMART: wear ≥ 95%, 0 reallocated or
   uncorrectable. Fallback new: Kingston KC600 1 TB `SKC600/1024G` (Kingston is fine without a USB adapter).
   Not the DC600M (€727). **Not BX500, not A400.** If only one drive fits the budget, this one.
-- [ ] **node6:** **1 TB** Crucial BX500 `CT1000BX500SSD1` (€247 on Amazon, 23 Nov) or MX500
-  `CT1000MX500SSD1`. **Never Kingston.** Why 1 TB is enough: disk-replacement.md 2.1.3 (needs ES/Prometheus kept
-  off the Pis: action 2 below).
+- [ ] **node6:** **2 TB** Crucial BX500 `CT2000BX500SSD1` (€247 on Amazon, 23 Nov; 1 TB €149 is the minimum) or
+  MX500 `CT2000MX500SSD1`. **Never Kingston.** Why: disk-replacement.md 2.1.3.
 - [ ] When each arrives: the `smartctl` check in 2.3 (right model, power-on hours near 0, or the stated health for
   the used one). Write model and serial in the progress table (10).
 
@@ -377,7 +376,7 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
   validates the model for the other Pis); A7 includes the TRIM check.
 - [ ] **node-esp-2** (procedure B): `make pxe-setup` first; cordon the worn Pis during the drain (4.2) so ES and
   Prometheus go to node-esp-1. Whichever drive arrives first goes first.
-- [ ] Then buy and swap **node5** (1 TB) and **node4** (1 TB), 2.3 step 2.
+- [ ] Then buy and swap **node5** (2 TB BX500, €247) and **node4** (1 TB BX500, €149), 2.3 step 2.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.
