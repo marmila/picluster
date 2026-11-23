@@ -364,7 +364,8 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
 **This week: buy the first 2 drives** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list), step 1):
 - [ ] **node-esp-2:** used enterprise 2.5" SATA 960 GB: Samsung PM883 `MZ7LH960HAJR` or PM893 `MZ7L3960HCJR`,
   Intel D3-S4510 `SSDSC2KB960G8`, Micron 5300/5400 PRO. Seller shows SMART: wear ≥ 95%, 0 reallocated or
-  uncorrectable. Else a new 1 TB MX500 / WD Red SA500 / 870 EVO. **Not a BX500.** If only one drive fits the
+  uncorrectable. Else new: Kingston DC600M `SEDC600M/960G` or KC600 `SKC600/1024G` (Kingston is fine without
+  a USB adapter), or a 1 TB MX500 / WD Red SA500 / 870 EVO. **Not BX500, not A400.** If only one drive fits the
   budget, this one.
 - [ ] **node6:** 1 TB, first in stock: MX500 `CT1000MX500SSD1`, WD Red SA500 `WDS100T1R0A`, 870 EVO
   `MZ-77E1T0B/EU`, WD Blue SA500 `WDS100T2B0A`; last fallback Crucial BX500 `CT1000BX500SSD1`. **Never Kingston.**

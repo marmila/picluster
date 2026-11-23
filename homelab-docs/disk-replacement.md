@@ -112,7 +112,9 @@ SSD**, 2.5", 960 GB, health ≥ 95%:
 
 DRAM, power-loss protection, and endurance far above any consumer drive; datacenter pull-outs stay available
 during the retail shortage. Buy from a refurbished-server shop or an eBay seller with history who shows the
-SMART data (wear, power-on hours, 0 reallocated/uncorrectable). Second choice: any new model from rows 1–3.
+SMART data (wear, power-on hours, 0 reallocated/uncorrectable). Second choice, new: **Kingston DC600M 960 GB**
+(`SEDC600M/960G`, enterprise, power-loss protection, ~1.7 PB) or **Kingston KC600 1 TB** (`SKC600/1024G`, DRAM,
+600 TBW), often in stock during the shortage; or any model from rows 1–3. Kingston is fine here: no USB adapter.
 **Not a BX500** on the mini PCs: node-esp-2 takes about 60 GB/day of Elasticsearch and Prometheus writes.
 
 **Do not buy:**
@@ -170,7 +172,7 @@ spare StarTech USB 3.0 to 2.5" SATA adapter of the same model is optional).
 | Qty | For | Buy (first one in stock) | Swap |
 |---|---|---|---|
 | 1 | **node6** (Pi test drive) | 1 TB: MX500 `CT1000MX500SSD1` → WD Red SA500 `WDS100T1R0A` → Samsung 870 EVO `MZ-77E1T0B/EU` → WD Blue SA500 `WDS100T2B0A` → last fallback Crucial BX500 `CT1000BX500SSD1`. Never a Kingston | 1st (procedure A) |
-| 1 | **node-esp-2** (x86) | used enterprise 960 GB (2.1.2 mini PC table: PM883, PM893, S4510, Micron 5300/5400), health ≥ 95%. Else a new 1 TB from rows 1–3, not BX500 | 2nd (procedure B) |
+| 1 | **node-esp-2** (x86) | used enterprise 960 GB (2.1.2 mini PC table: PM883, PM893, S4510, Micron 5300/5400), health ≥ 95%. Else new: Kingston DC600M `SEDC600M/960G` or KC600 `SKC600/1024G`, or a 1 TB from rows 1–3. Not BX500, not A400 | 2nd (procedure B) |
 
 If only one can be bought now, buy node-esp-2's: it is the disk with media errors and the heaviest writes.
 Then node-esp-2 goes first, and node6 waits for its drive.
