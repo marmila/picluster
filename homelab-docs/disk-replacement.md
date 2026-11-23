@@ -182,7 +182,8 @@ The node6 drive tests the Pi model in procedure A, step A5. All must pass:
 - after A6 (which installs the SMART timer): `smartmon_read_ok` is 1 for node6 (SMART readable through the adapter, so the
   disk alerts cover it).
 
-If it fails, put that drive in node-esp-2 (internal SATA, no adapter) and test the next model on node6.
+If it fails, nothing is wasted: keep that drive for node-esp-1's swap (internal SATA, no adapter, any drive
+works) and test the next model on node6. The used enterprise drives are for the mini PCs only, never a Pi (power).
 
 **Step 2: the other 2 worn disks**, once node6 passed A5 (a model from 2.1.2; the same one as node6 if in stock,
 mixing models is fine):
