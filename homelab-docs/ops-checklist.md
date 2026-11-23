@@ -364,11 +364,12 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
 **This week: buy the first 2 drives** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list), step 1):
 - [ ] **node-esp-2:** used enterprise 2.5" SATA 960 GB: Samsung PM883 `MZ7LH960HAJR` or PM893 `MZ7L3960HCJR`,
   Intel D3-S4510 `SSDSC2KB960G8`, Micron 5300/5400 PRO. Seller shows SMART: wear ≥ 95%, 0 reallocated or
-  uncorrectable. Else new: Kingston DC600M `SEDC600M/960G` or KC600 `SKC600/1024G` (Kingston is fine without
-  a USB adapter), or a 1 TB MX500 / WD Red SA500 / 870 EVO. **Not BX500, not A400.** If only one drive fits the
-  budget, this one.
-- [ ] **node6:** 1 TB, first in stock: MX500 `CT1000MX500SSD1`, WD Red SA500 `WDS100T1R0A`, 870 EVO
-  `MZ-77E1T0B/EU`, WD Blue SA500 `WDS100T2B0A`; last fallback Crucial BX500 `CT1000BX500SSD1`. **Never Kingston.**
+  uncorrectable. Else new: Kingston DC600M `SEDC600M/960G` (Kingston is fine without a USB adapter). Last
+  resort: KC600 `SKC600/1024G` (~3.5 years at the design load). **Not BX500, not A400.** If only one drive fits
+  the budget, this one.
+- [ ] **node6:** **2 TB** Crucial MX500 `CT2000MX500SSD1` or BX500 `CT2000BX500SSD1`, or WD Red SA500
+  `WDS200T1R0A` / 870 EVO `MZ-77E2T0B/EU`; or 1 TB of a 600 TBW model (WD Red SA500 `WDS100T1R0A`, 870 EVO
+  `MZ-77E1T0B/EU`). **Never Kingston.** Why 2 TB: measured writes, disk-replacement.md 2.1.3.
 - [ ] When each arrives: the `smartctl` check in 2.3 (right model, power-on hours near 0, or the stated health for
   the used one). Write model and serial in the progress table (10).
 
@@ -377,7 +378,12 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
   validates the model for the other Pis); A7 includes the TRIM check.
 - [ ] **node-esp-2** (procedure B): `make pxe-setup` first; cordon the worn Pis during the drain (4.2) so ES and
   Prometheus go to node-esp-1. Whichever drive arrives first goes first.
-- [ ] Then buy and swap **node5** (1 TB) and **node4** (500 GB, or 1 TB if only BX500), 2.3 step 2.
+- [ ] Then buy and swap **node5** (2 TB, or 1 TB of a 600 TBW model) and **node4** (1 TB), 2.3 step 2.
+- [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
+  (Crucial attributes; other brands differ, node2):
+  `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.
+- [ ] **Before adding write-heavy apps:** make postmortem action 2 permanent (Longhorn disk tag `fast` on the
+  mini PCs for Elasticsearch/Prometheus), the condition for the sizing in disk-replacement.md 2.1.3.
 - [ ] After the **last** of the 4 swaps (not before), expire the `DiskWornOut` silence (disk-replacement.md §9).
 
 **This week, other:**
