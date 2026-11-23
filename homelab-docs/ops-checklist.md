@@ -276,7 +276,13 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   | node3 | 169.8 GiB | 34.4 GiB | 42 s |
   | node4 | 169.8 GiB | 34.1 GiB | 34 s |
   | node2 | 169.8 GiB | 38.0 GiB | 25 s |
-- [ ] **Afterwards:** compare `DiskWriteLatencyHigh` and the node5/node6 write latency with the 22 Nov baseline.
+- [ ] **24 Nov evening:** write latency per disk (ms per write, last 6 h; node2) against the 22 Nov baseline
+  (0–4 ms healthy, node6 43 ms), and whether `DiskWriteLatencyHigh` still fires on node5/node6:
+  ```bash
+  P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+  Q='1000 * rate(node_disk_write_time_seconds_total{device="sda"}[6h]) / rate(node_disk_writes_completed_total{device="sda"}[6h]) * on(instance) group_left(nodename) node_uname_info{job="node-exporter"}'
+  kubectl get --raw "${P}$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$Q")" | jq -r '.data.result[] | "\(.metric.nodename)\t\(.value[1] | tonumber | . * 10 | round / 10) ms"' | sort
+  ```
 
 ### 22 Nov: write reduction (worn disks)
 - [x] **Longhorn 1 replica, live patch (stays out of Git on purpose):** `postgres-keycloak-1`,
@@ -341,15 +347,50 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
 - [x] **Measure the saving** (23 Nov evening): **177 GB/day** (was 269, target ~200), see
   disk-replacement.md 2.4.
 
-**This week:**
-- [ ] **Decide the purchase** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list)): pick the Pi model
-  (MX500, else 870 EVO, else WD Red/Blue SA500; no Kingston, no SA510/QVO), **order the one 1 TB test drive**,
-  then the other 6 once node6 passes A5.
-- [ ] Before the node6 swap: pre-flight 4.1 and the Keycloak backup check in A1.
+### Next steps (from 23 Nov evening)
+
+Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), purchase decided
+([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list)): 2 drives first, sizes as in 2.1.1.
+
+**24 Nov morning (node2, node1):**
+- [ ] Velero `full-20261124*` Completed, 0 errors, first night on RustFS 1.0.4; RustFS timeouts on node1 (the
+  "24 Nov backup" item above).
+- [ ] No `DiskMediaErrors`, no `DiskSmartFailing` overnight; no `reset`/`I/O error` on any Pi after the trims
+  (pimaster): `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'`.
+
+**24 Nov evening (node2):**
+- [ ] Write latency after TRIM (the latency item in the TRIM block above).
+
+**This week: buy the first 2 drives** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list), step 1):
+- [ ] **node-esp-2:** used enterprise 2.5" SATA 960 GB: Samsung PM883 `MZ7LH960HAJR` or PM893 `MZ7L3960HCJR`,
+  Intel D3-S4510 `SSDSC2KB960G8`, Micron 5300/5400 PRO. Seller shows SMART: wear ≥ 95%, 0 reallocated or
+  uncorrectable. Else a new 1 TB MX500 / WD Red SA500 / 870 EVO. **Not a BX500.** If only one drive fits the
+  budget, this one.
+- [ ] **node6:** 1 TB, first in stock: MX500 `CT1000MX500SSD1`, WD Red SA500 `WDS100T1R0A`, 870 EVO
+  `MZ-77E1T0B/EU`, WD Blue SA500 `WDS100T2B0A`; last fallback Crucial BX500 `CT1000BX500SSD1`. **Never Kingston.**
+- [ ] When each arrives: the `smartctl` check in 2.3 (right model, power-on hours near 0, or the stated health for
+  the used one). Write model and serial in the progress table (10).
+
+**Swaps** (one per day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)):
+- [ ] **node6** (procedure A): before it, pre-flight 4.1 and the Keycloak backup check in A1. A5 must pass (it
+  validates the model for the other Pis); A7 includes the TRIM check.
+- [ ] **node-esp-2** (procedure B): `make pxe-setup` first; cordon the worn Pis during the drain (4.2) so ES and
+  Prometheus go to node-esp-1. Whichever drive arrives first goes first.
+- [ ] Then buy and swap **node5** (1 TB) and **node4** (500 GB, or 1 TB if only BX500), 2.3 step 2.
+- [ ] After the **last** of the 4 swaps (not before), expire the `DiskWornOut` silence (disk-replacement.md §9).
+
+**This week, other:**
 - [ ] CoreDNS: one pod restarted around the 22 Nov DNS timeout (Flux `Could not resolve host`). Check its last
   termination reason: `kubectl -n kube-system get pods -l app.kubernetes.io/name=coredns -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodeName} {.status.containerStatuses[0].restartCount} {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{"
 "}{end}'`.
 - [ ] Postmortem action 7 leftovers: Kafka ×3 and Prometheus volumes, which still have a replica on node5/node6.
+  Advice 23 Nov: leave Kafka at 3 replicas (app topics have 1 copy in Kafka, Longhorn is their only redundancy;
+  going to 2 saves only ~11 GB/day).
+
+**Deadlines:**
+- [ ] **22 Dec 2026:** `DiskWornOut` silence `e33eec49` ends: the 4 worn disks swapped, or extend it
+  (disk-replacement.md §9).
+- [ ] **20 Feb 2027:** `FluxResourceSuspended` silence `1d710e92` ends: re-enable threatmap or remove it.
 
 ---
 

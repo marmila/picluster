@@ -35,8 +35,10 @@ SMART on 2026-11-22 (all nodes):
 | node-esp-1 | Crucial BX500 480 GB, SATA | 34% | none | Longhorn (ES + Prometheus copies) |
 
 Models confirmed with `smartctl -i`: `CT240BX500SSD1` (firmware M6CR056) on node1–node4, `CT240BX500SSD1` on node6,
-`CT480BX500SSD1` on node5 and node-esp-1, `CT500MX500SSD1` on node-esp-2. **Do not buy BX500 again**: DRAM-less
-(recent batches QLC), it collapses under sustained writes long before its rated life.
+`CT480BX500SSD1` on node5 and node-esp-1, `CT500MX500SSD1` on node-esp-2. The BX500 is DRAM-less (recent
+batches QLC) and slows down under sustained writes; the 240 GB size is rated only 80 TBW. Since the 2026-11-23
+changes (TRIM, fewer writes, Elasticsearch off the Pis) a **1 TB** BX500 is acceptable on a Pi as a last
+fallback (2.1.2), never on the mini PCs.
 
 Budget DRAM-less drives (BX500) without TRIM wear out in about two years under Longhorn and etcd writes, and slow
 to hundreds of milliseconds per write long before they fail. That stalled node5 and node6 on 2026-11-22.
@@ -46,10 +48,13 @@ The Pi disks never had TRIM: the kernel leaves USB bridges at `provisioning_mode
 since 2026-11-23 by a udev rule (2.2, condition 5). The first trim, by hand on each Pi, freed 135–295 GiB per
 disk (about 1.4 TB in all), with no errors (results in ops-checklist.md, 23 Nov).
 
-**4 disks are worn out** (node4, node5, node6, node-esp-2) and must be replaced now. The other 4 still have years
-left. The recommendation (2.3) is to buy **7 drives now**: the 4 worn ones plus node1, node2 and node3, so all six
-Pis get the same model while it is still on sale; node-esp-1 waits for its `DiskWornOut` alert. Writes were also
-reduced (2.4), so every disk lasts longer. The purchase is not decided yet (2026-11-22).
+**4 disks are worn out** (node4, node5, node6, node-esp-2) and must be replaced. The other 4 still have years
+left. Writes were reduced (2.4: 269 → 177 GB/day) and the Pis have TRIM, so every disk lasts longer.
+
+**Decided 2026-11-23** (retail SSD shortage, Nov 2026: shops often stock only BX500 and Kingston A400): buy
+**2 drives first** (2.3, step 1): a 1 TB for node6 (the Pi test drive) and a used enterprise 960 GB for node-esp-2
+(the busiest worn disk: ~60 GB/day of Elasticsearch and Prometheus writes on 109% wear). Then node5 and node4;
+node1, node3, node2 and node-esp-1 when their `DiskWornOut` fires or a good price shows up. Sizes stay as in 2.1.1.
 
 ## 2. New disks: model, size, compatibility
 
@@ -72,6 +77,11 @@ Only drives **with DRAM cache and TLC flash** (2.1.2).
 | node-esp-1 | Longhorn worker (x86) | BX500 480 GB, 34% | **1 TB** (960 GB ok) | later | no power limit, any SATA drive fits: buy when `DiskWornOut` fires |
 
 Different sizes are fine: masters hold etcd, not Longhorn data, and Longhorn places replicas by free space.
+On 2026-11-23 Longhorn used only 39 GB on node5 and node6 (130–141 GB on the mini PCs), but the Pi workers stay
+at 1 TB: rated endurance grows with size, and the free space gives wear levelling and rebuilds room.
+
+The "Buy" column was the 2026-11-22 recommendation; the 2026-11-23 decision is in 2.3: worn disks first, the
+rest when needed.
 
 #### 2.1.2 Models
 
@@ -82,19 +92,34 @@ Different sizes are fine: masters hold etcd, not Longhorn data, and Longhorn pla
 | 1 | **Crucial MX500** | `CT1000MX500SSD1` / `CT500MX500SSD1` | 360 / 180 | Same family the adapters run today. Crucial left retail in Feb 2026: leftover stock only, check the seller. About €120 for 1 TB (Trovaprezzi, Nov 2026) |
 | 2 | **Samsung 870 EVO** | `MZ-77E1T0B/EU` / `MZ-77E500B/EU` | 600 / 300 | Most common SSD on Pi 4s. **Not** the 870 **QVO** |
 | 3 | **WD Red SA500** or **WD Blue SA500** | Red `WDS100T1R0A` / `WDS500G1R0A`; Blue `WDS100T2B0A` / `WDS500G2B0A` | 600 / 350 (Red), 400 / 200 (Blue) | **Not** the WD Blue **SA510** (no DRAM) |
+| 4 | **Crucial BX500 1 TB**, only if 1–3 are out of stock | `CT1000BX500SSD1` (1 TB only: not 240/480/500 GB) | 360 | Last fallback (shortage, Nov 2026). DRAM-less, but fine for what the Pis carry now: no Elasticsearch, TRIM on, roughly 10–20 GB/day per Pi worker. 360 TBW lasts many years even with heavy internal write amplification. Treat as a consumable: `DiskWornOut` tells when |
 
-At this cluster's rates (about 200 GB/day of Longhorn writes after 2.4, spread over 4 nodes; masters ~23 TB/year)
-even the MX500 lasts many years: no data-center drives needed.
+**Never a Kingston A400** on the Pis, even when it is the only drive in stock: often not recognised behind these
+adapters, and DRAM-less.
 
-**For the mini PCs** (node-esp-2 now, node-esp-1 later): no power limit, so any of the above, or the cheapest
-good option: a **used enterprise SATA SSD**, 960 GB, health ≥ 95%: Samsung PM883 / PM893, Micron 5300 / 5400 PRO,
-Intel S4510. 1–3 PB endurance and power-loss protection, often the same price as a new 1 TB consumer drive.
+At this cluster's rates (177 GB/day of Longhorn writes measured after 2.4, spread over 4 nodes; masters ~23
+TB/year) even the MX500 lasts many years: no data-center drives needed.
+
+**For the mini PCs** (node-esp-2 now, node-esp-1 later): no power limit. First choice: a **used enterprise SATA
+SSD**, 2.5", 960 GB, health ≥ 95%:
+
+| Model | Part number (960 GB) | Endurance |
+|---|---|---|
+| Samsung PM883 | `MZ7LH960HAJR` | ~1.3 PB |
+| Samsung PM893 | `MZ7L3960HCJR` | ~1.7 PB |
+| Intel (Solidigm) D3-S4510 | `SSDSC2KB960G8` | ~3.4 PB |
+| Micron 5300 PRO / 5400 PRO | `MTFDDAK960TDS` / `MTFDDAK960TGA` | ~1.5–1.7 PB |
+
+DRAM, power-loss protection, and endurance far above any consumer drive; datacenter pull-outs stay available
+during the retail shortage. Buy from a refurbished-server shop or an eBay seller with history who shows the
+SMART data (wear, power-on hours, 0 reallocated/uncorrectable). Second choice: any new model from rows 1–3.
+**Not a BX500** on the mini PCs: node-esp-2 takes about 60 GB/day of Elasticsearch and Prometheus writes.
 
 **Do not buy:**
 
 | Drive | Why |
 |---|---|
-| Crucial BX500 | DRAM-less: the drive that wore out here |
+| Crucial BX500 240/480/500 GB; any BX500 on the mini PCs | DRAM-less, low TBW at small sizes: the drive that wore out here (1 TB on a Pi: fallback row 4) |
 | Any Kingston on the Pis (A400, KC600, ...) | Often not recognised behind these USB adapters in the past |
 | Samsung 870 QVO, WD Blue SA510, WD Green, Kingston A400, Crucial P-series | DRAM-less or QLC |
 | No-name drives, marketplace sellers with no history | fakes of discontinued models (MX500) are common |
@@ -137,11 +162,20 @@ So **all drives can be bought at once**; keep the adapters. Conditions:
 
 ### 2.3 Shopping list
 
-**Decision pending (2026-11-22).** Recommended: **7 drives now**, node-esp-1 later. No adapter needed (node5's
-was tested fine; a spare StarTech USB 3.0 to 2.5" SATA adapter of the same model is optional).
+**Decided 2026-11-23: 2 drives first, then the other worn ones.** No adapter needed (node5's was tested fine; a
+spare StarTech USB 3.0 to 2.5" SATA adapter of the same model is optional).
 
-**Step 1: one test drive first.** Buy **1 × 1 TB** of the chosen Pi model (2.1.2). It goes into node6, the first
-swap (procedure A). Step A5 is the compatibility test, all must pass:
+**Step 1: the first 2 drives.**
+
+| Qty | For | Buy (first one in stock) | Swap |
+|---|---|---|---|
+| 1 | **node6** (Pi test drive) | 1 TB: MX500 `CT1000MX500SSD1` → WD Red SA500 `WDS100T1R0A` → Samsung 870 EVO `MZ-77E1T0B/EU` → WD Blue SA500 `WDS100T2B0A` → last fallback Crucial BX500 `CT1000BX500SSD1`. Never a Kingston | 1st (procedure A) |
+| 1 | **node-esp-2** (x86) | used enterprise 960 GB (2.1.2 mini PC table: PM883, PM893, S4510, Micron 5300/5400), health ≥ 95%. Else a new 1 TB from rows 1–3, not BX500 | 2nd (procedure B) |
+
+If only one can be bought now, buy node-esp-2's: it is the disk with media errors and the heaviest writes.
+Then node-esp-2 goes first, and node6 waits for its drive.
+
+The node6 drive tests the Pi model in procedure A, step A5. All must pass:
 
 - `lsusb -t`: `Driver=uas, 5000M`;
 - `fio`: hundreds of MB/s, no `reset` / `abort` lines in `dmesg`;
@@ -150,19 +184,19 @@ swap (procedure A). Step A5 is the compatibility test, all must pass:
 
 If it fails, put that drive in node-esp-2 (internal SATA, no adapter) and test the next model on node6.
 
-**Step 2: the rest**, same model:
+**Step 2: the other 2 worn disks**, once node6 passed A5 (a model from 2.1.2; the same one as node6 if in stock,
+mixing models is fine):
 
-| Qty | Drive | Size | For |
-|---|---|---|---|
-| 2 | Pi model (2.1.2) | 1 TB | node5, node1 (node6 got the test drive) |
-| 3 | Pi model (2.1.2) | 500 GB | node4, node3, node2 |
-| 1 | used enterprise 960 GB (or any model from 2.1.2) | 960 GB–1 TB | node-esp-2 |
+| Qty | Size | For |
+|---|---|---|
+| 1 | 1 TB | node5 |
+| 1 | 500 GB (1 TB if the price is close, or if only the BX500 is in stock: never a BX500 below 1 TB) | node4 (etcd) |
 
-Total, test drive included: **3 × 1 TB + 3 × 500 GB of the Pi model, plus 1 × 960 GB for node-esp-2 = 7
-drives.** Later: 1 × 960 GB–1 TB for node-esp-1.
+**Step 3, later** (when their `DiskWornOut` fires, or at a good price): node1 1 TB, node3 and node2 500 GB,
+node-esp-1 960 GB–1 TB. Their wear on 2026-11-22: 34–47%.
 
-Rough cost (Italian prices, Nov 2026, check on the day): **€750–850** for the 7 drives; only the 4 worn ones
-(node6, node5, node4, node-esp-2) about €450–500.
+Rough cost (Italian prices, Nov 2026, prices move fast during the shortage, check on the day): the 4 worn ones
+about €450–500; all 8 about €850–950.
 
 **When each drive arrives**, before using it (any Linux machine, or a Pi through the adapter):
 
@@ -170,7 +204,8 @@ Rough cost (Italian prices, Nov 2026, check on the day): **€750–850** for th
 sudo smartctl -i -A -d sat /dev/sdX | grep -iE "model|serial|firmware|Power_On_Hours|Total_LBAs"
 ```
 
-- the model is exactly the part number ordered (`CT1000MX500SSD1`, `Samsung SSD 870 EVO 1TB`, `WDC WDS100T1R0A`, ...);
+- the model is exactly the part number ordered (`CT1000MX500SSD1`, `Samsung SSD 870 EVO 1TB`, `WDC WDS100T1R0A`,
+  `CT1000BX500SSD1`, `SAMSUNG MZ7LH960HAJR...`, ...);
 - power-on hours close to 0 (a few hours from factory test is normal; for the used enterprise drive, check the
   health the seller stated: wear indicator ≥ 95%, no reallocated or uncorrectable sectors);
 - otherwise send it back.
@@ -299,7 +334,9 @@ Then restore what was scaled down (4.2), uncordon the Pis if they were cordoned,
 | 3 | node5 | A | Worn (adapter tested OK, kept) |
 | 4 | node4 | C | Worn etcd disk |
 
-**If node1, node3 and node2 are bought with phase 1 (2.3):** right after node4, one per day:
+If node-esp-2's drive arrives before node6's, swap node-esp-2 first (it does not depend on the Pi test).
+
+**Later (2.3 step 3), when bought:** one per day, in this order:
 
 | # | Node | Procedure | Why this position |
 |---|---|---|---|
@@ -307,7 +344,7 @@ Then restore what was scaled down (4.2), uncordon the Pis if they were cordoned,
 | 6 | node3 | C | Masters at least an hour apart, only with all three `Ready` |
 | 7 | node2 | C | First master in the inventory: `-e k3s_primary_control_node=false` is mandatory (7) |
 
-**Later, when `DiskWornOut` fires:** node-esp-1 (B).
+node-esp-1 (B) whenever its drive is bought; it does not depend on the others.
 
 ## 4. Rules for every swap
 
