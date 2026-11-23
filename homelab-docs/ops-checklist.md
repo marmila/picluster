@@ -229,7 +229,7 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 ### 23 Nov 08:00: first scheduled digest
 - [x] Monday's digest arrives on the phone by itself (`kubectl -n sre-triage get jobs` shows a Complete job).
 - [x] It no longer lists `tempo-ingester-0` (no restarts). It will still show the 21/22 Nov Velero failures (7-day window).
-- [ ] Not woken by `RustFSBucketMetricsMissing` at night (threshold now 5 h for the 01:15 → 05:15 gap).
+- [x] Not woken by `RustFSBucketMetricsMissing` at night (threshold now 5 h for the 01:15 → 05:15 gap).
 
 ### 27 Nov: RustFS growth in the digest
 - [ ] The RustFS line shows the 7-day growth per bucket (first full week of bucket metrics).
@@ -257,8 +257,8 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
 - [x] **Patch applied and checked** (22 Nov): 1 replica each, on the pod's node: `postgres-keycloak-1` node6,
   `postgres-keycloak-2` node5 (both worn disks), `data-loki-write-0` node-esp-1. Keycloak backups verified:
   WAL archiving working, daily backups completed (last 22 Nov 02:30), recoverable from 7 Nov.
-- [ ] **Measure the saving** (evening of 23 Nov, full 24 h without threatmap): rerun the table in
-  disk-replacement.md 2.4. Expected about 200 GB/day (was 269).
+- [x] **Measure the saving** (23 Nov evening): **177 GB/day** (was 269, target ~200), see
+  disk-replacement.md 2.4.
 - [x] **Threatmap disabled** (MongoDB ~27 GB/day): `threatmap-app` and `mongodb-community-operator-app` have
   `suspend: true` in Git (namespace and MongoDB volume kept). Live, node2:
   `kubectl -n databases scale deploy -l app.kubernetes.io/name=community-operator --replicas=0` (or the operator
@@ -298,16 +298,18 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   exclusion and, if unused, the MongoDB operator).
 
 **23 Nov morning (node2):**
-- [ ] Nightly Velero backup `Completed`, no `threatmap` objects in it
-  (`velero backup describe <latest> --details | grep -c threatmap` → 0).
-- [ ] Keycloak Postgres daily backup `completed` (`kubectl -n databases get backups.postgresql.cnpg.io | tail -2`).
+- [ ] Nightly Velero backup `Completed` ✓, but `grep -c threatmap` on `full-20261123020036` gives **10**.
+  Find out which objects (probably Flux objects in `flux-system` named `threatmap-*`, harmless; a threatmap
+  PVC or volume snapshot would not be).
+- [x] Keycloak Postgres daily backup `completed` (22 and 23 Nov) (`kubectl -n databases get backups.postgresql.cnpg.io | tail -2`).
 - [ ] No `DiskWriteLatencyHigh` on healthy disks (node-esp-1, node1–node3) overnight; no `DiskMediaErrors`.
-- [ ] Threatmap still off: `kubectl -n threatmap get pods` empty, both MongoDB volumes `detached`.
+  23 Nov: no `DiskMediaErrors`; `DiskWriteLatencyHigh` on node5, node6 (worn, expected) and **node1**. Check
+  whether node1 fired only in the backup window (02:00-04:00 UTC, the known RustFS saturation).
+- [x] Threatmap still off: `kubectl -n threatmap get pods` empty, both MongoDB volumes `detached`.
 
 **23 Nov evening (node2):**
-- [ ] **Measure the saving:** rerun the write table in
-  [disk-replacement.md 2.4](disk-replacement.md#24-make-every-disk-last-longer-fewer-disk-writes). Expected about
-  200 GB/day (was 269). Note the new per-volume numbers there.
+- [x] **Measure the saving** (23 Nov evening): **177 GB/day** (was 269, target ~200), see
+  disk-replacement.md 2.4.
 
 **This week:**
 - [ ] **Decide the purchase** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list)): pick the Pi model

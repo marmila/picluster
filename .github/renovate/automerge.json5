@@ -30,7 +30,10 @@
       group: {
         commitMessageTopic: "{{{groupName}}} dependencies",
       },
-      schedule: ["before 6am on monday"],
+      // Created any time Monday before 10:00 Rome, so Renovate has several runs to open
+      // the PR before the automerge window. "before 6am" missed it on 2026-11-23: the
+      // branch was built at 03:36, the next run came after 06:00 and the PR waited a week.
+      schedule: ["* 0-9 * * 1"],
       minimumReleaseAge: "3 days",
       automerge: true,
       automergeType: "pr",

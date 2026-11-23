@@ -108,7 +108,7 @@ only on **weekdays between 10:00 and 18:00 Europe/Rome**. Renovate does the merg
 
 | What | When it merges | Release age |
 |---|---|---|
-| Weekly bundle **all non-major dependencies** | Monday 10:00–18:00 | 3 days |
+| Weekly bundle **all non-major dependencies** (PR created Monday before 10:00) | Monday 10:00–18:00 | 3 days |
 | Tools: mise, GitHub Actions, kubectl / Helm / Velero CLI | any weekday 10:00–18:00 | — |
 | Grafana dashboard revisions | any weekday 10:00–18:00 | — |
 | **Vault** (minor/patch) | Tuesday 10:00–18:00 | 7 days |

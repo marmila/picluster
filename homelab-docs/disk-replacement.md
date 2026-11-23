@@ -195,6 +195,11 @@ first, which writes the same amount.
 
 Expected after both: about **200 GB/day** (-25%).
 
+**Measured 2026-11-23** (same method, 24 h): **177 GB/day** (-34%). Elasticsearch 81, Prometheus 40,
+Kafka ×3 32, Loki write 10 (1 replica), Postgres Keycloak ×2 9 (1 replica each), threatmap 3 (only the hours
+before it stopped), others 2. Prometheus is lower than on 22 Nov (55); measure again before deciding anything
+on it.
+
 Result of the patch (2026-11-22): each volume kept one replica, on its pod's node:
 
 | Volume | Replica (and pod) on | Note |
