@@ -362,12 +362,13 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
 - [ ] Write latency after TRIM (the latency item in the TRIM block above).
 
 **This week: buy the first 2 drives** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list), step 1):
-- [ ] **node-esp-2:** used enterprise 2.5" SATA 960 GB: Samsung PM883 `MZ7LH960HAJR` or PM893 `MZ7L3960HCJR`,
-  Intel D3-S4510 `SSDSC2KB960G8`, Micron 5300/5400 PRO. Seller shows SMART: wear ≥ 95%, 0 reallocated or
+- [ ] **node-esp-2:** used enterprise 2.5" SATA, best value **Intel D3-S4610** 960 GB `SSDSC2KG960G8` (or 480 GB
+  `SSDSC2KG480G8` if 960 is over budget: enough space); else Intel D3-S4510 `SSDSC2KB960G8`, Samsung PM893
+  `MZ7L3960HCJR` / PM883 `MZ7LH960HAJR`, Micron 5300/5400 PRO 960 GB. Seller shows SMART: wear ≥ 95%, 0 reallocated or
   uncorrectable. Fallback new: Kingston KC600 1 TB `SKC600/1024G` (Kingston is fine without a USB adapter).
   Not the DC600M (€727). **Not BX500, not A400.** If only one drive fits the budget, this one.
-- [ ] **node6:** **2 TB** Crucial BX500 `CT2000BX500SSD1` (€247 on Amazon, 23 Nov; 1 TB €149 is the minimum) or
-  MX500 `CT2000MX500SSD1`. **Never Kingston.** Why: disk-replacement.md 2.1.3.
+- [ ] **node6:** **1 TB** Crucial BX500 `CT1000BX500SSD1` (€149 on Amazon, 23 Nov) or MX500 `CT1000MX500SSD1`.
+  **Never Kingston.** Needs ES/Prometheus kept off the Pis (action 2 below; disk-replacement.md 2.1.3).
 - [ ] When each arrives: the `smartctl` check in 2.3 (right model, power-on hours near 0, or the stated health for
   the used one). Write model and serial in the progress table (10).
 
@@ -376,7 +377,7 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
   validates the model for the other Pis); A7 includes the TRIM check.
 - [ ] **node-esp-2** (procedure B): `make pxe-setup` first; cordon the worn Pis during the drain (4.2) so ES and
   Prometheus go to node-esp-1. Whichever drive arrives first goes first.
-- [ ] Then buy and swap **node5** (2 TB BX500, €247) and **node4** (1 TB BX500, €149), 2.3 step 2.
+- [ ] Then buy and swap **node5** and **node4** (1 TB BX500, €149 each), 2.3 step 2.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.
