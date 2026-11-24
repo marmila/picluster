@@ -25,7 +25,8 @@
       matchUpdateTypes: ["minor", "patch", "digest"],
       // Blocked packages (see "Blocked packages" rule) stay out of the bundle.
       // Keep this list in sync with that rule.
-      matchDepNames: ["!ubuntu", "!python"],
+      // rustfs/rustfs: own PR, tested by hand before merging (RustFS rule below).
+      matchDepNames: ["!ubuntu", "!python", "!rustfs/rustfs"],
       groupName: "all non-major",
       group: {
         commitMessageTopic: "{{{groupName}}} dependencies",
@@ -172,6 +173,10 @@
       // versions still get a PR; test them with the system-backup list check in runbooks/components/s3-storage.md.
       matchDepNames: ["rustfs/rustfs"],
       allowedVersions: "!/^v?1\\.0\\.[0-4]$/",
+      // Own PR, never automerged: merge only after the version passed MINIO-001 step 7 by day, so git
+      // never names a RustFS version node1 has not run (Flux does not apply it; make deploy-rustfs does).
+      automerge: false,
+      prBodyNotes: ["Before merging: deploy this version by day and pass runbooks/components/s3-storage.md MINIO-001 step 7 (Longhorn backup target). If it fails, roll back and leave this PR open."],
     },
     {
       description: "Istio minor versions are manual, one at a time",

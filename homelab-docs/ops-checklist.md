@@ -219,7 +219,7 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   Also 160 timeouts on 22 Nov 17:00-19:00 UTC, outside the window (the timer/metrics work on node1 that afternoon, a manual bucket walk; never run it 02:00-04:59 UTC).
 - [x] **RustFS upgraded to 1.0.4** (23 Nov, by day): `.rustfs.sys` saved to `~/rustfs-sys-2026-11-23.tgz` on
   node1, `make deploy-rustfs`, service active, 6 buckets listed.
-- [ ] **24 Nov backup** Completed with 0 errors, first night on 1.0.4; count the timeouts (node1):
+- [x] ~~**24 Nov backup**~~ superseded: PartiallyFailed, 1.0.4 broke the Longhorn backup target (24 Nov section below); count the timeouts (node1):
   ```bash
   sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE '"timestamp":"[0-9-]+T[0-9]{2}' | cut -c14- | sort | uniq -c | tail -6
   ```
@@ -244,9 +244,9 @@ Runbooks: BACKUP-004 step 3a, MINIO-001; postmortem 11-15 actions 11-13.
   disk-replacement.md (wear node4/5/6 100%, node-esp-2 109%; health PASSED everywhere; old error totals only).
   Write latency 0-4 ms on healthy disks, 43 ms on node6. `DiskWornOut` pending for node4, node5, node6,
   node-esp-2.
-- [ ] **Silence the known worn disks** until each swap: `DiskWornOut` for node4, node5, node6, node-esp-2
+- [x] **Silence the known worn disks** until each swap (silence `e33eec49`, ends 22 Dec): `DiskWornOut` for node4, node5, node6, node-esp-2
   (and `DiskSmartFailing` if it fires on the BX500s).
-- [ ] **Write latency baseline:** after a quiet day, check that `DiskWriteLatencyHigh` (100 ms for 15 min) does
+- [x] **Write latency baseline** (23-24 Nov: no firing on healthy disks; after TRIM 0.2-1.1 ms everywhere): after a quiet day, check that `DiskWriteLatencyHigh` (100 ms for 15 min) does
   not fire on healthy disks (node-esp-1, node1–3); raise the threshold if it does.
 
 ### 23 Nov: TRIM on the Pi SSDs ([disk-replacement.md 2.2](disk-replacement.md#22-raspberry-pi-compatibility-checked-2026-11-22), condition 5)
@@ -276,7 +276,7 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   | node3 | 169.8 GiB | 34.4 GiB | 42 s |
   | node4 | 169.8 GiB | 34.1 GiB | 34 s |
   | node2 | 169.8 GiB | 38.0 GiB | 25 s |
-- [ ] **24 Nov evening:** write latency per disk (ms per write, last 6 h; node2) against the 22 Nov baseline
+- [x] **24 Nov evening:** write latency per disk (ms per write, last 6 h; node2) against the 22 Nov baseline
   (0–4 ms healthy, node6 43 ms), and whether `DiskWriteLatencyHigh` still fires on node5/node6:
   ```bash
   P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
@@ -497,14 +497,24 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
   ([sre-triage-agent.md](sre-triage-agent.md) 9.2, also update `sre-triage.ini`); optionally rename the alerts topic.
 - [ ] **fluent-bit:** raise the CPU limit.
 - [ ] **Fixed ntfy action buttons** for known alerts.
-- [ ] **RustFS upstream issue** (optional, postmortem action 10).
+- [ ] **RustFS upstream issue** (optional, github.com/rustfs/rustfs): first the 1.0.4 regression (postmortem
+  2026-11-24 action 5, `longhorn system-backup list` 127-300 s vs 0 s on beta.7), the only way back to a current
+  RustFS; then, if still present in 1.0.x, the leftover data copies (postmortem 2026-11-15 action 10).
 - [ ] **Hardware:** node1/node6 power cables; keep an eye on node3.
 - [ ] **Small items:** vendor the SUC files; check the Kafka 4.3.0/4.3.1 pin;
   `RaspberryPiUnderVoltage` alert only after 2 dips.
 - [ ] **RustFS bumps are not applied by Flux:** after Renovate changes `rustfs_server_version` (or
   `rustfs_cli_version`), run `make deploy-rustfs` on pimaster and check `rustfs --version` on node1.
   Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov. Since 24 Nov git pins beta.7
-  (1.0.4 broke Longhorn's backup target); after any bump, also run MINIO-001 step 7.
-- [ ] **Open Renovate PRs (10, limit 20):** the 6 GitHub Actions majors were merged by 22 Nov. Decide merge or close for each (Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964, which Renovate replaces with one "Prometheus Operator" group PR since 22 Nov; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390, auto-closed since 22 Nov because its major is disabled). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
+  (1.0.4 broke Longhorn's backup target); after any bump, also run MINIO-001 step 7. Since 24 Nov a RustFS bump
+  is its own PR, outside the weekly bundle and never automerged: merge it only after the test passed.
+  **Vault is the same:** Renovate automerges `vault_version` on Tuesdays (2.2.2 on 24 Nov), but node1 changes
+  only with `make deploy-vault` (pimaster, by day; check `vault status` unsealed and the ClusterSecretStore Ready).
+- [ ] **Open Renovate PRs (24 Nov):** merged: Cilium #991, Elasticsearch 8.19.26 #842, Vault 2.2.2 #1004
+  (automerge). Open: system-upgrade-controller 0.21.1 #1005 (patch), Prometheus Operator group #1001
+  (kube-prometheus-stack 93 + CRDs 33, major: read the upgrade notes), Istio #988, community.general 14 #955,
+  Vault Docker v2 #963, Python #974, Node 26 #987. Awaiting schedule (Dashboard #238): weekly bundle, Flux 2.10.1
+  and flux-operator (manual), helm CLI, tooling. Do not delete their branches: closing the PR is the way to drop
+  one.
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.
