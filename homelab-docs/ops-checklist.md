@@ -406,12 +406,15 @@ in order: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
 - [ ] **Sat 28 Nov: node6** (procedure A, start ~08:00: the eviction takes 1-6 h). Scale down (4.2), Keycloak
   check and eviction (A1), drain/remove (A2/A3), image the BX500 (A4), first boot + `fio` (A5, must pass: it
   validates the BX500 on the adapter), join (A6), check incl. SMART and TRIM (A7), restore (4.2).
-- [ ] **Sun 29 Nov: node-esp-2** (procedure B), only if node6 is green and no volume is degraded. Eviction (B1),
-  cordon node5 and node4 (the worn disks) if node-esp-1 has room, drain/remove (B2/B3), fit the 870 EVO,
+- [ ] **Sat 28 Nov afternoon: node4** (procedure C, master, no Longhorn data so no eviction; run sheet 4b), only
+  after node6 is green and not later than ~16:00 UTC; else Sunday after node-esp-2 or 6 Dec. etcd snapshot,
+  join with `-e k3s_primary_control_node=false`, check no `cluster-init`.
+- [ ] **Sun 29 Nov: node-esp-2** (procedure B), only if node6 and node4 are green and no volume is degraded.
+  Eviction (B1), cordon node5 (last worn disk) if node-esp-1 has room, drain/remove (B2/B3), fit the 870 EVO,
   `make pxe-setup`, PXE boot (B4), join (B5), check (B6), uncordon, restore.
 - [ ] **Mon 30 Nov:** first automatic `fstrim.timer` on the Pis: no `reset`/`I/O error` (the dmesg command above).
-- [ ] Then **node5** (procedure A with `node5`/`15`) and **node4** (procedure C, master: etcd snapshot first),
-  one per day, weekday evenings or the next weekend.
+- [ ] **Sat 5 Dec: node5** (procedure A with `node5`/`15`; Keycloak check mandatory). Sun 6 Dec spare.
+  Never two Longhorn nodes (node6, node5, node-esp-2) on the same day.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.

@@ -13,11 +13,17 @@ that document disagree, disk-replacement.md wins and this sheet gets fixed.
 |---|---|---|
 | Wed 25 - Thu 26 Nov | Morning checks; check the new drives | |
 | Fri 27 Nov | Prep | |
-| Sat 28 Nov | **node6** (procedure A) | Crucial BX500 1 TB `CT1000BX500SSD1` |
+| Sat 28 Nov, morning | **node6** (procedure A) | Crucial BX500 1 TB `CT1000BX500SSD1` |
+| Sat 28 Nov, afternoon | **node4** (procedure C, master; no Longhorn data, no eviction) | Crucial BX500 1 TB |
 | Sun 29 Nov | **node-esp-2** (procedure B) | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` |
 | Mon 30 Nov | First automatic `fstrim.timer` on the Pis | |
-| Weekday evenings or 5-6 Dec | **node5** (A), then **node4** (C, master) | BX500 1 TB each |
-| ~12-13 Dec | Write amplification of the first two new drives | |
+| Sat 5 Dec | **node5** (procedure A); Sun 6 Dec spare | Crucial BX500 1 TB |
+| ~12-19 Dec | Write amplification of the new drives, 2 weeks after each swap | |
+
+Swaps are concentrated on weekends. Two nodes on Saturday is safe only because node4 holds no Longhorn data:
+it starts after node6 is fully green (4.9), and not later than about 16:00 UTC; if node6 runs late, node4 moves to
+Sunday after node-esp-2, or to 6 Dec. Two Longhorn nodes (node6, node5, node-esp-2) never go on the same day: with one
+out and its data rebuilding elsewhere, a second eviction would leave too few nodes for the copies.
 | by 22 Dec | All 4 swapped; the `DiskWornOut` silence expires | |
 
 Baseline before the swaps (24 Nov evening, after TRIM): write latency 0.2-1.1 ms on every disk (node6 was 43 ms on
@@ -241,7 +247,129 @@ while read ns kind name n; do kubectl -n $ns scale $kind/$name --replicas=$n; do
 flux resume kustomization <name>           # once per suspended name
 ```
 
-Sunday only if everything in 4.9 is green.
+node4 (section 4b) and Sunday only if everything in 4.9 is green.
+
+## 4b. Sat 28 afternoon: node4 (procedure C, master)
+
+node4 is an etcd member (master) with no Longhorn data, so no eviction: about 1.5 hours. Start only with node6
+green and the three masters `Ready`, not later than about 16:00 UTC. etcd keeps running on node2 and node3
+(2 of 3). Never take a second master out while node4 is out.
+
+### 4b.1 etcd snapshot (node2)
+
+```bash
+kubectl get nodes | grep control-plane                    # node2, node3, node4 Ready
+kubectl get --raw='/readyz?verbose' | grep etcd           # [+]etcd ok
+kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID=="node4")]|length'
+sudo k3s etcd-snapshot save --name pre-swap-node4
+sudo k3s etcd-snapshot list | tail -3
+```
+
+You want: three masters `Ready`, `[+]etcd ok`, **0** Longhorn replicas on node4 (if not 0: run the eviction of 4.4
+with `N=node4` first, or move node4 to Sunday), the new `pre-swap-node4` snapshot in the list.
+
+### 4b.2 Drain, power off, remove
+
+node2:
+
+```bash
+kubectl drain node4 --ignore-daemonsets --delete-emptydir-data --grace-period=60 --timeout=600s
+```
+
+node4:
+
+```bash
+sudo poweroff
+```
+
+node2:
+
+```bash
+kubectl delete node node4
+kubectl -n kube-system delete secret node4.node-password.k3s --ignore-not-found
+sleep 30
+kubectl get --raw='/readyz?verbose' | grep etcd
+kubectl get nodes | grep control-plane
+```
+
+You want: `[+]etcd ok`; node2 and node3 `Ready`. Label the old disk **"node4 old, 28 Nov"**.
+
+### 4b.3 Image the BX500 (laptop)
+
+As 4.6, with:
+
+```powershell
+$NODE = "node4"; $IP = "14"; $BOOT = "E:"
+$ud = (Get-Content metal\rpi\cloud-init\nodes\user-data-SSD-partition -Raw).Replace("`r`n", "`n") -creplace 'nodeX', $NODE
+$nc = (Get-Content metal\rpi\cloud-init\nodes\network-config -Raw).Replace("`r`n", "`n") -creplace 'X', $IP
+[IO.File]::WriteAllText("$BOOT\user-data", $ud)
+[IO.File]::WriteAllText("$BOOT\network-config", $nc)
+Select-String -Path "$BOOT\user-data" -Pattern "hostname:"; Select-String -Path "$BOOT\network-config" -Pattern "10.0.0."
+```
+
+You want: `hostname: node4` and `10.0.0.14/24`.
+
+### 4b.4 First boot (node4)
+
+Same blue USB 3 port, power on, wait 5 minutes:
+
+```bash
+hostname; ip -4 addr show eth0 | grep inet
+lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
+lsusb -t | grep -i -A1 storage
+sudo dmesg -T | grep -iE "uas|reset|error" | tail
+```
+
+You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`. (`fio` not needed: node6 validated the BX500.)
+
+### 4b.5 Join as a **secondary** master (pimaster)
+
+```bash
+cd ~/picluster
+ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
+./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node4; ssh-keygen -R 10.0.0.14' || true
+./ansible-runner/ansible-runner.sh ansible node4 -m ping
+./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
+./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
+./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
+```
+
+**`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster. Right
+after `k3s_install.yml`, on node4:
+
+```bash
+sudo grep -nE "cluster-init|^server:" /etc/rancher/k3s/config.yaml
+```
+
+You want: a `server: https://...:6443` line and **no** `cluster-init`. If `cluster-init` shows: `sudo systemctl stop
+k3s` at once and stop.
+
+### 4b.6 Check
+
+node2:
+
+```bash
+kubectl get nodes | grep control-plane
+kubectl get --raw='/readyz?verbose' | grep etcd
+kubectl -n kube-system get pods -o wide | grep -E "kube-vip|coredns|cilium-operator"
+kubectl get pods -A -o wide --field-selector spec.nodeName=node4 | grep -vE "Running|Completed"
+```
+
+You want: three masters `Ready`, `[+]etcd ok`, those pods `Running`, nothing broken on node4.
+
+node4 (SMART baseline and TRIM):
+
+```bash
+sudo apt-get install -y -qq --no-install-recommends smartmontools
+sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
+lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
+sudo fstrim -v / ; sudo fstrim -v /storage 2>/dev/null
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
+```
+
+You want: `PASSED`, `unmap`, `DISC-MAX` `2G`, "trimmed", no errors. Fill in the progress table.
 
 ## 5. Sun 29: node-esp-2 (procedure B)
 
@@ -250,7 +378,8 @@ Start at about 08:00.
 ### 5.1 Checks
 
 Section 1, the pre-flight block of section 3, and 4.2 (scale down) again.
-You want: no volume `degraded`, and node6 already holding Longhorn data (`scheduled=` above 0 in the pre-flight).
+You want: every node `Ready` (node4 and node6 back), no volume `degraded`, and node6 already holding Longhorn data
+(`scheduled=` above 0 in the pre-flight). If node4 was moved to today, it goes after node-esp-2 is green (4b).
 
 ### 5.2 Move Longhorn data off node-esp-2 (node2, 1-6 h)
 
@@ -264,13 +393,13 @@ watch -n 30 "kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[
 
 You want: both numbers `0`.
 
-### 5.3 Keep heavy pods off the worn disks, drain, power off, remove
+### 5.3 Keep heavy pods off the worn disk, drain, power off, remove
 
-node2 (cordon only if node-esp-1 is below about 60% CPU and 70% memory):
+node5 is the last worn disk by now. node2 (cordon only if node-esp-1 is below about 60% CPU and 70% memory):
 
 ```bash
 kubectl top node node-esp-1
-kubectl cordon node5 node4
+kubectl cordon node5
 kubectl drain node-esp-2 --ignore-daemonsets --delete-emptydir-data --grace-period=60 --timeout=600s
 kubectl get pods -A -o wide | grep -E "Pending|ContainerCreating|CrashLoop"
 ```
@@ -335,7 +464,7 @@ node2:
 kubectl get node node-esp-2 -o wide
 kubectl -n longhorn-system get nodes.longhorn.io node-esp-2
 kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -vE "Running|Completed"
-kubectl uncordon node5 node4
+kubectl uncordon node5
 ```
 
 Then 4.10 (restore) and fill in the progress table.
@@ -351,14 +480,15 @@ cd ~/picluster
 
 You want: "trimmed" lines, no reset or I/O error.
 
-## 7. Next: node5 and node4
+## 7. Sat 5 Dec: node5 (procedure A)
 
-One per day, weekday evenings or the next weekend, each after a green section 1.
+Start at about 08:00 after a green section 1, with node6, node4 and node-esp-2 green since the weekend before.
+Sun 6 Dec is the spare day (also for node4 if it moved).
 
-- **node5:** section 4 with `node5` and IP `15` everywhere (`N=node5`, `$NODE = "node5"; $IP = "15"`,
-  `--limit node5`, `ssh-keygen -R 10.0.0.15`, the secret `node5.node-password.k3s`). Label the old disk.
-- **node4:** a master: [disk-replacement.md 7](disk-replacement.md#7-procedure-c-master-node4-node3-node2)
-  (procedure C): etcd snapshot first, never two masters out at once, join with `-e k3s_primary_control_node=false`.
+Section 4 with `node5` and IP `15` everywhere: `N=node5`; `kubectl drain node5`; the secret
+`node5.node-password.k3s`; `$NODE = "node5"; $IP = "15"`; `ssh-keygen -R node5; ssh-keygen -R 10.0.0.15`;
+`--limit node5`; checks on node5. node5 holds the only copy of the other Keycloak Postgres instance: 4.3 is
+mandatory. `fio` (4.7) is optional (node6 validated the BX500). Label the old disk **"node5 old, 5 Dec"**.
 
 ## 8. Two weeks after each swap: write amplification
 

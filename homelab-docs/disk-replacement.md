@@ -871,9 +871,9 @@ When node6, node-esp-2 and node5 run on new disks:
 |---|---|---|---|---|---|---|
 | 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1` (bought 24 Nov) | planned Sat 28 Nov | | |
 | 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (bought 24 Nov) | planned Sun 29 Nov | | |
-| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | | | |
+| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | planned Sat 5 Dec | | |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | | | |
+| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | planned Sat 28 Nov afternoon (no Longhorn data) | | |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
 | 7 | node2 | StarTech `14b0:0207` | | | | |
 | 8 | node1 | StarTech `14b0:0207` | | | | |
