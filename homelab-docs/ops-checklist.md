@@ -380,23 +380,35 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
 **24 Nov evening (node2):**
 - [ ] Write latency after TRIM (the latency item in the TRIM block above).
 
-**This week: buy the first 2 drives** ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list), step 1):
-- [ ] **node-esp-2:** used enterprise 2.5" SATA, best value **Intel D3-S4610** 960 GB `SSDSC2KG960G8` (or 480 GB
-  `SSDSC2KG480G8` if 960 is over budget: enough space); else Intel D3-S4510 `SSDSC2KB960G8`, Samsung PM893
-  `MZ7L3960HCJR` / PM883 `MZ7LH960HAJR`, Micron 5300/5400 PRO 960 GB. Seller shows SMART: wear ≥ 95%, 0 reallocated or
-  uncorrectable. Fallback new: Kingston KC600 1 TB `SKC600/1024G` (Kingston is fine without a USB adapter).
-  Not the DC600M (€727). **Not BX500, not A400.** If only one drive fits the budget, this one.
-- [ ] **node6:** **1 TB** Crucial BX500 `CT1000BX500SSD1` (€149 on Amazon, 23 Nov) or MX500 `CT1000MX500SSD1`.
-  **Never Kingston.** Needs ES/Prometheus kept off the Pis (action 2 below; disk-replacement.md 2.1.3).
-- [ ] When each arrives: the `smartctl` check in 2.3 (right model, power-on hours near 0, or the stated health for
-  the used one). Write model and serial in the progress table (10).
+**Drives bought 24 Nov** (Amazon, €763.53): 3× Crucial BX500 1 TB `CT1000BX500SSD1` (€159.99 each; node6,
+node5, node4) and 1× Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (€283.56; node-esp-2). The KC600 and the used
+enterprise drives were out: 2 weeks' delivery or too expensive. The 870 EVO (TLC, 600 TBW) is fine on the mini PC
+(write amplification ~2). No OS image of the running nodes: they are rebuilt (cloud-init/PXE + Ansible), and
+the old disk, kept for a week, is the fallback (disk-replacement.md 4).
+- [ ] **25-26 Nov:** check each new drive before use if a spare USB-SATA adapter is free (laptop,
+  CrystalDiskInfo: health good, 0 reallocated, power-on hours near 0); otherwise at first boot (A7/B6).
+  Write model and serial in the progress table (10).
+
+**Every morning before a swap (node2, node1):** the nightly backup is Completed with 0 errors and the Longhorn
+target is available; RustFS timeouts per hour of the night (the "24 Nov backup" command with that day's date):
+```bash
+kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors,WARN:.status.warnings | tail -3
+kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-columns=AVAILABLE:.status.available,LASTSYNC:.status.lastSyncedAt
+```
+No swap without a Completed backup.
 
 **Swaps** (one per day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)):
-- [ ] **node6** (procedure A): before it, pre-flight 4.1 and the Keycloak backup check in A1. A5 must pass (it
-  validates the model for the other Pis); A7 includes the TRIM check.
-- [ ] **node-esp-2** (procedure B): `make pxe-setup` first; cordon the worn Pis during the drain (4.2) so ES and
-  Prometheus go to node-esp-1. Whichever drive arrives first goes first.
-- [ ] Then buy and swap **node5** and **node4** (1 TB BX500, €149 each), 2.3 step 2.
+- [ ] **Fri 27 Nov, prep:** `git pull` on pimaster; pre-flight 4.1 (look only); Pi image and Raspberry Pi
+  Imager on the laptop (A4).
+- [ ] **Sat 28 Nov: node6** (procedure A, start ~08:00: the eviction takes 1-6 h). Scale down (4.2), Keycloak
+  check and eviction (A1), drain/remove (A2/A3), image the BX500 (A4), first boot + `fio` (A5, must pass: it
+  validates the BX500 on the adapter), join (A6), check incl. SMART and TRIM (A7), restore (4.2).
+- [ ] **Sun 29 Nov: node-esp-2** (procedure B), only if node6 is green and no volume is degraded. Eviction (B1),
+  cordon node5 and node4 (the worn disks) if node-esp-1 has room, drain/remove (B2/B3), fit the 870 EVO,
+  `make pxe-setup`, PXE boot (B4), join (B5), check (B6), uncordon, restore.
+- [ ] **Mon 30 Nov:** first automatic `fstrim.timer` on the Pis: no `reset`/`I/O error` (the dmesg command above).
+- [ ] Then **node5** (procedure A with `node5`/`15`) and **node4** (procedure C, master: etcd snapshot first),
+  one per day, weekday evenings or the next weekend.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.

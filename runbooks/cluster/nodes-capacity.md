@@ -9,6 +9,10 @@ Severity: `SEV-2` or `Maintenance`
 
 Objective: Replace failed/degraded node with minimal disruption.
 
+For a **disk swap** on an existing node (same name and IP), use the full step-by-step procedures in
+[disk-replacement.md](../../homelab-docs/disk-replacement.md) sections 3-8 instead: Longhorn eviction first,
+`node-password` secret removal, Pi imaging / PXE reinstall / node1 clone, the Ansible join and the checks.
+
 Procedure:
 
 1. Cordon and drain old node if still reachable.

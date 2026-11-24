@@ -427,6 +427,12 @@ node-esp-1 (B) whenever its drive is bought; it does not depend on the others.
 - **Ansible** runs on pimaster through the runner (`./ansible-runner/ansible-runner.sh ...`), from `~/picluster`.
 - Imaging a Pi disk: on the **laptop** (Raspberry Pi Imager + PowerShell) or on any Linux machine with the
   repository (`metal/rpi/Makefile`).
+- **No image of the running OS.** Workers and masters are rebuilt from cloud-init/PXE + Ansible and hold nothing
+  that is not in git or in Longhorn (moved off in stage 1). A copy of a mounted disk (`dd`, `rpi-clone`) is not
+  consistent, and it would carry the worn disk's errors (node-esp-2: 1,754 uncorrectable). Only node1 is
+  cloned, powered off (procedure D).
+- **Keep the old disk** untouched and labelled for a week: if the new one fails, put the old one back and the
+  node comes back as it was (delete the node + `node-password` secret first, as in A3/B3).
 
 ### 4.1 Pre-flight (node2), before every swap
 
@@ -571,7 +577,7 @@ on the rest of the disk). Then on node6:
 
 ```bash
 hostname; ip -4 addr show eth0 | grep inet
-lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop     # / about 50G, /storage the rest (~1.7T)
+lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop     # / about 50G, /storage the rest (~880G on 1 TB)
 lsusb -t | grep -i -A1 storage                              # Driver=uas, 5000M
 sudo dmesg -T | grep -iE "uas|reset|error" | tail            # nothing new
 ```
@@ -692,7 +698,7 @@ ssh-keygen -R node-esp-2
 
 As A7 with `node-esp-2`; on node-esp-2 SMART without `-d sat`:
 ```bash
-lsblk -o NAME,SIZE,TYPE,MOUNTPOINT | grep -v loop        # / 80G, /storage ~1.7T
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT | grep -v loop        # / 80G, /storage the rest (~850G on 1 TB)
 sudo smartctl -i -H -A /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
 ```
 
@@ -795,7 +801,7 @@ lsusb | grep -vi hub
 1. On node1: `sudo poweroff`. Take out the old SSD (in its adapter).
 2. Connect the **old** SSD and the **new** SSD (in a second adapter) to the Linux machine:
    ```bash
-   lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT          # identify OLD (223.6G) and NEW (1.7T) by size
+   lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT          # identify OLD (223.6G) and NEW (931.5G for 1 TB) by size
    OLD=/dev/sdX; NEW=/dev/sdY                       # check twice: NEW is overwritten
    sudo dd if=$OLD of=$NEW bs=16M status=progress conv=fsync
    sudo sgdisk -e $NEW 2>/dev/null || true          # GPT: move the backup header to the end of the bigger disk
@@ -803,14 +809,14 @@ lsusb | grep -vi hub
    sudo growpart $NEW 2                             # grow the root partition (partition 2) to the whole disk
    sudo e2fsck -f ${NEW}2
    sudo resize2fs ${NEW}2
-   lsblk -o NAME,SIZE,MOUNTPOINT $NEW               # partition 2 about 1.7T
+   lsblk -o NAME,SIZE,MOUNTPOINT $NEW               # partition 2 about 930G (1 TB disk)
    ```
 3. Put the new SSD (with node1's adapter) back on node1 and power on.
 
 ### D3. After (node1, then node2)
 
 ```bash
-df -h /                                          # about 1.7T
+df -h /                                          # about 915G (1 TB disk)
 vault status | grep Sealed                       # unseal if true (VAULT-001)
 sudo systemctl --failed
 ```
@@ -861,11 +867,11 @@ When node6, node-esp-2 and node5 run on new disks:
 
 | # | Node | Adapter (`lsusb`) | New drive (model, serial) | Date | SMART baseline | Notes |
 |---|---|---|---|---|---|---|
-| 1 | node6 | StarTech `14b0:0207` | | | | |
-| 2 | node-esp-2 | internal SATA | | | | |
-| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | | | | |
+| 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1` (bought 24 Nov) | planned Sat 28 Nov | | |
+| 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (bought 24 Nov) | planned Sun 29 Nov | | |
+| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | | | |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | StarTech `14b0:0206` | | | | |
+| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | | | |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
 | 7 | node2 | StarTech `14b0:0207` | | | | |
 | 8 | node1 | StarTech `14b0:0207` | | | | |
