@@ -352,7 +352,9 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
 not available`. The target was unavailable since 23 Nov 06:46 UTC, 3 minutes before the 1.0.4 upgrade
 restarted RustFS. Longhorn's `system-backup list` took 127-300 s (Longhorn gives up at ~2 min), on node-esp-1
 and node-esp-2 alike, while `rc ls` and signed V1/V2 list requests on the same prefix answered in 0.1-0.3 s.
-RustFS sat at 113% CPU; a restart did not help. Runbook: MINIO-001 step 7.
+RustFS sat at 113% CPU; a restart did not help. Runbook: MINIO-001 step 7. Postmortem:
+[incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md](../postmortems/incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md)
+(open: alert on an unavailable backup target, action 1).
 
 - [x] **Rolled back to `1.0.0-beta.7`** (16:29 UTC, `deploy_rustfs.yml -e rustfs_server_version=1.0.0-beta.7`):
   `system-backup list` 0 s, target `AVAILABLE=true` at 16:34, RustFS CPU 6.5%.
@@ -378,7 +380,7 @@ Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), pur
   (pimaster): `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'`.
 
 **24 Nov evening (node2):**
-- [ ] Write latency after TRIM (the latency item in the TRIM block above).
+- [x] Write latency after TRIM: 0.2-1.1 ms on every disk (node6 was 43 ms on 22 Nov, node1 1.1 ms).
 
 **Drives bought 24 Nov** (Amazon, €763.53): 3× Crucial BX500 1 TB `CT1000BX500SSD1` (€159.99 each; node6,
 node5, node4) and 1× Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (€283.56; node-esp-2). The KC600 and the used
@@ -397,7 +399,8 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-colum
 ```
 No swap without a Completed backup.
 
-**Swaps** (one per day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)):
+**Swaps** (one per day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)). Every command,
+in order: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
 - [ ] **Fri 27 Nov, prep:** `git pull` on pimaster; pre-flight 4.1 (look only); Pi image and Raspberry Pi
   Imager on the laptop (A4).
 - [ ] **Sat 28 Nov: node6** (procedure A, start ~08:00: the eviction takes 1-6 h). Scale down (4.2), Keycloak

@@ -374,6 +374,8 @@ One node per day at most. Each swap waits for Longhorn to be fully healthy befor
 
 ### 3.1 Every swap at a glance
 
+Phase 1 run sheet with every command in order and dates: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
+
 The same 7 stages for every node; the procedure (A–D) only changes what happens in the middle. Commands are in
 sections 4–8.
 
