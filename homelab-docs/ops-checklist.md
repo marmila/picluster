@@ -347,14 +347,32 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
 - [x] **Measure the saving** (23 Nov evening): **177 GB/day** (was 269, target ~200), see
   disk-replacement.md 2.4.
 
+### 24 Nov: RustFS 1.0.4 broke the Longhorn backup target
+`full-20261124020037` PartiallyFailed: all 12 Longhorn volume snapshots failed with `backup target default is
+not available`. The target was unavailable since 23 Nov 06:46 UTC, 3 minutes before the 1.0.4 upgrade
+restarted RustFS. Longhorn's `system-backup list` took 127-300 s (Longhorn gives up at ~2 min), on node-esp-1
+and node-esp-2 alike, while `rc ls` and signed V1/V2 list requests on the same prefix answered in 0.1-0.3 s.
+RustFS sat at 113% CPU; a restart did not help. Runbook: MINIO-001 step 7.
+
+- [x] **Rolled back to `1.0.0-beta.7`** (16:29 UTC, `deploy_rustfs.yml -e rustfs_server_version=1.0.0-beta.7`):
+  `system-backup list` 0 s, target `AVAILABLE=true` at 16:34, RustFS CPU 6.5%.
+- [x] **Pinned in git:** `rustfs_server_version: 1.0.0-beta.7`, Renovate skips 1.0.0-1.0.4.
+- [ ] **Manual backup** (started 24 Nov evening): `Completed`, 12 Longhorn backups dated 2026-11-24.
+- [ ] **25 Nov morning:** `full-20261125*` Completed with 0 errors; RustFS timeouts per hour back on beta.7
+  (node1, the "24 Nov backup" command above with `2026-11-25`). Hundreds again at 02h: postmortem action 11.
+- [ ] Harmless on beta.7: `Scanner stopped because the persisted usage floor could not be loaded`
+  (`buckets/.usage.v2.json` written by 1.0.4). Only RustFS's own usage statistics; look at it later.
+- [ ] Before any newer RustFS: run the MINIO-001 step 7 check by day, right after `make deploy-rustfs`.
+
 ### Next steps (from 23 Nov evening)
 
 Done on 23 Nov: TRIM on all Pis (above), write saving measured (177 GB/day), purchase decided
 ([disk-replacement.md 2.3](disk-replacement.md#23-shopping-list)): 2 drives first, sizes as in 2.1.1.
 
 **24 Nov morning (node2, node1):**
-- [ ] Velero `full-20261124*` Completed, 0 errors, first night on RustFS 1.0.4; RustFS timeouts on node1 (the
-  "24 Nov backup" item above).
+- [x] Velero `full-20261124020037` **PartiallyFailed** (30 errors): RustFS timeouts were 0 on 1.0.4, but
+  Longhorn's backup target was unavailable since the upgrade, see "24 Nov: RustFS 1.0.4 broke the Longhorn
+  backup target" below.
 - [ ] No `DiskMediaErrors`, no `DiskSmartFailing` overnight; no `reset`/`I/O error` on any Pi after the trims
   (pimaster): `./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'`.
 
@@ -469,7 +487,8 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
   `RaspberryPiUnderVoltage` alert only after 2 dips.
 - [ ] **RustFS bumps are not applied by Flux:** after Renovate changes `rustfs_server_version` (or
   `rustfs_cli_version`), run `make deploy-rustfs` on pimaster and check `rustfs --version` on node1.
-  Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov.
+  Missed once: 1.0.4 merged 1 Nov, node1 still on 1.0.0-beta.7 on 22 Nov. Since 24 Nov git pins beta.7
+  (1.0.4 broke Longhorn's backup target); after any bump, also run MINIO-001 step 7.
 - [ ] **Open Renovate PRs (10, limit 20):** the 6 GitHub Actions majors were merged by 22 Nov. Decide merge or close for each (Cilium #991; Istio #988; kube-prometheus-stack v93 #967 with CRDs v33 #964, which Renovate replaces with one "Prometheus Operator" group PR since 22 Nov; Vault v2 #963; Elasticsearch 8.19.25 #842; community.general 14 #955; Python #974; Node 26 #987; cp-schema-registry v8 #390, auto-closed since 22 Nov because its major is disabled). Do not delete their branches: closing the PR is the way to drop one. `renovate/all-non-major` is the normal weekly bundle (Monday).
 - [ ] **Before any node-esp reinstall:** `make pxe-setup`.
 - [ ] **Runbook coverage review:** check that every alert has a runbook and every runbook covers its real scenarios. Start from the alert rules (`ALERTS` names, `runbook` annotations) against `runbooks/README.md` and `.opencode/skills/cluster-triage/references/runbook-map.md`; list alerts without a runbook, runbooks without a matching alert, and incidents in `postmortems/` whose scenario no runbook describes.

@@ -164,6 +164,14 @@
       allowedVersions: "<2.22",
     },
     {
+      description: "RustFS 1.0.0-1.0.4 break Longhorn's backup target; node1 stays on 1.0.0-beta.7",
+      // 2026-11-24: on 1.0.4 `longhorn system-backup list` took 127-300 s (Longhorn times out at ~2 min), so the
+      // backup target went unavailable and every Longhorn backup failed. Rolled back to beta.7: 0 s. Newer
+      // versions still get a PR; test them with the system-backup list check in runbooks/components/s3-storage.md.
+      matchDepNames: ["rustfs/rustfs"],
+      allowedVersions: "!/^v?1\\.0\\.[0-4]$/",
+    },
+    {
       description: "Istio minor versions are manual, one at a time",
       // Istio supports upgrading one minor version at a time (1.30 -> 1.31 -> 1.32), and a .0 release
       // deserves a watched evening. Patches still automerge on Thursday (rules above).

@@ -44,6 +44,24 @@ sudo sh -c 'cat /var/log/rustfs/*' | grep "<YYYY-MM-DDTHH:MM>" | head -20
    Do not recreate the bucket. Bring RustFS to the git version (`make deploy-rustfs` on pimaster, by day)
    and retry the client (Longhorn/Velero: `BACKUP-004` step 3a).
 6. Only if the bucket is really missing: recreate it with `terraform/minio` (needs an explicit `tofu apply`).
+7. Longhorn backup target `available=false` with `timeout executing ... longhorn system-backup list`, while
+   `rc ls` and plain S3 requests answer in under a second: a RustFS version problem. Seen 2026-11-24 on
+   `1.0.4`: the call took 127-300 s, Longhorn gives up after about 2 minutes, and every Longhorn volume backup
+   failed (`backup target default is not available`). Fixed by going back to `1.0.0-beta.7` (now pinned in
+   git). Time the call Longhorn makes (node2):
+
+   ```bash
+   NS=longhorn-system; BIN=/var/lib/longhorn/engine-binaries/docker.io-longhornio-longhorn-engine-v1.13.0/longhorn
+   s() { kubectl -n $NS get secret longhorn-s3-secret -o jsonpath="{.data.$1}" | base64 -d; }
+   AK=$(s AWS_ACCESS_KEY_ID); SK=$(s AWS_SECRET_ACCESS_KEY); EP=$(s AWS_ENDPOINTS)
+   P=$(kubectl -n $NS get pod -l app=longhorn-manager -o name | head -1)
+   kubectl -n $NS exec $P -c longhorn-manager -- env AWS_ACCESS_KEY_ID="$AK" AWS_SECRET_ACCESS_KEY="$SK" AWS_ENDPOINTS="$EP" \
+     sh -c "s=\$(date +%s); timeout 200 $BIN system-backup list s3://k3s-longhorn@eu-west-1/ 2>&1 | tail -1; echo secs=\$((\$(date +%s)-s))"
+   unset AK SK
+   ```
+
+   A few seconds is healthy. Run it after every RustFS upgrade, by day, and roll back if it takes more than
+   about 60 s. The engine path changes with the Longhorn version (`ls /var/lib/longhorn/engine-binaries/`).
 
 Verify:
 
