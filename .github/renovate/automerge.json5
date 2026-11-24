@@ -25,7 +25,7 @@
       matchUpdateTypes: ["minor", "patch", "digest"],
       // Blocked packages (see "Blocked packages" rule) stay out of the bundle.
       // Keep this list in sync with that rule.
-      matchDepNames: ["!ubuntu", "!elastic/elasticsearch", "!python"],
+      matchDepNames: ["!ubuntu", "!python"],
       groupName: "all non-major",
       group: {
         commitMessageTopic: "{{{groupName}}} dependencies",
@@ -126,11 +126,13 @@
       description: "Blocked packages: own PRs, never grouped or automerged",
       // Add a package here (and to the negated list above) to block it.
       // python: runner image is python:3.14-slim; 3.15 bump was reverted upstream (bceb9cd9).
-      matchDepNames: ["ubuntu", "elastic/elasticsearch", "python"],
+      // elastic/elasticsearch is not blocked (2026-11-24): like upstream, 8.x patches go in the
+      // weekly bundle; only ES 9 is dangerous and the <9 cap below keeps it out.
+      matchDepNames: ["ubuntu", "python"],
       automerge: false,
       addLabels: ["blocked"],
     },
-    // Version caps for the blocked packages. Without a cap Renovate keeps the blocked
+    // Version caps (blocked packages and elastic/elasticsearch). Without a cap Renovate keeps the blocked
     // PR open forever, and every open PR uses one of the prConcurrentLimit slots.
     // With a cap Renovate closes it and only offers updates below the cap.
     // Raise a cap only when its reason is gone.

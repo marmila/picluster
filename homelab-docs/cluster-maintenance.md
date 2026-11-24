@@ -90,13 +90,13 @@ Automerge uses **branch automerge**: Renovate pushes straight to `master` once C
 | Package | Rule | Why | Lift it when |
 |---|---|---|---|
 | `ubuntu` | blocked, capped `<26` | nodes run Ubuntu 24.04 LTS; tag is the base of `metal/x86/build/Dockerfile` | nodes move to a new LTS |
-| `elastic/elasticsearch` | blocked, capped `<9` | fluent-plugin-elasticsearch breaks on ES 9 ([#1061](https://github.com/uken/fluent-plugin-elasticsearch/issues/1061)); would break Fluentd → threatmap ingestion | the plugin works with ES 9 |
+| `elastic/elasticsearch` | capped `<9` (not blocked: 8.x patches go in the weekly bundle, as upstream) | fluent-plugin-elasticsearch breaks on ES 9 ([#1061](https://github.com/uken/fluent-plugin-elasticsearch/issues/1061)); would break Fluentd → threatmap ingestion | the plugin works with ES 9 |
 | `python` | blocked, capped `<3.15` | the runner image is `python:3.14-slim` and `ansible/pyproject.toml` requires `<3.15`; the 3.15 bump broke the runner and upstream reverted it | the Dockerfile base image, `.python-version`, `requires-python` and `uv.lock` move to 3.15 together |
 | `mongo` | capped `<8.1` | the seed job's `mongosh` must match the MongoDB **8.0.x** server (`mongodb-community.yaml`, not tracked by Renovate) | you upgrade the MongoDB server |
 | `ansible-core` | capped `<2.22` | the `prometheus.prometheus` collection (0.30.x) supports ansible-core only up to 2.21; 2.22 breaks the runner image build | a `prometheus.prometheus` release supports 2.22 (check `requires_ansible` on Galaxy) |
 | Istio charts (`base`, `cni`, `istiod`, `ztunnel`) | capped `<1.31`; istioctl (`istio/istio`) `<1.32` | the cluster runs 1.30 and Istio upgrades one minor version at a time; without the cap Renovate jumped 1.30 → 1.32 | you do the next minor: raise both caps by one ([7.6](#76-istio-minor-upgrade-130--131--132)) |
 
-Blocked packages never join a group and are never automerged. Their PRs get the `blocked` label automatically. **Blocking covers the whole package**, so Elasticsearch 8.x patches also come as separate blocked PRs.
+Blocked packages never join a group and are never automerged. Their PRs get the `blocked` label automatically. **Blocking covers the whole package**, every version. That is why Elasticsearch is only capped, not blocked: a block would also stop its harmless 8.x patches (upstream merges those normally; only ES 9 is dangerous).
 
 Each blocked package also has a version cap. Without one, the PR for the blocked version stays open forever and takes one of Renovate's 20 slots (`prConcurrentLimit`, which also counts branches); in November 2026 old blocked and forgotten PRs held 19 of 20 and new updates stopped. With the cap, Renovate closes that PR itself and only offers versions below the cap.
 
