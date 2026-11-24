@@ -199,6 +199,12 @@ You want: thousands of IOPS, hundreds of MB/s, no `uas`/`reset`/`abort` lines. U
 
 ### 4.8 Join the cluster (pimaster)
 
+The same playbooks as `make init` for a node (`nodes-setup`, `configure-os-backup`, `k3s-install`), limited to
+node6, plus `update_node_config.yml` (Pi throttling metrics, USB TRIM rule, SMART metrics, journald and kubelet
+config). Checked against the playbooks on 2026-11-24: with `--limit` the token comes from Vault and the server
+address is the API VIP (`k3s_api_vip`), so no other node is needed in the run; only the worker label play
+(hosts `k3s_master`) is skipped, so 4.9 sets that label by hand (cosmetic: the `ROLES` column, no manifest uses it).
+
 ```bash
 cd ~/picluster
 ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
@@ -217,6 +223,7 @@ You want: every playbook green (`failed=0`).
 node2:
 
 ```bash
+kubectl label node node6 kubernetes.io/role=worker --overwrite   # k3s_install.yml skips its label play with --limit
 kubectl get node node6 -o wide
 kubectl -n longhorn-system get nodes.longhorn.io node6
 kubectl -n longhorn-system get nodes.longhorn.io node6 -o json | jq -r '.status.diskStatus | to_entries[] | "\(.value.diskPath // .key) max=\(.value.storageMaximum/1e9|floor)G"'
@@ -335,7 +342,9 @@ ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
 ```
 
-**`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster. Right
+**`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster. (The role
+already treats only the first master in the inventory, node2, as primary; the extra var overrides that and is the
+safety net. For node2's own swap it is what prevents `cluster-init`.) Right
 after `k3s_install.yml`, on node4:
 
 ```bash
@@ -461,6 +470,7 @@ You want: `/` 80G, `/storage` about 850G; `/var/lib/rancher` on `/storage/ranche
 node2:
 
 ```bash
+kubectl label node node-esp-2 kubernetes.io/role=worker --overwrite
 kubectl get node node-esp-2 -o wide
 kubectl -n longhorn-system get nodes.longhorn.io node-esp-2
 kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -vE "Running|Completed"

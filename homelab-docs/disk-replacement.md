@@ -613,6 +613,7 @@ ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
 ### A7. Check (node2)
 
 ```bash
+kubectl label node node6 kubernetes.io/role=worker --overwrite   # workers only: k3s_install.yml --limit skips its label play
 kubectl get node node6 -o wide                                   # Ready
 kubectl -n longhorn-system get nodes.longhorn.io node6           # READY True, SCHEDULABLE True
 kubectl -n longhorn-system get nodes.longhorn.io node6 -o json | jq -r '.status.diskStatus | to_entries[] | "\(.value.diskPath // .key) max=\(.value.storageMaximum/1e9|floor)G"'
