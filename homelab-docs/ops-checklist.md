@@ -264,7 +264,7 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   ```bash
   ./ansible-runner/ansible-runner.sh ansible node5 -b -m shell -a 's=$(date +%s); fstrim -v /storage; fstrim -v /; echo "took $(( $(date +%s)-s ))s"; dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail -5'
   ```
-  Expect "... trimmed" and no `reset`/`I/O error`. Do all of them **before Monday 30 Nov**: that night the
+  Expect "... trimmed" and no `reset`/`I/O error`. Do all of them **before the next Monday**: that night the
   weekly `fstrim.timer` would otherwise run the first (large) trim on every Pi at the same time.
   Done 23 Nov, no errors, all nodes `Ready` after each:
 
@@ -387,9 +387,9 @@ node5, node4) and 1× Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (€283.56; node-esp-
 enterprise drives were out: 2 weeks' delivery or too expensive. The 870 EVO (TLC, 600 TBW) is fine on the mini PC
 (write amplification ~2). No OS image of the running nodes: they are rebuilt (cloud-init/PXE + Ansible), and
 the old disk, kept for a week, is the fallback (disk-replacement.md 4).
-- [ ] **25-26 Nov:** check each new drive before use if a spare USB-SATA adapter is free (laptop,
-  CrystalDiskInfo: health good, 0 reallocated, power-on hours near 0); otherwise at first boot (A7/B6).
-  Write model and serial in the progress table (10).
+- [ ] **Prepare the new drives before the swaps** (laptop, spare USB-SATA adapter): check each one
+  (CrystalDiskInfo), image the three BX500s with their node's `user-data`/`network-config` and label them
+  ([disk-swap-plan.md](disk-swap-plan.md) 0.1). Write model and serial in the progress table (10).
 
 **Every morning before a swap (node2, node1):** the nightly backup is Completed with 0 errors and the Longhorn
 target is available; RustFS timeouts per hour of the night (the "24 Nov backup" command with that day's date):
@@ -399,22 +399,20 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-colum
 ```
 No swap without a Completed backup.
 
-**Swaps** (one per day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)). Every command,
-in order: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
-- [ ] **Fri 27 Nov, prep:** `git pull` on pimaster; pre-flight 4.1 (look only); Pi image and Raspberry Pi
-  Imager on the laptop (A4).
-- [ ] **Sat 28 Nov: node6** (procedure A, start ~08:00: the eviction takes 1-6 h). Scale down (4.2), Keycloak
-  check and eviction (A1), drain/remove (A2/A3), image the BX500 (A4), first boot + `fio` (A5, must pass: it
-  validates the BX500 on the adapter), join (A6), check incl. SMART and TRIM (A7), restore (4.2).
-- [ ] **Sat 28 Nov afternoon: node4** (procedure C, master, no Longhorn data so no eviction; run sheet 4b), only
-  after node6 is green and not later than ~16:00 UTC; else Sunday after node-esp-2 or 6 Dec. etcd snapshot,
-  join with `-e k3s_primary_control_node=false`, check no `cluster-init`.
-- [ ] **Sun 29 Nov: node-esp-2** (procedure B), only if node6 and node4 are green and no volume is degraded.
-  Eviction (B1), cordon node5 (last worn disk) if node-esp-1 has room, drain/remove (B2/B3), fit the 870 EVO,
-  `make pxe-setup`, PXE boot (B4), join (B5), check (B6), uncordon, restore.
-- [ ] **Mon 30 Nov:** first automatic `fstrim.timer` on the Pis: no `reset`/`I/O error` (the dmesg command above).
-- [ ] **Sat 5 Dec: node5** (procedure A with `node5`/`15`; Keycloak check mandatory). Sun 6 Dec spare.
-  Never two Longhorn nodes (node6, node5, node-esp-2) on the same day.
+**Swaps** (never two Longhorn nodes on the same day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)).
+Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
+- [ ] **Before the first swap:** `git pull` on pimaster, pre-flight, Elasticsearch/Prometheus copies only on the
+  mini PCs (task list 0.2-0.4).
+- [ ] **node6** (task list 2): eviction, swap in the prepared drive, `fio` (must pass: it validates the BX500 on
+  the adapter), join, checks, restore the apps.
+- [ ] **node4** (task list 3, master, no Longhorn data): etcd snapshot, join with
+  `-e k3s_primary_control_node=false`, check no `cluster-init`.
+- [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, cordon node5, PXE reinstall,
+  join, uncordon node5, restore the apps, Elasticsearch/Prometheus back to 2 copies on node-esp-2.
+- [ ] **node5** (task list 5; Keycloak check mandatory).
+- [ ] **First Monday after each Pi swap:** `fstrim.timer` ran with no `reset`/`I/O error` (task list 6).
+- [ ] **Final replica check** (task list 6): Elasticsearch/Prometheus 2 on the mini PCs, Keycloak/Loki write 1,
+  the rest 3, every Longhorn node schedulable.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.
@@ -427,6 +425,7 @@ in order: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
   termination reason: `kubectl -n kube-system get pods -l app.kubernetes.io/name=coredns -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodeName} {.status.containerStatuses[0].restartCount} {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{"
 "}{end}'`.
 - [ ] Postmortem action 7 leftovers: Kafka ×3 and Prometheus volumes, which still have a replica on node5/node6.
+  Prometheus: removed before the first swap ([disk-swap-plan.md](disk-swap-plan.md) 0.4).
   Advice 23 Nov: leave Kafka at 3 replicas (app topics have 1 copy in Kafka, Longhorn is their only redundancy;
   going to 2 saves only ~11 GB/day).
 

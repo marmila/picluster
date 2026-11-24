@@ -374,7 +374,7 @@ One node per day at most. Each swap waits for Longhorn to be fully healthy befor
 
 ### 3.1 Every swap at a glance
 
-Phase 1 run sheet with every command in order and dates: [disk-swap-plan-2026-11.md](disk-swap-plan-2026-11.md).
+Phase 1 task list with every command in order: [disk-swap-plan.md](disk-swap-plan.md).
 
 The same 7 stages for every node; the procedure (A–D) only changes what happens in the middle. Commands are in
 sections 4–8.
@@ -384,7 +384,7 @@ sections 4–8.
 | 0. Before | node2 | Pre-flight (4.1); lighten the cluster (4.2); for node5/node6 also the Keycloak backup check (A1) | all nodes `Ready`, no `degraded` volume, CPU < 80% | 10 min |
 | 1. Empty | node2 | Evict the node's Longhorn replicas (A1/B1). Masters: etcd snapshot instead (C1). node1: nothing (D) | replicas on the node = 0, degraded = 0 | 1–6 h |
 | 2. Remove | node2, then the node | Drain, `sudo poweroff`, delete node + `node-password` secret + Longhorn node | node gone from `kubectl get nodes` | 15 min |
-| 3. New disk | laptop or the node | Pi: image the SSD and write `user-data`/`network-config` (A4). Mini PC: fit the SSD, `make pxe-setup`, PXE boot (B4). node1: clone the old disk (D2) | node boots and answers SSH | 30–45 min |
+| 3. New disk | laptop or the node | Pi: image the SSD and write `user-data`/`network-config` (A4), best done days before with a spare adapter (task list 0.1), so this stage is just swapping the drive in the adapter. Mini PC: fit the SSD, `make pxe-setup`, PXE boot (B4). node1: clone the old disk (D2) | node boots and answers SSH | 30–45 min |
 | 4. First boot check | the node | Pi: `lsusb -t` (uas, 5000M), `fio` + `dmesg` (A5, mandatory on the first Pi with the new model) | no `reset`/`abort` in `dmesg` | 10 min |
 | 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e k3s_primary_control_node=false`), `update_node_config.yml` | playbooks green | 20–30 min |
 | 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1; Pi: TRIM works (A7) | all green | 10 min |
@@ -834,13 +834,11 @@ Keep the old node1 SSD untouched for a week as a fallback.
 
 When node6, node-esp-2 and node5 run on new disks:
 
-1. Give Elasticsearch and Prometheus their third replica back (node2). Leave the Keycloak Postgres and Loki write
-   volumes at 1 replica (2.4):
-   ```bash
-   for v in pvc-a6e3a543-70ff-4bc5-a595-82bf0fcf9c45 pvc-e1c0c8e4-c16e-4a91-bf7c-0ebc0b68209b; do
-     kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":3}}'
-   done
-   ```
+1. Elasticsearch and Prometheus stay at **2 replicas, on the two mini PCs**. Do not give them a third: with only
+   two x86 Longhorn nodes it would land on a Pi BX500, which the 1 TB sizing excludes (2.1.3) and which caused the
+   2026-11-22 incident. The swaps take them to 1 copy while node-esp-2 is out and back to 2 afterwards
+   ([disk-swap-plan.md](disk-swap-plan.md) 4.1 and 4.9). A third copy only after the `fast` disk tag (2.1.3) and a
+   third x86 node. Keycloak Postgres and Loki write stay at 1 replica (2.4).
 2. Spread existing replicas over the bigger disks: Longhorn setting `replica-auto-balance` to `best-effort` (in
    `kubernetes/platform/longhorn/app/base/values.yaml`, `defaultSettings.replicaAutoBalance`), one PR.
 3. SMART monitoring and a wear alert on every node (postmortem action 3c): **done 2026-11-22**
@@ -870,11 +868,11 @@ When node6, node-esp-2 and node5 run on new disks:
 
 | # | Node | Adapter (`lsusb`) | New drive (model, serial) | Date | SMART baseline | Notes |
 |---|---|---|---|---|---|---|
-| 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1` (bought 24 Nov) | planned Sat 28 Nov | | |
-| 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (bought 24 Nov) | planned Sun 29 Nov | | |
-| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | planned Sat 5 Dec | | |
+| 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1` (bought 24 Nov) | planned, 1st | | |
+| 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (bought 24 Nov) | planned, 3rd | | |
+| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | planned, 4th | | |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | planned Sat 28 Nov afternoon (no Longhorn data) | | |
+| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | planned, 2nd (no Longhorn data) | | |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
 | 7 | node2 | StarTech `14b0:0207` | | | | |
 | 8 | node1 | StarTech `14b0:0207` | | | | |
