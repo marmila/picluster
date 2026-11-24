@@ -357,7 +357,8 @@ RustFS sat at 113% CPU; a restart did not help. Runbook: MINIO-001 step 7.
 - [x] **Rolled back to `1.0.0-beta.7`** (16:29 UTC, `deploy_rustfs.yml -e rustfs_server_version=1.0.0-beta.7`):
   `system-backup list` 0 s, target `AVAILABLE=true` at 16:34, RustFS CPU 6.5%.
 - [x] **Pinned in git:** `rustfs_server_version: 1.0.0-beta.7`, Renovate skips 1.0.0-1.0.4.
-- [ ] **Manual backup** (started 24 Nov evening): `Completed`, 12 Longhorn backups dated 2026-11-24.
+- [x] **Manual backup** `full-manual-bzwdh` Completed, 0 errors; all 12 Longhorn backups Completed
+  2026-11-24 17:19-17:21 UTC.
 - [ ] **25 Nov morning:** `full-20261125*` Completed with 0 errors; RustFS timeouts per hour back on beta.7
   (node1, the "24 Nov backup" command above with `2026-11-25`). Hundreds again at 02h: postmortem action 11.
 - [ ] Harmless on beta.7: `Scanner stopped because the persisted usage floor could not be loaded`
