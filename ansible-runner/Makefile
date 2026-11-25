@@ -10,4 +10,6 @@ ${HOME}/.ssh/id_rsa:
 	ssh-keygen -t rsa -P '' -f ${HOME}/.ssh/id_rsa
 
 start-ansible-runner: create-local-directories ${HOME}/.ssh/id_rsa
-	docker compose up --detach
+	# --build: rebuild the image when the Dockerfile or ansible/pyproject.toml changed (Renovate bumps);
+	# without it a running container kept the old image (2026-11-25). Cached, so quick when nothing changed.
+	docker compose up --detach --build
