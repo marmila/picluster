@@ -426,7 +426,8 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   termination reason: `kubectl -n kube-system get pods -l app.kubernetes.io/name=coredns -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodeName} {.status.containerStatuses[0].restartCount} {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{"
 "}{end}'`.
 - [ ] Postmortem action 7 leftovers: Kafka ×3 and Prometheus volumes, which still have a replica on node5/node6.
-  Prometheus: removed before the first swap ([disk-swap-plan.md](disk-swap-plan.md) 0.4).
+  Prometheus: checked 25 Nov, no copy on a Pi (2 replicas, node-esp-1 and node-esp-2, healthy; Elasticsearch
+  the same), so [disk-swap-plan.md](disk-swap-plan.md) 0.4 has nothing to remove.
   Advice 23 Nov: leave Kafka at 3 replicas (app topics have 1 copy in Kafka, Longhorn is their only redundancy;
   going to 2 saves only ~11 GB/day).
 
