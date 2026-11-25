@@ -48,47 +48,56 @@ its swap day, after the node is removed.
 Each prepared Pi drive carries its node's hostname and IP: it fits only that node.
 
 - [ ] Laptop: install Raspberry Pi Imager and CrystalDiskInfo; download the image named in `metal/rpi/Makefile`
-      (`ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz`).
+(`ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz`).
 - [ ] For **each** drive (3 BX500, 1 870 EVO), in the spare adapter: CrystalDiskInfo.
-      You want: health Good, reallocated sectors 0, power-on hours near 0. Write model and serial in the progress
-      table (disk-replacement.md 10).
-- [ ] For **each BX500**, with its node (`node6` → `16`, `node4` → `14`, `node5` → `15`):
-  1. Raspberry Pi Imager: **Choose OS → Use custom** → the `.img.xz`; **Choose storage** → the BX500 (about 1 TB,
-     check the size: never the laptop disk); OS customisation **No**; Write.
-  2. Unplug and plug the drive back. PowerShell from `c:\Users\marco\bin\picluster`, with `$BOOT` set to the
-     `system-boot` drive letter:
+You want: health Good, reallocated sectors 0, power-on hours near 0. Write model and serial in the progress
+table (disk-replacement.md 10).
+For **each BX500**, with its node (`node6` → `16`, `node4` → `14`, `node5` → `15`):
 
-     ```powershell
-     $NODE = "node6"; $IP = "16"; $BOOT = "E:"
-     $ud = (Get-Content metal\rpi\cloud-init\nodes\user-data-SSD-partition -Raw).Replace("`r`n", "`n") -creplace 'nodeX', $NODE
-     $nc = (Get-Content metal\rpi\cloud-init\nodes\network-config -Raw).Replace("`r`n", "`n") -creplace 'X', $IP
-     [IO.File]::WriteAllText("$BOOT\user-data", $ud)
-     [IO.File]::WriteAllText("$BOOT\network-config", $nc)
-     Select-String -Path "$BOOT\user-data" -Pattern "hostname:"; Select-String -Path "$BOOT\network-config" -Pattern "10.0.0."
-     ```
+- [ ] **Write the image:** Raspberry Pi Imager, **Choose OS → Use custom** → the `.img.xz`; **Choose storage** →
+  the BX500 (about 1 TB, check the size: never the laptop disk); OS customisation **No**; Write.
+- [ ] **Write the node's config:** unplug and plug the drive back. PowerShell from `c:\Users\marco\bin\picluster`,
+  with `$NODE`, `$IP` and `$BOOT` (the `system-boot` drive letter) set for this drive:
 
-     You want: `hostname: <node>` and `10.0.0.<IP>/24`.
-  3. Eject, and label the drive **"<node> NEW"**.
+```powershell
+$NODE = "node6"; $IP = "16"; $BOOT = "E:"
+$ud = (Get-Content metal\rpi\cloud-init\nodes\user-data-SSD-partition -Raw).Replace("`r`n", "`n") -creplace 'nodeX', $NODE
+$nc = (Get-Content metal\rpi\cloud-init\nodes\network-config -Raw).Replace("`r`n", "`n") -creplace 'X', $IP
+[IO.File]::WriteAllText("$BOOT\user-data", $ud)
+[IO.File]::WriteAllText("$BOOT\network-config", $nc)
+Select-String -Path "$BOOT\user-data" -Pattern "hostname:"; Select-String -Path "$BOOT\network-config" -Pattern "10.0.0."
+```
+
+You want: `hostname: <node>` and `10.0.0.<IP>/24`.
+
+- [ ] **Eject** and label the drive **"<node> NEW"**.
+
+Then:
+
 - [ ] The **870 EVO** (node-esp-2): only the CrystalDiskInfo check and a **"node-esp-2 NEW"** label. Its system is
-      installed over PXE once it sits in the mini PC (4.4): the installer has to run on that machine.
-- [ ] If `metal/rpi/cloud-init/` changes in git after a drive was prepared: redo step 2 for that drive.
+installed over PXE once it sits in the mini PC (4.4): the installer has to run on that machine.
+- [ ] If `metal/rpi/cloud-init/` changes in git after a drive was prepared: redo "Write the node's config" for that drive.
 
 ### 0.2 Update pimaster
 
-- [ ] ```bash
-      cd ~/picluster && git pull
-      ```
+- [ ] Run:
+
+```bash
+cd ~/picluster && git pull
+```
 
 ### 0.3 Pre-flight (node2, look only)
 
-- [ ] ```bash
-      echo "== nodes"; kubectl get nodes
-      echo "== volumes not healthy"; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,STATE:.status.state,ROBUST:.status.robustness | grep -v healthy
-      echo "== longhorn space"; kubectl -n longhorn-system get nodes.longhorn.io -o json | jq -r '.items[] | .metadata.name as $n | .status.diskStatus | to_entries[] | "\($n) avail=\(.value.storageAvailable/1e9|floor)G scheduled=\(.value.storageScheduled/1e9|floor)G max=\(.value.storageMaximum/1e9|floor)G"'
-      echo "== load"; kubectl top nodes
-      ```
+- [ ] Run:
 
-      You want: every node `Ready`, no volume `degraded`, no node above about 80% CPU.
+```bash
+echo "== nodes"; kubectl get nodes
+echo "== volumes not healthy"; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,STATE:.status.state,ROBUST:.status.robustness | grep -v healthy
+echo "== longhorn space"; kubectl -n longhorn-system get nodes.longhorn.io -o json | jq -r '.items[] | .metadata.name as $n | .status.diskStatus | to_entries[] | "\($n) avail=\(.value.storageAvailable/1e9|floor)G scheduled=\(.value.storageScheduled/1e9|floor)G max=\(.value.storageMaximum/1e9|floor)G"'
+echo "== load"; kubectl top nodes
+```
+
+You want: every node `Ready`, no volume `degraded`, no node above about 80% CPU.
 
 ### 0.4 Elasticsearch and Prometheus: no copy on a Pi (node2)
 
@@ -106,19 +115,19 @@ reps
 ```
 
 - [ ] You want: per volume `replicas=2`, rows on node-esp-1 and node-esp-2 only, `running`, `healthy`. Then go
-      to section 1.
+to section 1.
 - [ ] Only if a row shows **node5 or node6**: remove that copy, so the node6/node5 evictions do not move it to the
-      other worn Pi. Do it only when the same volume also has `running` rows on node-esp-1 **and** node-esp-2:
+other worn Pi. Do it only when the same volume also has `running` rows on node-esp-1 **and** node-esp-2:
 
-      ```bash
-      sched false node5 node6                                                   # no new copies on the Pis meanwhile
-      kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r --arg es "$ES" --arg pr "$PROM" '.items[] | select((.spec.volumeName==$es or .spec.volumeName==$pr) and (.spec.nodeID|test("^node[0-9]"))) | .metadata.name' | xargs -r kubectl -n longhorn-system delete replicas.longhorn.io
-      for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":2}}'; done
-      sched true node5 node6
-      reps
-      ```
+```bash
+sched false node5 node6                                                   # no new copies on the Pis meanwhile
+kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r --arg es "$ES" --arg pr "$PROM" '.items[] | select((.spec.volumeName==$es or .spec.volumeName==$pr) and (.spec.nodeID|test("^node[0-9]"))) | .metadata.name' | xargs -r kubectl -n longhorn-system delete replicas.longhorn.io
+for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":2}}'; done
+sched true node5 node6
+reps
+```
 
-      You want: the state of the first box.
+You want: the state of the first box.
 
 ---
 
@@ -126,28 +135,28 @@ reps
 
 - [ ] **node2:** last backup and Longhorn backup target:
 
-      ```bash
-      kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors,WARN:.status.warnings | tail -3
-      kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-columns=AVAILABLE:.status.available,LASTSYNC:.status.lastSyncedAt
-      ```
+```bash
+kubectl -n velero get backups.velero.io -o custom-columns=NAME:.metadata.name,PHASE:.status.phase,ERR:.status.errors,WARN:.status.warnings | tail -3
+kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-columns=AVAILABLE:.status.available,LASTSYNC:.status.lastSyncedAt
+```
 
-      You want: the newest `full-...` `Completed` with ERR `<none>`, and `AVAILABLE` `true`.
-      No backup `Completed` = no swap that day.
+You want: the newest `full-...` `Completed` with ERR `<none>`, and `AVAILABLE` `true`.
+No backup `Completed` = no swap that day.
 - [ ] **node1:** RustFS timeouts last night, per hour:
 
-      ```bash
-      D=$(date -u +%F)
-      sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE "\"timestamp\":\"${D}T[0-9]{2}" | cut -c25- | sort | uniq -c
-      ```
+```bash
+D=$(date -u +%F)
+sudo sh -c 'cat /var/log/rustfs/*' | grep -i timeout | grep -oE "\"timestamp\":\"${D}T[0-9]{2}" | cut -c25- | sort | uniq -c
+```
 
-      You want: nothing or a few dozen. Hundreds at `02`: node1's disk is saturating again (postmortem
-      2026-11-15, action 11); stop and ask.
+You want: nothing or a few dozen. Hundreds at `02`: node1's disk is saturating again (postmortem
+2026-11-15, action 11); stop and ask.
 - [ ] **pimaster:** no USB resets on the Pis:
 
-      ```bash
-      cd ~/picluster
-      ./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'
-      ```
+```bash
+cd ~/picluster
+./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'
+```
 
 - [ ] **node2:** pre-flight (0.3) and `reps` (0.4).
 
@@ -161,41 +170,47 @@ reps
 
 ### 2.2 Scale down what is not needed (node2)
 
-- [ ] ```bash
-      flux get kustomizations | grep -E "e-commerce|trading"
-      flux suspend kustomization <name>          # once per name from the line above
-      NS="e-commerce trading"
-      for ns in $NS; do
-        kubectl -n $ns get deploy,statefulset -o json | jq -r '.items[] | "\(.kind) \(.metadata.name) \(.spec.replicas)"' | sed "s|^|$ns |" >> ~/scaled-down-$(date +%F).txt
-        kubectl -n $ns scale deploy --all --replicas=0
-        kubectl -n $ns scale statefulset --all --replicas=0
-      done
-      cat ~/scaled-down-$(date +%F).txt
-      ```
+- [ ] Run:
 
-      Note the suspended names: 2.10 resumes them.
+```bash
+flux get kustomizations | grep -E "e-commerce|trading"
+flux suspend kustomization <name>          # once per name from the line above
+NS="e-commerce trading"
+for ns in $NS; do
+  kubectl -n $ns get deploy,statefulset -o json | jq -r '.items[] | "\(.kind) \(.metadata.name) \(.spec.replicas)"' | sed "s|^|$ns |" >> ~/scaled-down-$(date +%F).txt
+  kubectl -n $ns scale deploy --all --replicas=0
+  kubectl -n $ns scale statefulset --all --replicas=0
+done
+cat ~/scaled-down-$(date +%F).txt
+```
+
+Note the suspended names: 2.10 resumes them.
 
 ### 2.3 Keycloak Postgres check (node2)
 
 node6 holds the only copy of one Keycloak Postgres instance (1 replica).
 
-- [ ] ```bash
-      kubectl -n databases get pods -o wide | grep postgres-keycloak | awk '{print $1, $3, $(NF-2)}'
-      kubectl -n databases get cluster postgres-keycloak -o jsonpath='{"last backup: "}{.status.lastSuccessfulBackup}{"\n"}{range .status.conditions[?(@.type=="ContinuousArchiving")]}{"WAL archiving: "}{.status}{"\n"}{end}'
-      ```
+- [ ] Run:
 
-      You want: both pods `Running`, a backup from last night, `WAL archiving: True`.
+```bash
+kubectl -n databases get pods -o wide | grep postgres-keycloak | awk '{print $1, $3, $(NF-2)}'
+kubectl -n databases get cluster postgres-keycloak -o jsonpath='{"last backup: "}{.status.lastSuccessfulBackup}{"\n"}{range .status.conditions[?(@.type=="ContinuousArchiving")]}{"WAL archiving: "}{.status}{"\n"}{end}'
+```
+
+You want: both pods `Running`, a backup from last night, `WAL archiving: True`.
 
 ### 2.4 Move Longhorn data off node6 (node2, 1-6 h)
 
-- [ ] ```bash
-      N=node6
-      kubectl -n longhorn-system patch nodes.longhorn.io $N --type merge -p '{"spec":{"allowScheduling":false,"evictionRequested":true}}'
-      watch -n 30 "kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID==\"$N\")]|length'; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded"
-      ```
+- [ ] Run:
 
-      You want: both numbers `0` (replicas on node6, degraded volumes). If they stop moving for 30 minutes, stop
-      and paste the pre-flight block.
+```bash
+N=node6
+kubectl -n longhorn-system patch nodes.longhorn.io $N --type merge -p '{"spec":{"allowScheduling":false,"evictionRequested":true}}'
+watch -n 30 "kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID==\"$N\")]|length'; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded"
+```
+
+You want: both numbers `0` (replicas on node6, degraded volumes). If they stop moving for 30 minutes, stop
+and paste the pre-flight block.
 
 ### 2.5 Drain, power off, remove
 
@@ -203,11 +218,11 @@ node6 holds the only copy of one Keycloak Postgres instance (1 replica).
 - [ ] node6: `sudo poweroff`
 - [ ] node2:
 
-      ```bash
-      kubectl delete node node6
-      kubectl -n kube-system delete secret node6.node-password.k3s --ignore-not-found
-      kubectl -n longhorn-system delete nodes.longhorn.io node6
-      ```
+```bash
+kubectl delete node node6
+kubectl -n kube-system delete secret node6.node-password.k3s --ignore-not-found
+kubectl -n longhorn-system delete nodes.longhorn.io node6
+```
 
 ### 2.6 Swap the drive
 
@@ -218,24 +233,24 @@ node6 holds the only copy of one Keycloak Postgres instance (1 replica).
 
 - [ ] Connect the adapter to the **same blue USB 3 port**, power on, wait 5 minutes:
 
-      ```bash
-      hostname; ip -4 addr show eth0 | grep inet
-      lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
-      lsusb -t | grep -i -A1 storage
-      sudo dmesg -T | grep -iE "uas|reset|error" | tail
-      ```
+```bash
+hostname; ip -4 addr show eth0 | grep inet
+lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
+lsusb -t | grep -i -A1 storage
+sudo dmesg -T | grep -iE "uas|reset|error" | tail
+```
 
-      You want: `node6`, `10.0.0.16`; `/` about 50G and `/storage` about 880G; `Driver=uas, 5000M`; no `reset`.
+You want: `node6`, `10.0.0.16`; `/` about 50G and `/storage` about 880G; `Driver=uas, 5000M`; no `reset`.
 - [ ] Speed test (mandatory on node6: it validates the BX500 on the adapter):
 
-      ```bash
-      sudo apt-get install -y -qq fio
-      sudo fio --name=t --filename=/storage/.fio --size=2G --rw=randwrite --bs=4k --iodepth=16 --direct=1 --ioengine=libaio --runtime=60 --time_based --group_reporting | grep -E "IOPS|lat \(usec\)|clat percentiles" -A1 | head -8
-      sudo fio --name=t --filename=/storage/.fio --size=2G --rw=write --bs=1M --iodepth=8 --direct=1 --ioengine=libaio --runtime=30 --time_based --group_reporting | grep -E "bw=|IOPS"
-      sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | tail -5
-      ```
+```bash
+sudo apt-get install -y -qq fio
+sudo fio --name=t --filename=/storage/.fio --size=2G --rw=randwrite --bs=4k --iodepth=16 --direct=1 --ioengine=libaio --runtime=60 --time_based --group_reporting | grep -E "IOPS|lat \(usec\)|clat percentiles" -A1 | head -8
+sudo fio --name=t --filename=/storage/.fio --size=2G --rw=write --bs=1M --iodepth=8 --direct=1 --ioengine=libaio --runtime=30 --time_based --group_reporting | grep -E "bw=|IOPS"
+sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | tail -5
+```
 
-      You want: thousands of IOPS, hundreds of MB/s, no `uas`/`reset`/`abort` lines. UAS resets: stop and paste.
+You want: thousands of IOPS, hundreds of MB/s, no `uas`/`reset`/`abort` lines. UAS resets: stop and paste.
 
 ### 2.8 Join the cluster (pimaster)
 
@@ -245,54 +260,58 @@ config). With `--limit` the token comes from Vault and the server address is the
 other node is needed in the run; only the worker label play (hosts `k3s_master`) is skipped, so 2.9 sets that label
 by hand (cosmetic: the `ROLES` column, no manifest uses it).
 
-- [ ] ```bash
-      cd ~/picluster
-      ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
-      ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node6; ssh-keygen -R 10.0.0.16' || true
-      ./ansible-runner/ansible-runner.sh ansible node6 -m ping
-      ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node6
-      ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node6
-      ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node6
-      ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node6
-      ```
+- [ ] Run:
 
-      You want: every playbook green (`failed=0`).
+```bash
+cd ~/picluster
+ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
+./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node6; ssh-keygen -R 10.0.0.16' || true
+./ansible-runner/ansible-runner.sh ansible node6 -m ping
+./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node6
+./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node6
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node6
+./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node6
+```
+
+You want: every playbook green (`failed=0`).
 
 ### 2.9 Check
 
 - [ ] node2:
 
-      ```bash
-      kubectl label node node6 kubernetes.io/role=worker --overwrite   # k3s_install.yml skips its label play with --limit
-      kubectl get node node6 -o wide
-      kubectl -n longhorn-system get nodes.longhorn.io node6
-      kubectl -n longhorn-system get nodes.longhorn.io node6 -o json | jq -r '.status.diskStatus | to_entries[] | "\(.value.diskPath // .key) max=\(.value.storageMaximum/1e9|floor)G"'
-      kubectl get pods -A -o wide --field-selector spec.nodeName=node6 | grep -vE "Running|Completed"
-      ```
+```bash
+kubectl label node node6 kubernetes.io/role=worker --overwrite   # k3s_install.yml skips its label play with --limit
+kubectl get node node6 -o wide
+kubectl -n longhorn-system get nodes.longhorn.io node6
+kubectl -n longhorn-system get nodes.longhorn.io node6 -o json | jq -r '.status.diskStatus | to_entries[] | "\(.value.diskPath // .key) max=\(.value.storageMaximum/1e9|floor)G"'
+kubectl get pods -A -o wide --field-selector spec.nodeName=node6 | grep -vE "Running|Completed"
+```
 
-      You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True` (the new Longhorn node starts with scheduling on:
-      nothing to switch back), disk `/storage`; no pod in another state.
+You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True` (the new Longhorn node starts with scheduling on:
+nothing to switch back), disk `/storage`; no pod in another state.
 - [ ] node6, SMART baseline and TRIM:
 
-      ```bash
-      sudo apt-get install -y -qq --no-install-recommends smartmontools
-      sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
-      cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
-      lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
-      sudo fstrim -v /storage && sudo fstrim -v /
-      sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
-      ```
+```bash
+sudo apt-get install -y -qq --no-install-recommends smartmontools
+sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
+lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
+sudo fstrim -v /storage && sudo fstrim -v /
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
+```
 
-      You want: `PASSED`; `unmap`; `DISC-MAX` `2G`; two "trimmed" lines; no reset or I/O error. Fill in the
-      progress table (disk-replacement.md 10).
+You want: `PASSED`; `unmap`; `DISC-MAX` `2G`; two "trimmed" lines; no reset or I/O error. Fill in the
+progress table (disk-replacement.md 10).
 
 ### 2.10 Restore (node2)
 
-- [ ] ```bash
-      F=~/scaled-down-$(date +%F).txt
-      while read ns kind name n; do kubectl -n $ns scale $kind/$name --replicas=$n; done < $F
-      flux resume kustomization <name>           # once per name suspended in 2.2
-      ```
+- [ ] Run:
+
+```bash
+F=~/scaled-down-$(date +%F).txt
+while read ns kind name n; do kubectl -n $ns scale $kind/$name --replicas=$n; done < $F
+flux resume kustomization <name>           # once per name suspended in 2.2
+```
 
 - [ ] `reps` (0.4): Elasticsearch and Prometheus unchanged (2 copies, mini PCs).
 
@@ -307,16 +326,18 @@ node4 is an etcd member with no Longhorn data, so no eviction: about 1.5 hours. 
 
 ### 3.1 etcd snapshot (node2)
 
-- [ ] ```bash
-      kubectl get nodes | grep control-plane                    # node2, node3, node4 Ready
-      kubectl get --raw='/readyz?verbose' | grep etcd           # [+]etcd ok
-      kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID=="node4")]|length'
-      sudo k3s etcd-snapshot save --name pre-swap-node4
-      sudo k3s etcd-snapshot list | tail -3
-      ```
+- [ ] Run:
 
-      You want: three masters `Ready`, `[+]etcd ok`, **0** Longhorn replicas on node4 (if not 0: run 2.4 with
-      `N=node4` first), the new `pre-swap-node4` snapshot in the list.
+```bash
+kubectl get nodes | grep control-plane                    # node2, node3, node4 Ready
+kubectl get --raw='/readyz?verbose' | grep etcd           # [+]etcd ok
+kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID=="node4")]|length'
+sudo k3s etcd-snapshot save --name pre-swap-node4
+sudo k3s etcd-snapshot list | tail -3
+```
+
+You want: three masters `Ready`, `[+]etcd ok`, **0** Longhorn replicas on node4 (if not 0: run 2.4 with
+`N=node4` first), the new `pre-swap-node4` snapshot in the list.
 
 ### 3.2 Drain, power off, remove
 
@@ -324,15 +345,15 @@ node4 is an etcd member with no Longhorn data, so no eviction: about 1.5 hours. 
 - [ ] node4: `sudo poweroff`
 - [ ] node2:
 
-      ```bash
-      kubectl delete node node4
-      kubectl -n kube-system delete secret node4.node-password.k3s --ignore-not-found
-      sleep 30
-      kubectl get --raw='/readyz?verbose' | grep etcd
-      kubectl get nodes | grep control-plane
-      ```
+```bash
+kubectl delete node node4
+kubectl -n kube-system delete secret node4.node-password.k3s --ignore-not-found
+sleep 30
+kubectl get --raw='/readyz?verbose' | grep etcd
+kubectl get nodes | grep control-plane
+```
 
-      You want: `[+]etcd ok`; node2 and node3 `Ready`.
+You want: `[+]etcd ok`; node2 and node3 `Ready`.
 
 ### 3.3 Swap the drive
 
@@ -342,65 +363,67 @@ node4 is an etcd member with no Longhorn data, so no eviction: about 1.5 hours. 
 
 - [ ] Same blue USB 3 port, power on, wait 5 minutes:
 
-      ```bash
-      hostname; ip -4 addr show eth0 | grep inet
-      lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
-      lsusb -t | grep -i -A1 storage
-      sudo dmesg -T | grep -iE "uas|reset|error" | tail
-      ```
+```bash
+hostname; ip -4 addr show eth0 | grep inet
+lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
+lsusb -t | grep -i -A1 storage
+sudo dmesg -T | grep -iE "uas|reset|error" | tail
+```
 
-      You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`. (`fio` not needed: node6 validated the
-      BX500.)
+You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`. (`fio` not needed: node6 validated the
+BX500.)
 
 ### 3.5 Join as a **secondary** master (pimaster)
 
-- [ ] ```bash
-      cd ~/picluster
-      ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
-      ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node4; ssh-keygen -R 10.0.0.14' || true
-      ./ansible-runner/ansible-runner.sh ansible node4 -m ping
-      ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
-      ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
-      ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
-      ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
-      ```
+- [ ] Run:
 
-      **`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster.
-      (The role already treats only the first master in the inventory, node2, as primary; the extra var overrides
-      that and is the safety net. For node2's own swap it is what prevents `cluster-init`.)
+```bash
+cd ~/picluster
+ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
+./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node4; ssh-keygen -R 10.0.0.14' || true
+./ansible-runner/ansible-runner.sh ansible node4 -m ping
+./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
+./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
+./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
+```
+
+**`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster.
+(The role already treats only the first master in the inventory, node2, as primary; the extra var overrides
+that and is the safety net. For node2's own swap it is what prevents `cluster-init`.)
 - [ ] Right after `k3s_install.yml`, on node4:
 
-      ```bash
-      sudo grep -nE "cluster-init|^server:" /etc/rancher/k3s/config.yaml
-      ```
+```bash
+sudo grep -nE "cluster-init|^server:" /etc/rancher/k3s/config.yaml
+```
 
-      You want: a `server: https://...:6443` line and **no** `cluster-init`. If `cluster-init` shows:
-      `sudo systemctl stop k3s` at once and stop.
+You want: a `server: https://...:6443` line and **no** `cluster-init`. If `cluster-init` shows:
+`sudo systemctl stop k3s` at once and stop.
 
 ### 3.6 Check
 
 - [ ] node2:
 
-      ```bash
-      kubectl get nodes | grep control-plane
-      kubectl get --raw='/readyz?verbose' | grep etcd
-      kubectl -n kube-system get pods -o wide | grep -E "kube-vip|coredns|cilium-operator"
-      kubectl get pods -A -o wide --field-selector spec.nodeName=node4 | grep -vE "Running|Completed"
-      ```
+```bash
+kubectl get nodes | grep control-plane
+kubectl get --raw='/readyz?verbose' | grep etcd
+kubectl -n kube-system get pods -o wide | grep -E "kube-vip|coredns|cilium-operator"
+kubectl get pods -A -o wide --field-selector spec.nodeName=node4 | grep -vE "Running|Completed"
+```
 
-      You want: three masters `Ready`, `[+]etcd ok`, those pods `Running`, nothing broken on node4.
+You want: three masters `Ready`, `[+]etcd ok`, those pods `Running`, nothing broken on node4.
 - [ ] node4, SMART baseline and TRIM:
 
-      ```bash
-      sudo apt-get install -y -qq --no-install-recommends smartmontools
-      sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
-      cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
-      lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
-      sudo fstrim -v / ; sudo fstrim -v /storage 2>/dev/null
-      sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
-      ```
+```bash
+sudo apt-get install -y -qq --no-install-recommends smartmontools
+sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
+lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
+sudo fstrim -v / ; sudo fstrim -v /storage 2>/dev/null
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
+```
 
-      You want: `PASSED`, `unmap`, `DISC-MAX` `2G`, "trimmed", no errors. Fill in the progress table.
+You want: `PASSED`, `unmap`, `DISC-MAX` `2G`, "trimmed", no errors. Fill in the progress table.
 
 ---
 
@@ -414,30 +437,32 @@ Pi; 4.9 gives the second copy back on the new disk. Elasticsearch is in the nigh
 ### 4.1 Checks and replicas (node2)
 
 - [ ] Section 1 green; 2.2 (scale down) again. You want also: node6 already holding Longhorn data (`scheduled=`
-      above 0 in the pre-flight).
+above 0 in the pre-flight).
 - [ ] Elasticsearch and Prometheus down to the node-esp-1 copy (helpers from 0.4):
 
-      ```bash
-      reps                                                                     # one running copy on node-esp-1 and one on node-esp-2, per volume
-      sched false node5 node6 node-esp-2                                       # nowhere to rebuild meanwhile
-      kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r --arg es "$ES" --arg pr "$PROM" '.items[] | select((.spec.volumeName==$es or .spec.volumeName==$pr) and .spec.nodeID=="node-esp-2") | .metadata.name' | xargs -r kubectl -n longhorn-system delete replicas.longhorn.io
-      for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":1}}'; done
-      sched true node5 node6                                                   # node-esp-2 stays off: the eviction is next
-      sleep 30; reps
-      ```
+```bash
+reps                                                                     # one running copy on node-esp-1 and one on node-esp-2, per volume
+sched false node5 node6 node-esp-2                                       # nowhere to rebuild meanwhile
+kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r --arg es "$ES" --arg pr "$PROM" '.items[] | select((.spec.volumeName==$es or .spec.volumeName==$pr) and .spec.nodeID=="node-esp-2") | .metadata.name' | xargs -r kubectl -n longhorn-system delete replicas.longhorn.io
+for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":1}}'; done
+sched true node5 node6                                                   # node-esp-2 stays off: the eviction is next
+sleep 30; reps
+```
 
-      You want: per volume one row, node-esp-1, `running`; `replicas=1 healthy`. Do not delete anything if the
-      first `reps` does not show a running copy on node-esp-1 for both volumes.
+You want: per volume one row, node-esp-1, `running`; `replicas=1 healthy`. Do not delete anything if the
+first `reps` does not show a running copy on node-esp-1 for both volumes.
 
 ### 4.2 Move the rest of the Longhorn data off node-esp-2 (node2, 1-6 h)
 
-- [ ] ```bash
-      N=node-esp-2
-      kubectl -n longhorn-system patch nodes.longhorn.io $N --type merge -p '{"spec":{"allowScheduling":false,"evictionRequested":true}}'
-      watch -n 30 "kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID==\"$N\")]|length'; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded"
-      ```
+- [ ] Run:
 
-      You want: both numbers `0`.
+```bash
+N=node-esp-2
+kubectl -n longhorn-system patch nodes.longhorn.io $N --type merge -p '{"spec":{"allowScheduling":false,"evictionRequested":true}}'
+watch -n 30 "kubectl -n longhorn-system get replicas.longhorn.io -o json | jq '[.items[]|select(.spec.nodeID==\"$N\")]|length'; kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded"
+```
+
+You want: both numbers `0`.
 
 ### 4.3 Keep heavy pods off the worn disk, drain, power off, remove
 
@@ -445,73 +470,75 @@ node5 is the last worn disk by now. Cordon it only if node-esp-1 is below about 
 
 - [ ] node2:
 
-      ```bash
-      kubectl top node node-esp-1
-      kubectl cordon node5
-      kubectl drain node-esp-2 --ignore-daemonsets --delete-emptydir-data --grace-period=60 --timeout=600s
-      kubectl get pods -A -o wide | grep -E "Pending|ContainerCreating|CrashLoop"
-      ```
+```bash
+kubectl top node node-esp-1
+kubectl cordon node5
+kubectl drain node-esp-2 --ignore-daemonsets --delete-emptydir-data --grace-period=60 --timeout=600s
+kubectl get pods -A -o wide | grep -E "Pending|ContainerCreating|CrashLoop"
+```
 
-      Repeat the last line until it prints nothing.
+Repeat the last line until it prints nothing.
 - [ ] node-esp-2: `sudo poweroff`
 - [ ] node2:
 
-      ```bash
-      kubectl delete node node-esp-2
-      kubectl -n kube-system delete secret node-esp-2.node-password.k3s --ignore-not-found
-      kubectl -n longhorn-system delete nodes.longhorn.io node-esp-2
-      ```
+```bash
+kubectl delete node node-esp-2
+kubectl -n kube-system delete secret node-esp-2.node-password.k3s --ignore-not-found
+kubectl -n longhorn-system delete nodes.longhorn.io node-esp-2
+```
 
 ### 4.4 Fit the 870 EVO and reinstall over PXE
 
 - [ ] Swap the drive inside the mini PC: the old one labelled **"node-esp-2 old"** with the date, kept for a week;
-      the **"node-esp-2 NEW"** drive in.
+the **"node-esp-2 NEW"** drive in.
 - [ ] pimaster:
 
-      ```bash
-      cd ~/picluster && make pxe-setup
-      ```
+```bash
+cd ~/picluster && make pxe-setup
+```
 
 - [ ] Power on node-esp-2, open the boot menu, choose **network boot (PXE, IPv4)**. The autoinstall runs by itself
-      (10-15 minutes) and reboots into Ubuntu.
+(10-15 minutes) and reboots into Ubuntu.
 
 ### 4.5 Join the cluster (pimaster)
 
-- [ ] ```bash
-      cd ~/picluster
-      ssh-keygen -R node-esp-2
-      ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node-esp-2' || true
-      ./ansible-runner/ansible-runner.sh ansible node-esp-2 -m ping
-      ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node-esp-2
-      ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node-esp-2
-      ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node-esp-2
-      ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node-esp-2
-      ```
+- [ ] Run:
 
-      You want: every playbook green.
+```bash
+cd ~/picluster
+ssh-keygen -R node-esp-2
+./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node-esp-2' || true
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -m ping
+./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node-esp-2
+./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node-esp-2
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node-esp-2
+./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node-esp-2
+```
+
+You want: every playbook green.
 
 ### 4.6 Check the node
 
 - [ ] node-esp-2:
 
-      ```bash
-      lsblk -o NAME,SIZE,TYPE,MOUNTPOINT | grep -v loop
-      findmnt /var/lib/rancher
-      sudo smartctl -i -H -A /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
-      ```
+```bash
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT | grep -v loop
+findmnt /var/lib/rancher
+sudo smartctl -i -H -A /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+```
 
-      You want: `/` 80G, `/storage` about 850G; `/var/lib/rancher` on `/storage/rancher`;
-      `Samsung SSD 870 EVO 1TB`, `PASSED`.
+You want: `/` 80G, `/storage` about 850G; `/var/lib/rancher` on `/storage/rancher`;
+`Samsung SSD 870 EVO 1TB`, `PASSED`.
 - [ ] node2:
 
-      ```bash
-      kubectl label node node-esp-2 kubernetes.io/role=worker --overwrite
-      kubectl get node node-esp-2 -o wide
-      kubectl -n longhorn-system get nodes.longhorn.io node-esp-2
-      kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -vE "Running|Completed"
-      ```
+```bash
+kubectl label node node-esp-2 kubernetes.io/role=worker --overwrite
+kubectl get node node-esp-2 -o wide
+kubectl -n longhorn-system get nodes.longhorn.io node-esp-2
+kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -vE "Running|Completed"
+```
 
-      You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True`, disk `/storage`; no pod in another state.
+You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True`, disk `/storage`; no pod in another state.
 
 ### 4.7 Uncordon node5 (node2)
 
@@ -525,22 +552,22 @@ node5 is the last worn disk by now. Cordon it only if node-esp-1 is below about 
 
 - [ ] Helpers from 0.4 (new shell: paste them again), then:
 
-      ```bash
-      sched false node5 node6                                                  # the new copy can only go to node-esp-2
-      for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":2}}'; done
-      watch -n 30 'kubectl -n longhorn-system get volumes.longhorn.io '"$ES $PROM"' -o custom-columns=NAME:.metadata.name,REPLICAS:.spec.numberOfReplicas,ROBUST:.status.robustness'
-      ```
+```bash
+sched false node5 node6                                                  # the new copy can only go to node-esp-2
+for v in $ES $PROM; do kubectl -n longhorn-system patch volumes.longhorn.io $v --type merge -p '{"spec":{"numberOfReplicas":2}}'; done
+watch -n 30 'kubectl -n longhorn-system get volumes.longhorn.io '"$ES $PROM"' -o custom-columns=NAME:.metadata.name,REPLICAS:.spec.numberOfReplicas,ROBUST:.status.robustness'
+```
 
-      Wait until both are `healthy` (the rebuild copies the whole volume: minutes to an hour), then:
+Wait until both are `healthy` (the rebuild copies the whole volume: minutes to an hour), then:
 
-      ```bash
-      sched true node5 node6
-      reps
-      kubectl -n longhorn-system get nodes.longhorn.io
-      ```
+```bash
+sched true node5 node6
+reps
+kubectl -n longhorn-system get nodes.longhorn.io
+```
 
-      You want: per volume `replicas=2`, rows on node-esp-1 and node-esp-2, `running`, `healthy`; every Longhorn
-      node `SCHEDULABLE True`.
+You want: per volume `replicas=2`, rows on node-esp-1 and node-esp-2, `running`, `healthy`; every Longhorn
+node `SCHEDULABLE True`.
 
 ---
 
@@ -549,8 +576,8 @@ node5 is the last worn disk by now. Cordon it only if node-esp-1 is below about 
 After a green section 1, with node6, node4 and node-esp-2 green and the 4.9 copies `healthy`.
 
 - [ ] Section 2 with `node5` and IP `15` everywhere: `N=node5`; `kubectl drain node5`; the secret
-      `node5.node-password.k3s`; the **"node5 NEW"** drive; `ssh-keygen -R node5; ssh-keygen -R 10.0.0.15`;
-      `--limit node5`; label and checks on node5.
+`node5.node-password.k3s`; the **"node5 NEW"** drive; `ssh-keygen -R node5; ssh-keygen -R 10.0.0.15`;
+`--limit node5`; label and checks on node5.
 - [ ] 2.3 (Keycloak check) is mandatory: node5 holds the only copy of the other Keycloak Postgres instance.
 - [ ] `fio` (2.7) is optional: node6 validated the BX500.
 
@@ -560,37 +587,37 @@ After a green section 1, with node6, node4 and node-esp-2 green and the 4.9 copi
 
 - [ ] **First Monday after each Pi swap:** the weekly `fstrim.timer` ran cleanly (pimaster):
 
-      ```bash
-      cd ~/picluster
-      ./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'systemctl status fstrim.service --no-pager | tail -4; dmesg -T | grep -iE "reset|i/o error" | tail -3'
-      ```
+```bash
+cd ~/picluster
+./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'systemctl status fstrim.service --no-pager | tail -4; dmesg -T | grep -iE "reset|i/o error" | tail -3'
+```
 
-      You want: "trimmed" lines, no reset or I/O error.
+You want: "trimmed" lines, no reset or I/O error.
 - [ ] **Final replica check** (node2, helpers from 0.4):
 
-      ```bash
-      reps
-      kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,PVC:.status.kubernetesStatus.pvcName,REPLICAS:.spec.numberOfReplicas,ROBUST:.status.robustness | sort -k3
-      kubectl -n longhorn-system get nodes.longhorn.io
-      ```
+```bash
+reps
+kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,PVC:.status.kubernetesStatus.pvcName,REPLICAS:.spec.numberOfReplicas,ROBUST:.status.robustness | sort -k3
+kubectl -n longhorn-system get nodes.longhorn.io
+```
 
-      You want: Elasticsearch and Prometheus 2 copies on the mini PCs; Keycloak Postgres ×2 and `data-loki-write-0`
-      at 1; everything else 3; every volume `healthy`; every Longhorn node `SCHEDULABLE True`; node5 not
-      `SchedulingDisabled` in `kubectl get nodes`.
+You want: Elasticsearch and Prometheus 2 copies on the mini PCs; Keycloak Postgres ×2 and `data-loki-write-0`
+at 1; everything else 3; every volume `healthy`; every Longhorn node `SCHEDULABLE True`; node5 not
+`SchedulingDisabled` in `kubectl get nodes`.
 - [ ] **Two weeks after each swap:** write amplification. Crucial drives only (attributes 247/248); expected 3 or
-      lower with TRIM. node2:
+lower with TRIM. node2:
 
-      ```bash
-      P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
-      Q='1 + increase(smartmon_attr_raw_value{id="248"}[7d]) / increase(smartmon_attr_raw_value{id="247"}[7d])'
-      kubectl get --raw "${P}$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$Q")" | jq -r '.data.result[] | "\(.metric.instance)\t\(.value[1] | tonumber | . * 10 | round / 10)"' | sort
-      ```
+```bash
+P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
+Q='1 + increase(smartmon_attr_raw_value{id="248"}[7d]) / increase(smartmon_attr_raw_value{id="247"}[7d])'
+kubectl get --raw "${P}$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$Q")" | jq -r '.data.result[] | "\(.metric.instance)\t\(.value[1] | tonumber | . * 10 | round / 10)"' | sort
+```
 
 - [ ] **After the last of the 4 swaps:** expire the `DiskWornOut` silence (disk-replacement.md 9):
 
-      ```bash
-      AM="kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
-      $AM silence expire e33eec49-ba6e-4267-99c4-d968f0e331d3
-      ```
+```bash
+AM="kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool --alertmanager.url=http://localhost:9093"
+$AM silence expire e33eec49-ba6e-4267-99c4-d968f0e331d3
+```
 
 - [ ] **A week after each swap, new drive clean:** the old disk can go.
