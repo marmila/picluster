@@ -362,7 +362,7 @@ RustFS sat at 113% CPU; a restart did not help. Runbook: MINIO-001 step 7. Postm
 - [x] **Manual backup** `full-manual-bzwdh` Completed, 0 errors; all 12 Longhorn backups Completed
   2026-11-24 17:19-17:21 UTC.
 - [x] **25 Nov morning:** `full-20261125*` Completed with 0 errors; RustFS timeouts on beta.7: **0** (were 260
-  and ~1,000 on beta.7 on 22-23 Nov, before the Prometheus exclusion took full effect); no `reset`/`I/O error` on
+  and ~1,000 on beta.7 the nights of 22 and 23 Nov); no `reset`/`I/O error` on
   any Pi. One clean night: keep watching before closing postmortem action 11.
 - [ ] Harmless on beta.7: `Scanner stopped because the persisted usage floor could not be loaded`
   (`buckets/.usage.v2.json` written by 1.0.4). Only RustFS's own usage statistics; look at it later.
