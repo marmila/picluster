@@ -143,7 +143,7 @@ rustfs_url: "https://{{ rustfs_hostname }}:9091"
 # renovate: datasource=github-releases depName=rustfs/rustfs
 rustfs_server_version: 1.0.0-beta.7
 # renovate: datasource=github-releases depName=rustfs/cli
-rustfs_cli_version: v0.1.37
+rustfs_cli_version: v0.1.38
 
 # RustFS data dirs
 rustfs_server_datadirs:
@@ -180,7 +180,7 @@ minio_validate_certificate: "{{ rustfs_validate_certificate }}"
 ########################
 
 # renovate: datasource=github-releases depName=restic/restic
-restic_version: 0.19.1
+restic_version: 0.20.0
 
 # Restic S3 repository configuration
 restic_repository: "s3:{{ rustfs_url }}/restic"

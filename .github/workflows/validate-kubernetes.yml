@@ -25,7 +25,7 @@ env:
   # Kubernetes version of the cluster (k3s); used for schemas and chart rendering
   KUBE_VERSION: 1.37.0
   # renovate: datasource=github-releases depName=yannh/kubeconform
-  KUBECONFORM_VERSION: v0.7.0
+  KUBECONFORM_VERSION: v0.8.0
 
 jobs:
   validate:
