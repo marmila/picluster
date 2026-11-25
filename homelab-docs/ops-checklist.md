@@ -515,6 +515,8 @@ Replica auto-balance is off and scheduling stops at 90% (`storageMinimalAvailabl
   is its own PR, outside the weekly bundle and never automerged: merge it only after the test passed.
   **Vault is the same:** Renovate automerges `vault_version` on Tuesdays (2.2.2 on 24 Nov), but node1 changes
   only with `make deploy-vault` (pimaster, by day; check `vault status` unsealed and the ClusterSecretStore Ready).
+  2.2.2 deployed 25 Nov: `Sealed false`, `vault-backend` Valid/Ready, every ExternalSecret `SecretSynced`,
+  Kubernetes auth config intact.
 - [ ] **Open Renovate PRs (24 Nov):** merged: Cilium #991, Elasticsearch 8.19.26 #842, Vault 2.2.2 #1004
   (automerge). Open: system-upgrade-controller 0.21.1 #1005 (patch), Prometheus Operator group #1001
   (kube-prometheus-stack 93 + CRDs 33, major: read the upgrade notes), Istio #988, community.general 14 #955,
