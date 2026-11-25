@@ -388,8 +388,9 @@ node5, node4) and 1× Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (€283.56; node-esp-
 enterprise drives were out: 2 weeks' delivery or too expensive. The 870 EVO (TLC, 600 TBW) is fine on the mini PC
 (write amplification ~2). No OS image of the running nodes: they are rebuilt (cloud-init/PXE + Ansible), and
 the old disk, kept for a week, is the fallback (disk-replacement.md 4).
-- [ ] **Prepare the new drives before the swaps** (laptop, spare USB-SATA adapter): check each one
-  (CrystalDiskInfo), image the three BX500s with their node's `user-data`/`network-config` and label them
+- [x] **New drives checked** 25 Nov (CrystalDiskInfo, spare adapter): all 4 at 0 h, 0 written, 0 errors, health
+  100%; serials and node assignment in the progress table (disk-replacement.md 10).
+- [ ] **Prepare the new drives before the swaps** (laptop, spare USB-SATA adapter): image the three BX500s with their node's `user-data`/`network-config` and label them
   ([disk-swap-plan.md](disk-swap-plan.md) 0.1). Write model and serial in the progress table (10).
 
 **Every morning before a swap (node2, node1):** the nightly backup is Completed with 0 errors and the Longhorn

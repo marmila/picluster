@@ -55,7 +55,7 @@ table (disk-replacement.md 10).
 For **each BX500**, with its node (`node6` → `16`, `node4` → `14`, `node5` → `15`):
 
 - [ ] **Write the image:** Raspberry Pi Imager, **Choose OS → Use custom** → the `.img.xz`; **Choose storage** →
-  the BX500 (about 1 TB, check the size: never the laptop disk); OS customisation **No**; Write.
+  the BX500 (about 1 TB, check the size and that it is the USB disk: if the laptop has an internal disk of the same size, compare the serial with CrystalDiskInfo); OS customisation **No**; Write.
 - [ ] **Write the node's config:** unplug and plug the drive back. PowerShell from `c:\Users\marco\bin\picluster`,
   with `$NODE`, `$IP` and `$BOOT` (the `system-boot` drive letter) set for this drive:
 
@@ -370,8 +370,10 @@ lsusb -t | grep -i -A1 storage
 sudo dmesg -T | grep -iE "uas|reset|error" | tail
 ```
 
-You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`. (`fio` not needed: node6 validated the
-BX500.)
+You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`.
+
+- [ ] Speed test of 2.7 (mandatory here too: node4's drive has firmware M6CR072, node6's M6CR061; progress table
+  in disk-replacement.md 10). Same "you want".
 
 ### 3.5 Join as a **secondary** master (pimaster)
 

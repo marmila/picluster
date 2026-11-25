@@ -868,11 +868,11 @@ When node6, node-esp-2 and node5 run on new disks:
 
 | # | Node | Adapter (`lsusb`) | New drive (model, serial) | Date | SMART baseline | Notes |
 |---|---|---|---|---|---|---|
-| 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1` (bought 24 Nov) | planned, 1st | | |
-| 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU` (bought 24 Nov) | planned, 3rd | | |
-| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB (bought 24 Nov) | planned, 4th | | |
+| 1 | node6 | StarTech `14b0:0207` | Crucial BX500 1 TB `CT1000BX500SSD1`, serial `2535E9C9C0AF`, firmware M6CR061 | planned, 1st | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | |
+| 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU`, serial `S8NBNS0L324839A`, firmware SVT04B6Q | planned, 3rd | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | |
+| 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB, serial `2535E9C9C1F3`, firmware M6CR061 | planned, 4th | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB (bought 24 Nov) | planned, 2nd (no Longhorn data) | | |
+| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB, serial `2530E9C77E02`, firmware **M6CR072** | planned, 2nd (no Longhorn data) | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | other firmware than node6/node5: `fio` on node4 too |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
 | 7 | node2 | StarTech `14b0:0207` | | | | |
 | 8 | node1 | StarTech `14b0:0207` | | | | |
