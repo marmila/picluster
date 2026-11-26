@@ -390,8 +390,12 @@ enterprise drives were out: 2 weeks' delivery or too expensive. The 870 EVO (TLC
 the old disk, kept for a week, is the fallback (disk-replacement.md 4).
 - [x] **New drives checked** 25 Nov (CrystalDiskInfo, spare adapter): all 4 at 0 h, 0 written, 0 errors, health
   100%; serials and node assignment in the progress table (disk-replacement.md 10).
-- [ ] **Prepare the new drives before the swaps** (laptop, spare USB-SATA adapter): image the three BX500s with their node's `user-data`/`network-config` and label them
-  ([disk-swap-plan.md](disk-swap-plan.md) 0.1). Write model and serial in the progress table (10).
+- [x] **New drives prepared** 26 Nov (laptop, spare USB-SATA adapter, [disk-swap-plan.md](disk-swap-plan.md) 0.1):
+  the three BX500s imaged and configured (node6 `10.0.0.16`, node4 `10.0.0.14`, node5 `10.0.0.15`) and labelled.
+  The SSH keys in the templates were stale (`runner@d28e295fc7c4`, on no node any more: no access after the first
+  boot, password login is locked). Fixed to the live keys in 01dab973: `marmila@pimaster` + `marmila@node1` (Pi),
+  `marmila@pimaster` + `marmila@node-esp-1` (PXE, checked on node-esp-1 and node-esp-2); config rewritten on all
+  three drives. The 870 EVO is installed over PXE in the mini PC (task list 4.4).
 
 **Every morning before a swap (node2, node1):** the nightly backup is Completed with 0 errors and the Longhorn
 target is available; RustFS timeouts per hour of the night (the "24 Nov backup" command with that day's date):
