@@ -28,8 +28,12 @@ gets fixed.
 | Volume | Now | During the swaps | At the end |
 |---|---|---|---|
 | Elasticsearch, Prometheus | should be 2 copies on the mini PCs (postmortem 2026-11-22); 0.4 checks and removes any copy left on a Pi | 1 copy on node-esp-1 while node-esp-2 is out (4.1) | **2 copies, node-esp-1 + node-esp-2** (4.9). Not 3: the third would land on a Pi BX500 |
-| Keycloak Postgres ×2, Loki write | 1 copy, `best-effort` locality (disk-replacement 2.4) | moved by the eviction | 1 copy, unchanged |
-| everything else | 3 copies | moved by the eviction | 3 copies |
+| Keycloak Postgres ×2, Loki write | 1 copy, `best-effort` locality (disk-replacement 2.4) | moved by the eviction, still 1 copy | **1 copy, unchanged**. Not back to 3: Postgres has 2 CNPG instances + barman backups, Loki write is only the log buffer |
+| everything else (Kafka ×3, ...) | 3 copies | moved by the eviction | **3 copies** over node5, node6, node-esp-1, node-esp-2 |
+
+The 1-copy setting is a live patch, not in Git: a recreated or restored PVC comes back with 3 copies. If the final
+check (section 6) shows one of them at 3, reapply disk-replacement 2.4. Full table with the reasons:
+disk-replacement section 9.
 
 Plus what each swap switches off and must switch back on: the scaled-down apps and suspended Kustomizations
 (2.2 → 2.10), the Longhorn scheduling on the Pis (0.4, 4.1, 4.9), the cordon on node5 (4.3 → 4.8).
@@ -605,7 +609,8 @@ kubectl -n longhorn-system get nodes.longhorn.io
 
 You want: Elasticsearch and Prometheus 2 copies on the mini PCs; Keycloak Postgres ×2 and `data-loki-write-0`
 at 1; everything else 3; every volume `healthy`; every Longhorn node `SCHEDULABLE True`; node5 not
-`SchedulingDisabled` in `kubectl get nodes`.
+`SchedulingDisabled` in `kubectl get nodes`. A Keycloak Postgres or Loki write volume at 3 means its PVC was
+recreated: reapply disk-replacement 2.4 (check the current Keycloak PVC names first, CNPG may have renamed them).
 - [ ] **Two weeks after each swap:** write amplification. Crucial drives only (attributes 247/248); expected 3 or
 lower with TRIM. node2:
 

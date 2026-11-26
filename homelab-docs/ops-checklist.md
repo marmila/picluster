@@ -414,7 +414,9 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
 - [ ] **node5** (task list 5; Keycloak check mandatory).
 - [ ] **First Monday after each Pi swap:** `fstrim.timer` ran with no `reset`/`I/O error` (task list 6).
 - [ ] **Final replica check** (task list 6): Elasticsearch/Prometheus 2 on the mini PCs, Keycloak/Loki write 1,
-  the rest 3, every Longhorn node schedulable.
+  the rest 3, every Longhorn node schedulable. These are the same counts as before the swaps; nothing goes up with
+  the new disks (reasons in disk-replacement section 9). Keycloak/Loki write at 3 = recreated PVC, reapply
+  disk-replacement 2.4.
 - [ ] **2 weeks after each swap:** write amplification of the new drive over 7 days, expected ≤ 3 with TRIM
   (Crucial attributes; other brands differ, node2):
   `smartmon_attr_raw_value{id="248"}` and `{id="247"}`: `1 + increase(248[7d]) / increase(247[7d])` per node.

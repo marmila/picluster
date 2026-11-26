@@ -834,11 +834,21 @@ Keep the old node1 SSD untouched for a week as a fallback.
 
 When node6, node-esp-2 and node5 run on new disks:
 
-1. Elasticsearch and Prometheus stay at **2 replicas, on the two mini PCs**. Do not give them a third: with only
-   two x86 Longhorn nodes it would land on a Pi BX500, which the 1 TB sizing excludes (2.1.3) and which caused the
-   2026-11-22 incident. The swaps take them to 1 copy while node-esp-2 is out and back to 2 afterwards
-   ([disk-swap-plan.md](disk-swap-plan.md) 4.1 and 4.9). A third copy only after the `fast` disk tag (2.1.3) and a
-   third x86 node. Keycloak Postgres and Loki write stay at 1 replica (2.4).
+1. **Replicas after the swaps: the same counts as before them.** The swaps only lower Elasticsearch and
+   Prometheus for a while; nothing goes up because the disks are new.
+
+   | Volumes | Longhorn copies at the end | Where | Why |
+   |---|---|---|---|
+   | Elasticsearch, Prometheus | **2** | node-esp-1 + node-esp-2 only | A third copy would land on a Pi BX500, which the 1 TB sizing excludes (2.1.3) and which caused the 2026-11-22 incident. 1 copy while node-esp-2 is out, back to 2 after ([disk-swap-plan.md](disk-swap-plan.md) 4.1 and 4.9) |
+   | Keycloak Postgres ×2, `loki/data-loki-write-0` | **1**, `best-effort` locality | the node of the pod | Postgres: 2 CNPG instances + barman backups in RustFS. Loki write: only the log buffer, chunks are in S3. Wear was not the reason, so new disks change nothing (2.4) |
+   | Every other volume (Kafka ×3, ...) | **3** (Longhorn default) | spread over node5, node6, node-esp-1, node-esp-2 | Kafka app topics have 1 copy in Kafka: Longhorn is their only redundancy |
+
+   A third copy for Elasticsearch and Prometheus only after the `fast` disk tag (2.1.3) and a third x86 node.
+
+   **The 1-copy volumes are a live patch, not in Git.** Moving them during a swap (eviction) keeps 1 copy. A
+   recreated or restored PVC (CNPG rebuilding an instance, Velero restore, cluster rebuild) comes back with the
+   default 3: reapply the patch in 2.4. The final replica check in [disk-swap-plan.md](disk-swap-plan.md)
+   section 6 catches it.
 2. Spread existing replicas over the bigger disks: Longhorn setting `replica-auto-balance` to `best-effort` (in
    `kubernetes/platform/longhorn/app/base/values.yaml`, `defaultSettings.replicaAutoBalance`), one PR.
 3. SMART monitoring and a wear alert on every node (postmortem action 3c): **done 2026-11-22**
