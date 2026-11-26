@@ -141,7 +141,7 @@ rustfs_url: "https://{{ rustfs_hostname }}:9091"
 # Pinned to beta.7: 1.0.4 broke Longhorn's backup target (2026-11-24, see runbooks/components/s3-storage.md).
 # Renovate skips 1.0.0-1.0.4 (.github/renovate/automerge.json5); test any newer version before deploying.
 # renovate: datasource=github-releases depName=rustfs/rustfs
-rustfs_server_version: 1.0.0-beta.7
+rustfs_server_version: 1.0.7
 # renovate: datasource=github-releases depName=rustfs/cli
 rustfs_cli_version: v0.1.38
 
