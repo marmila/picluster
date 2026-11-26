@@ -21,7 +21,7 @@ services:
     command: ["sh", "-c", "mkdir -p /fix/data /fix/logs && chown -R 10001:10001 /fix/data /fix/logs /fix/certs"]
 
   rustfs:
-    image: rustfs/rustfs:1.0.4
+    image: rustfs/rustfs:1.0.7
     container_name: dev-rustfs
     restart: unless-stopped
     depends_on:
