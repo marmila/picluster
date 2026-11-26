@@ -434,9 +434,20 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   (`system-backup list` 127-300 s, every Longhorn backup failed; postmortem
   [incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md](../postmortems/incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md)).
   Renovate skips 1.0.0-1.0.4; RustFS is out of the weekly bundle, each version gets its own PR, never automerged.
+  1.0.5-1.0.7 are untested here. Their notes carry many scanner and directory-walk fixes (1.0.4 sat at 113% CPU
+  with a failing scanner, a suspect in the postmortem), but none names the Longhorn `system-backup list` slowness,
+  so only the test tells. Start in the morning, after a Completed nightly backup, so a rollback is done long
+  before 02:00 UTC.
+  0. On node1, save the RustFS system data first (rollback safety, as on 23 Nov):
+     `sudo tar czf ~/rustfs-sys-$(date +%F).tgz -C /storage/rustfs .rustfs.sys`
   1. `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml -e rustfs_server_version=1.0.7`
-  2. MINIO-001 step 7 in `runbooks/components/s3-storage.md` (Longhorn `system-backup list`): must answer fast.
-  3. Passes: merge #1007. Fails: roll back with `-e rustfs_server_version=1.0.0-beta.7`, leave the PR open.
+  2. MINIO-001 step 7 in `runbooks/components/s3-storage.md` (Longhorn `system-backup list`): must answer in
+     seconds (beta.7 0 s, 1.0.4 127-300 s). Then postmortem action 3: backup target `AVAILABLE=true` and a manual
+     Velero backup Completed with 0 errors.
+  3. Passes: merge #1007, then check the next nightly backup. Fails: roll back the same day with
+     `-e rustfs_server_version=1.0.0-beta.7`, check the target is available again, leave the PR open.
+  Better first: postmortem action 1 (alert when the backup target is unavailable >30 min); on 23 Nov nothing
+  alerted for 19 hours.
 - [ ] **restic 0.20.0 on the nodes.** Git has `restic_version: 0.20.0` (`ansible/vars/picluster.yml`, Renovate
   bump); the nodes keep the old version until it is applied:
   ```bash
