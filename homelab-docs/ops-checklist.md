@@ -429,12 +429,12 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
 - [ ] After the **last** of the 4 swaps (not before), expire the `DiskWornOut` silence (disk-replacement.md §9).
 
 **After the disk swaps, by day (pimaster).** Flux never deploys these two: only the make targets change node1 and the nodes.
-- [ ] **RustFS 1.0.6 test (PR #1007).** node1 runs `1.0.0-beta.7`, git agrees (`rustfs_server_version` in
+- [ ] **RustFS test (PR #1007, now 1.0.7; use the version in its title).** node1 runs `1.0.0-beta.7`, git agrees (`rustfs_server_version` in
   `ansible/vars/picluster.yml`). Pinned because 1.0.4 broke the Longhorn backup target on 24 Nov
   (`system-backup list` 127-300 s, every Longhorn backup failed; postmortem
   [incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md](../postmortems/incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md)).
   Renovate skips 1.0.0-1.0.4; RustFS is out of the weekly bundle, each version gets its own PR, never automerged.
-  1. `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml -e rustfs_server_version=1.0.6`
+  1. `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml -e rustfs_server_version=1.0.7`
   2. MINIO-001 step 7 in `runbooks/components/s3-storage.md` (Longhorn `system-backup list`): must answer fast.
   3. Passes: merge #1007. Fails: roll back with `-e rustfs_server_version=1.0.0-beta.7`, leave the PR open.
 - [ ] **restic 0.20.0 on the nodes.** Git has `restic_version: 0.20.0` (`ansible/vars/picluster.yml`, Renovate
