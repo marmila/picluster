@@ -428,6 +428,15 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   mini PCs for Elasticsearch/Prometheus), the condition for the sizing in disk-replacement.md 2.1.3.
 - [ ] After the **last** of the 4 swaps (not before), expire the `DiskWornOut` silence (disk-replacement.md §9).
 
+**RustFS log rotation (26 Nov):** `/var/log/rustfs/rustfs.log` was 214 MB, never rotated, on node1's nearly full
+root disk. Logrotate rule added (`basic_setup/tasks/rustfs_logrotate.yml`: daily or 100 MB, 14 kept, compressed,
+`copytruncate`).
+- [ ] **Apply** (pimaster, any time, node1 only, no restart):
+  `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node1`
+- [ ] **Check** (node1): `cat /etc/logrotate.d/rustfs && sudo logrotate -f /etc/logrotate.d/rustfs && sudo ls -lh /var/log/rustfs/`
+  (expect `rustfs.log` near 0 and `rustfs.log.1`; the next day `rustfs.log.2.gz`). The 1.0.4 logs are kept in
+  `~/rustfs-logs-1.0.4-2026-11-26.tgz` for rustfs/rustfs#9659.
+
 **After the disk swaps, by day (pimaster).** Flux never deploys these two: only the make targets change node1 and the nodes.
 - [ ] **RustFS test (PR #1007, now 1.0.7; use the version in its title).** node1 runs `1.0.0-beta.7`, git agrees (`rustfs_server_version` in
   `ansible/vars/picluster.yml`). Pinned because 1.0.4 broke the Longhorn backup target on 24 Nov

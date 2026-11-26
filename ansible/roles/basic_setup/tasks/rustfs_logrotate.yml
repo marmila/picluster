@@ -1,0 +1,25 @@
+---
+# Rotate the RustFS logs in /var/log/rustfs (node1 only). The ricsanfre.rustfs role
+# writes rustfs.log and rustfs-err.log there with no rotation: rustfs.log reached
+# 214 MB on node1's nearly full root disk (2026-11-26).
+# copytruncate: systemd keeps the files open (append:), so they cannot be moved
+# under the running service. Run by the OS logrotate.timer (daily).
+
+- name: Rotate RustFS logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/rustfs
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible (basic_setup/tasks/rustfs_logrotate.yml)
+      /var/log/rustfs/*.log {
+          daily
+          maxsize 100M
+          rotate 14
+          compress
+          delaycompress
+          missingok
+          notifempty
+          copytruncate
+      }

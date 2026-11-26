@@ -4,6 +4,7 @@
 # - kubelet config (k3s_kubelet_config in vars/picluster.yml), e.g. image GC thresholds
 # - Raspberry Pi throttling metrics (basic_setup/tasks/rpi_throttle_metrics.yml)
 # - RustFS bucket metrics on node1 (basic_setup/tasks/rustfs_bucket_metrics.yml)
+# - RustFS log rotation on node1 (basic_setup/tasks/rustfs_logrotate.yml)
 # - disk SMART metrics on all nodes (basic_setup/tasks/smart_metrics.yml)
 # - TRIM on the Raspberry Pi USB SSDs (basic_setup/tasks/usb_ssd_trim.yml)
 #
@@ -49,6 +50,11 @@
       ansible.builtin.include_role:
         name: basic_setup
         tasks_from: rustfs_bucket_metrics.yml
+
+    - name: Rotate RustFS logs
+      ansible.builtin.include_role:
+        name: basic_setup
+        tasks_from: rustfs_logrotate.yml
 
 - name: Limit journal size on non-k3s hosts
   hosts: picluster:!k3s_cluster
