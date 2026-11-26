@@ -435,7 +435,7 @@ root disk. Logrotate rule added (`basic_setup/tasks/rustfs_logrotate.yml`: daily
   `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node1`
 - [ ] **Check** (node1): `cat /etc/logrotate.d/rustfs && sudo logrotate -f /etc/logrotate.d/rustfs && sudo ls -lh /var/log/rustfs/`
   (expect `rustfs.log` near 0 and `rustfs.log.1`; the next day `rustfs.log.2.gz`). The 1.0.4 logs are kept in
-  `~/rustfs-logs-1.0.4-2026-11-26.tgz` for rustfs/rustfs#9659.
+  `~/rustfs-logs-1.0.4-2026-11-26.tgz` on node1.
 
 **After the disk swaps, by day (pimaster).** Flux never deploys these two: only the make targets change node1 and the nodes.
 - [ ] **RustFS test (PR #1007, now 1.0.7; use the version in its title).** node1 runs `1.0.0-beta.7`, git agrees (`rustfs_server_version` in
