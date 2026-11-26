@@ -69,10 +69,12 @@ $ud = (Get-Content metal\rpi\cloud-init\nodes\user-data-SSD-partition -Raw).Repl
 $nc = (Get-Content metal\rpi\cloud-init\nodes\network-config -Raw).Replace("`r`n", "`n") -creplace 'X', $IP
 [IO.File]::WriteAllText("$BOOT\user-data", $ud)
 [IO.File]::WriteAllText("$BOOT\network-config", $nc)
-Select-String -Path "$BOOT\user-data" -Pattern "hostname:"; Select-String -Path "$BOOT\network-config" -Pattern "10.0.0."
+Select-String -Path "$BOOT\user-data" -Pattern "hostname:", "ssh-rsa"; Select-String -Path "$BOOT\network-config" -Pattern "10.0.0."
 ```
 
-You want: `hostname: <node>` and `10.0.0.<IP>/24`.
+You want: `hostname: <node>`, two `ssh-rsa` lines ending in `marmila@pimaster` (the key Ansible uses) and
+`marmila@node1`, and `10.0.0.<IP>/24`. Password login is locked, so a wrong key means no access after the first
+boot: if the keys on a running node change, update the template first (`ssh marmila@10.0.0.16 cat .ssh/authorized_keys`).
 
 - [ ] **Eject** and label the drive **"<node> NEW"**.
 
