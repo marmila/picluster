@@ -428,6 +428,23 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   mini PCs for Elasticsearch/Prometheus), the condition for the sizing in disk-replacement.md 2.1.3.
 - [ ] After the **last** of the 4 swaps (not before), expire the `DiskWornOut` silence (disk-replacement.md §9).
 
+**After the disk swaps, by day (pimaster).** Flux never deploys these two: only the make targets change node1 and the nodes.
+- [ ] **RustFS 1.0.6 test (PR #1007).** node1 runs `1.0.0-beta.7`, git agrees (`rustfs_server_version` in
+  `ansible/vars/picluster.yml`). Pinned because 1.0.4 broke the Longhorn backup target on 24 Nov
+  (`system-backup list` 127-300 s, every Longhorn backup failed; postmortem
+  [incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md](../postmortems/incident-2026-11-24-rustfs-1.0.4-longhorn-backup-target.md)).
+  Renovate skips 1.0.0-1.0.4; RustFS is out of the weekly bundle, each version gets its own PR, never automerged.
+  1. `cd ~/picluster && git pull --ff-only && ./ansible-runner/ansible-runner.sh ansible-playbook deploy_rustfs.yml -e rustfs_server_version=1.0.6`
+  2. MINIO-001 step 7 in `runbooks/components/s3-storage.md` (Longhorn `system-backup list`): must answer fast.
+  3. Passes: merge #1007. Fails: roll back with `-e rustfs_server_version=1.0.0-beta.7`, leave the PR open.
+- [ ] **restic 0.20.0 on the nodes.** Git has `restic_version: 0.20.0` (`ansible/vars/picluster.yml`, Renovate
+  bump); the nodes keep the old version until it is applied:
+  ```bash
+  cd ~/picluster && git pull --ff-only && make configure-os-backup
+  ./ansible-runner/ansible-runner.sh ansible picluster -m shell -a 'restic version'
+  ```
+  OK when every node prints `restic 0.20.0`.
+
 **This week, other:**
 - [ ] CoreDNS: one pod restarted around the 22 Nov DNS timeout (Flux `Could not resolve host`). Check its last
   termination reason: `kubectl -n kube-system get pods -l app.kubernetes.io/name=coredns -o jsonpath='{range .items[*]}{.metadata.name} {.spec.nodeName} {.status.containerStatuses[0].restartCount} {.status.containerStatuses[0].lastState.terminated.reason} {.status.containerStatuses[0].lastState.terminated.finishedAt}{"
