@@ -113,7 +113,7 @@ the disk incident.
 | 2 | Pin RustFS to `1.0.0-beta.7` in git; Renovate skips 1.0.0-1.0.4 (`.github/renovate/automerge.json5`) | Done 2026-11-24 (`02da2901`) |
 | 3 | Test RustFS upgrades from the clients: by day, right after `make deploy-rustfs` run the Longhorn timing check (MINIO-001 step 7), check the backup target `AVAILABLE=true`, run a manual Velero backup | Done 2026-11-24: runbook MINIO-001 step 7, ops checklist |
 | 4 | Deploy RustFS bumps soon after Renovate merges them, one version at a time, instead of letting them pile up | Partly done 2026-11-24: a RustFS bump is its own Renovate PR, out of the weekly bundle, never automerged (merge after the step 7 test). Deploying soon after is still manual (ops checklist "RustFS bumps are not applied by Flux") |
-| 5 | Report to RustFS upstream: `longhorn system-backup list` 127-300 s on 1.0.4, fast on beta.7, with the timings above | Open, optional |
+| 5 | Report to RustFS upstream: `longhorn system-backup list` 127-300 s on 1.0.4, fast on beta.7, with the timings above | Done 2026-11-26: [rustfs/rustfs#9659](https://github.com/rustfs/rustfs/issues/9659). Add the 1.0.7 test result there |
 | 6 | Clean up the beta.7 scanner error `Scanner stopped because the persisted usage floor could not be loaded` (`buckets/.usage.v2.json` written by 1.0.4); only RustFS's own usage statistics | Open, low |
 | 7 | Install the `velero` CLI on node2 (or use the kubectl commands in BACKUP-004) | Open, low |
 | 8 | Postmortem 2026-11-15 action 11 (separate disk for node1): 1.0.4 had 0 backup-window timeouts, but it is rolled back; decide from the beta.7 nights from 25 Nov | Open |
