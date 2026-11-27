@@ -162,8 +162,12 @@ You want: nothing or a few dozen. Hundreds at `02`: node1's disk is saturating a
 
 ```bash
 cd ~/picluster
-./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | tail -3'
+./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'dmesg -T | grep -iE "reset|i/o error" | grep -v "Power-on or device reset" | tail -3'
 ```
+
+You want: no output. `Power-on or device reset occurred` is filtered out: the kernel prints it for every disk
+that appears, also for each Longhorn volume attached over iSCSI (`IET VIRTUAL-DISK`, `sdb`, `sdc`, ...). A real
+USB problem shows as `usb ...: reset SuperSpeed USB device`, `uas_eh_abort_handler` or `I/O error`.
 
 - [ ] **node2:** pre-flight (0.3) and `reps` (0.4).
 
@@ -244,7 +248,7 @@ kubectl -n longhorn-system delete nodes.longhorn.io node6
 hostname; ip -4 addr show eth0 | grep inet
 lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
 lsusb -t | grep -i -A1 storage
-sudo dmesg -T | grep -iE "uas|reset|error" | tail
+sudo dmesg -T | grep -iE "uas|reset|error" | grep -v "Power-on or device reset" | tail
 ```
 
 You want: `node6`, `10.0.0.16`; `/` about 50G and `/storage` about 880G; `Driver=uas, 5000M`; no `reset`.
@@ -254,7 +258,7 @@ You want: `node6`, `10.0.0.16`; `/` about 50G and `/storage` about 880G; `Driver
 sudo apt-get install -y -qq fio
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=randwrite --bs=4k --iodepth=16 --direct=1 --ioengine=libaio --runtime=60 --time_based --group_reporting | grep -E "IOPS|lat \(usec\)|clat percentiles" -A1 | head -8
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=write --bs=1M --iodepth=8 --direct=1 --ioengine=libaio --runtime=30 --time_based --group_reporting | grep -E "bw=|IOPS"
-sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | tail -5
+sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | grep -v "Power-on or device reset" | tail -5
 ```
 
 You want: thousands of IOPS, hundreds of MB/s, no `uas`/`reset`/`abort` lines. UAS resets: stop and paste.
@@ -307,7 +311,7 @@ sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|T
 cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
 lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
 sudo fstrim -v /storage && sudo fstrim -v /
-sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | grep -v "Power-on or device reset" | tail
 ```
 
 You want: `PASSED`; `unmap`; `DISC-MAX` `2G`; two "trimmed" lines; no reset or I/O error. Fill in the
@@ -377,7 +381,7 @@ You want: `[+]etcd ok`; node2 and node3 `Ready`.
 hostname; ip -4 addr show eth0 | grep inet
 lsblk -o NAME,SIZE,TRAN,MODEL,MOUNTPOINT | grep -v loop
 lsusb -t | grep -i -A1 storage
-sudo dmesg -T | grep -iE "uas|reset|error" | tail
+sudo dmesg -T | grep -iE "uas|reset|error" | grep -v "Power-on or device reset" | tail
 ```
 
 You want: `node4`, `10.0.0.14`, `Driver=uas, 5000M`, no `reset`.
@@ -438,7 +442,7 @@ sudo smartctl -i -H -A -d sat /dev/sda | grep -iE "model|serial|result|Percent|T
 cat /sys/block/sda/device/scsi_disk/*/provisioning_mode
 lsblk -D -d -o NAME,DISC-GRAN,DISC-MAX /dev/sda
 sudo fstrim -v / ; sudo fstrim -v /storage 2>/dev/null
-sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
+sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | grep -v "Power-on or device reset" | tail
 ```
 
 You want: `PASSED`, `unmap`, `DISC-MAX` `2G`, "trimmed", no errors. Fill in the progress table.
@@ -610,7 +614,7 @@ After a green section 1, with node6, node4 and node-esp-2 green and the 4.9 copi
 
 ```bash
 cd ~/picluster
-./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'systemctl status fstrim.service --no-pager | tail -4; dmesg -T | grep -iE "reset|i/o error" | tail -3'
+./ansible-runner/ansible-runner.sh ansible raspberrypi -b -m shell -a 'systemctl status fstrim.service --no-pager | tail -4; dmesg -T | grep -iE "reset|i/o error" | grep -v "Power-on or device reset" | tail -3'
 ```
 
 You want: "trimmed" lines, no reset or I/O error.
