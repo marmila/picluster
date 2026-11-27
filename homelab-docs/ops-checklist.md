@@ -301,7 +301,9 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   `kubectl -n threatmap scale statefulset mongodb --replicas=0`. Honeypots stopped on both Oracle VMs
   (`docker stop cowrie`, `systemctl disable --now fluent-bit`).
   Velero skips the `threatmap` namespace (`excludedNamespaces` in the `full` schedule).
-  **Re-enable:** remove both `suspend: true` and the Velero exclusion, push, scale the operator back to 1, then the operator brings MongoDB
+  The `web-threatmap` blackbox probe is commented out too (27 Nov, it fired `WebEndpointDown`).
+  **Re-enable:** remove both `suspend: true` and the Velero exclusion, uncomment the `web-threatmap` target in
+  `kubernetes/platform/blackbox-exporter/app/overlays/prod/values.yaml`, push, scale the operator back to 1, then the operator brings MongoDB
   back; `kubectl -n threatmap scale deploy --all --replicas=1`; on the VMs `docker start cowrie` and
   `sudo systemctl enable --now fluent-bit`.
 

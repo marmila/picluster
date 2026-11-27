@@ -24,9 +24,10 @@ serviceMonitor:
     - name: web-prometheus
       url: https://prometheus.${CLUSTER_DOMAIN}/-/healthy
       module: http_reachable
-    - name: web-threatmap
-      url: https://threatmap.${CLUSTER_DOMAIN}/
-      module: http_reachable
+    # threatmap disabled 2026-11-22 (homelab-docs/ops-checklist.md): uncomment when it is re-enabled
+    # - name: web-threatmap
+    #   url: https://threatmap.${CLUSTER_DOMAIN}/
+    #   module: http_reachable
     # FreqUI / bot API through lan-gateway (LAN-only); /api/v1/ping needs no login
     - name: web-freqtrade
       url: https://freqtrade.${CLUSTER_DOMAIN}/api/v1/ping
