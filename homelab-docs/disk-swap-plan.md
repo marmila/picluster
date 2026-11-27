@@ -260,7 +260,7 @@ You want: thousands of IOPS, hundreds of MB/s, no `uas`/`reset`/`abort` lines. U
 
 ### 2.8 Join the cluster (pimaster)
 
-The same playbooks as `make init` for a node (`nodes-setup`, `configure-os-backup`, `k3s-install`), limited to the
+A full OS upgrade and reboot first (the image is older than the running nodes), then the same playbooks as `make init` for a node (`nodes-setup`, `configure-os-backup`, `k3s-install`), limited to the
 node, plus `update_node_config.yml` (Pi throttling metrics, USB TRIM rule, SMART metrics, journald and kubelet
 config). With `--limit` the token comes from Vault and the server address is the API VIP (`k3s_api_vip`), so no
 other node is needed in the run; only the worker label play (hosts `k3s_master`) is skipped, so 2.9 sets that label
@@ -273,13 +273,16 @@ cd ~/picluster
 ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node6; ssh-keygen -R 10.0.0.16' || true
 ./ansible-runner/ansible-runner.sh ansible node6 -m ping
+./ansible-runner/ansible-runner.sh ansible node6 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node6 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node6 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node6
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node6
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node6
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node6
 ```
 
-You want: every playbook green (`failed=0`).
+You want: after the upgrade `pending=0` and `no-reboot-needed` (the new image is months behind: the full OS upgrade runs before k3s, so no drain is needed); every playbook green (`failed=0`).
 
 ### 2.9 Check
 
@@ -390,11 +393,16 @@ cd ~/picluster
 ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node4; ssh-keygen -R 10.0.0.14' || true
 ./ansible-runner/ansible-runner.sh ansible node4 -m ping
+./ansible-runner/ansible-runner.sh ansible node4 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node4 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node4 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
 ```
+
+You want: after the upgrade `pending=0` and `no-reboot-needed`; every playbook green.
 
 **`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster.
 (The role already treats only the first master in the inventory, node2, as primary; the extra var overrides
@@ -517,13 +525,16 @@ cd ~/picluster
 ssh-keygen -R node-esp-2
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node-esp-2' || true
 ./ansible-runner/ansible-runner.sh ansible node-esp-2 -m ping
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node-esp-2
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node-esp-2
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node-esp-2
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node-esp-2
 ```
 
-You want: every playbook green.
+You want: after the upgrade `pending=0` and `no-reboot-needed`; every playbook green.
 
 ### 4.6 Check the node
 

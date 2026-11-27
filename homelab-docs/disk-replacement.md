@@ -604,6 +604,9 @@ cd ~/picluster
 ssh-keygen -R node6; ssh-keygen -R 10.0.0.16
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node6; ssh-keygen -R 10.0.0.16' || true
 ./ansible-runner/ansible-runner.sh ansible node6 -m ping
+./ansible-runner/ansible-runner.sh ansible node6 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node6 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node6 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node6
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node6
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node6
@@ -687,6 +690,9 @@ cd ~/picluster
 ssh-keygen -R node-esp-2
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node-esp-2' || true
 ./ansible-runner/ansible-runner.sh ansible node-esp-2 -m ping
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node-esp-2 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node-esp-2
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node-esp-2
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node-esp-2
@@ -750,6 +756,9 @@ cd ~/picluster
 ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
 ./ansible-runner/ansible-runner.sh bash -lc 'ssh-keygen -R node4; ssh-keygen -R 10.0.0.14' || true
 ./ansible-runner/ansible-runner.sh ansible node4 -m ping
+./ansible-runner/ansible-runner.sh ansible node4 -b -m apt -a 'update_cache=yes upgrade=dist autoremove=yes lock_timeout=600'   # full OS upgrade, before k3s
+./ansible-runner/ansible-runner.sh ansible node4 -b -m reboot -a 'reboot_timeout=900'
+./ansible-runner/ansible-runner.sh ansible node4 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
