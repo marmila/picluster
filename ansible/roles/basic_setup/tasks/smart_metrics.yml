@@ -33,6 +33,7 @@
   register: smartd_failed
   changed_when: false
   failed_when: false
+  check_mode: false  # read-only; its rc is needed in --check runs too
 
 - name: Clear smartd failed state
   ansible.builtin.command: systemctl reset-failed smartmontools.service
