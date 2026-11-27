@@ -16,12 +16,14 @@ gets fixed.
 2. node4 (procedure C, master; no Longhorn data, so no eviction): BX500 1 TB. Can follow node6 the same day, once
    node6 is fully green.
 3. node-esp-2 (procedure B): Samsung 870 EVO 1 TB `MZ-77E1T0B/EU`
-4. node5 (procedure A): BX500 1 TB
+4. node5 (procedure A): BX500 1 TB. Can follow node-esp-2 the same day, under the conditions in section 5.
 
-- Never two Longhorn nodes (node6, node-esp-2, node5) on the same day: with one out and its data rebuilding
-  elsewhere, a second eviction would leave too few nodes for the copies.
+- One Longhorn eviction at a time (node6, node-esp-2, node5): the next one starts only when the previous node is
+  back in the cluster and every volume is `healthy`, including the 4.9 copies. With one node out and its data
+  rebuilding elsewhere, a second eviction would leave too few nodes for the copies.
 - Never two masters out at the same time.
-- Start a Longhorn node in the morning: the eviction takes 1-6 hours.
+- Start a Longhorn eviction in the morning or early afternoon (node5: by about 14:00 UTC), never one that would
+  run overnight: the eviction takes 1-6 hours, the swap and join about 1.5 hours more.
 
 **Replicas: what changes and what comes back**
 
@@ -598,7 +600,31 @@ node `SCHEDULABLE True`.
 
 ## 5. node5 (procedure A)
 
-After a green section 1, with node6, node4 and node-esp-2 green and the 4.9 copies `healthy`.
+node5 can follow node-esp-2 the same day. Start only when **all** of these are true; if one is not, node5 waits for
+the next morning (section 1 again):
+
+- [ ] node-esp-2 done including **4.9**: Elasticsearch and Prometheus `replicas=2 healthy`, and no volume
+  `degraded` (node2):
+
+```bash
+reps
+kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded
+kubectl -n trading get pods -o wide | grep freqtrade-
+```
+
+You want: `reps` as in 4.9, `0`, freqtrade `Running`.
+- [ ] node6 stable on the new BX500 since its swap: no USB/UAS reset or I/O error (pimaster):
+
+```bash
+cd ~/picluster
+./ansible-runner/ansible-runner.sh ansible node6 -b -m shell -a 'dmesg -T | grep -iE "reset|uas|abort|i/o error" | grep -v "Power-on or device reset" | tail -5'
+```
+
+You want: no output.
+- [ ] It is no later than about **14:00 UTC** (the node5 eviction in 2.4 takes 1-6 h, then about 1.5 h for the
+  swap, OS upgrade and join). Later: node5 the next morning.
+
+Then:
 
 - [ ] Section 2 with `node5` and IP `15` everywhere: `N=node5`; `kubectl drain node5`; the secret
 `node5.node-password.k3s`; the **"node5 NEW"** drive; `ssh-keygen -R node5; ssh-keygen -R 10.0.0.15`;
@@ -610,7 +636,8 @@ After a green section 1, with node6, node4 and node-esp-2 green and the 4.9 copi
 
 ## 6. After the swaps
 
-- [ ] **First Monday after each Pi swap:** the weekly `fstrim.timer` ran cleanly (pimaster):
+- [ ] **First Monday after the Pi swaps** (one check covers node6, node4 and node5 when they were all swapped in
+  the same week; TRIM itself is already checked by hand in 2.9): the weekly `fstrim.timer` ran cleanly (pimaster):
 
 ```bash
 cd ~/picluster

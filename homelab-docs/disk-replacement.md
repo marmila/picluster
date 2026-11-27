@@ -370,7 +370,10 @@ cannot be changed, so a new StorageClass would break the Loki Helm upgrade.
 
 ## 3. Order
 
-One node per day at most. Each swap waits for Longhorn to be fully healthy before the next.
+One node at a time. Each swap waits for Longhorn to be fully healthy before the next, and only one Longhorn
+eviction runs at a time. Two swaps on the same day are allowed when the second starts only after the first node is
+back and every volume is `healthy`, and early enough not to run overnight (conditions in
+[disk-swap-plan.md](disk-swap-plan.md) 2.10 for node4 and 5 for node5).
 
 ### 3.1 Every swap at a glance
 

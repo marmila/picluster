@@ -405,7 +405,7 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o custom-colum
 ```
 No swap without a Completed backup.
 
-**Swaps** (never two Longhorn nodes on the same day, [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)).
+**Swaps** (one Longhorn eviction at a time: the next starts when the previous node is back and every volume `healthy`; node5 may follow node-esp-2 the same day, task list 5; [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)).
 Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
 - [ ] **Before the first swap:** `git pull` on pimaster, pre-flight, Elasticsearch/Prometheus copies only on the
   mini PCs (task list 0.2-0.4).
