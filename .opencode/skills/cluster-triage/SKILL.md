@@ -16,6 +16,27 @@ uploaded fine) is wrong or incomplete.
 Filter and threshold numbers with `jq` (`select(.[1] | tonumber > 60)`), not `awk` or `sed`: those
 are not allowed.
 
+Write every command in full, one per call: the whole `/api/v1/...` path inside each
+`kubectl get --raw`, no shell variables (`P=...`, `"${P}..."`), no `;` / `&&` chains. The in-cluster
+triage agent runs with an allow list that refuses variable assignments and expansions, and each call
+starts a fresh shell, so a variable set earlier is empty anyway.
+
+Prometheus query, any PromQL: URL-encode it first with `jq` (allowed), then paste the output after
+`query=` in the full path:
+
+```bash
+jq -rn --arg q 'max by (instance) (node_hwmon_temp_celsius)' '$q|@uri'
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=max%20by%20%28instance%29%20%28node_hwmon_temp_celsius%29" | jq -r '.data.result[] | "\(.metric.instance) \(.value[1])"'
+```
+
+A bare metric name needs no encoding (`...query?query=node_thermal_zone_temp`). Never put raw
+`{`, `"`, spaces or `=~` in the URL.
+
+Many runbook commands are written for a person on node2: `P=...` variables, `$(python3 ...)`,
+shell functions, loops. They are refused here (and there is no `python3` in the triage image).
+Take the PromQL out of them, encode it with `jq` as above, and run it as one literal
+`kubectl get --raw` call; parse the result with `jq`, not `python3`.
+
 ## Preconditions
 
 - A valid kubeconfig. Confirm the target first:
@@ -201,11 +222,10 @@ query must be URL-encoded (`jq -rn --arg q '<LogQL>' '$q|@uri'` prints it). `sin
 for a past window use `start=` and `end=` in RFC 3339 instead.
 
 ```bash
-L="/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1"
-kubectl get --raw "${L}/labels" | jq -r '.data[]'
-kubectl get --raw "${L}/label/namespace/values" | jq -r '.data[]'
+kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/labels" | jq -r '.data[]'
+kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/label/namespace/values" | jq -r '.data[]'
 # {namespace="velero"} |~ "(?i)error", last 6 hours
-kubectl get --raw "${L}/query_range?query=%7Bnamespace%3D%22velero%22%7D%20%7C~%20%22%28%3Fi%29error%22&since=6h&limit=50" | jq -r '.data.result[].values[] | .[1]' | tail -50
+kubectl get --raw "/api/v1/namespaces/loki/services/loki-gateway:80/proxy/loki/api/v1/query_range?query=%7Bnamespace%3D%22velero%22%7D%20%7C~%20%22%28%3Fi%29error%22&since=6h&limit=50" | jq -r '.data.result[].values[] | .[1]' | tail -50
 ```
 
 Use it for pods that restarted or were replaced (their logs are gone from `kubectl logs`) and for
@@ -218,10 +238,8 @@ cluster workloads. The blackbox exporter probes them over TLS every minute. One 
 reachability and certificate days left for all three:
 
 ```bash
-P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
-kubectl get --raw "${P}probe_success" | jq -r '.data.result[] | "\(.metric.target) reachable=\(.value[1])"'
-kubectl get --raw "${P}%28probe_ssl_earliest_cert_expiry-time%28%29%29%2F86400" \
-  | jq -r '.data.result[] | "\(.metric.target) days_left=\(.value[1] | tonumber | floor)"'
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=probe_success" | jq -r '.data.result[] | "\(.metric.target) reachable=\(.value[1])"'
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=%28probe_ssl_earliest_cert_expiry-time%28%29%29%2F86400" | jq -r '.data.result[] | "\(.metric.target) days_left=\(.value[1] | tonumber | floor)"'
 ```
 
 Healthy: `reachable=1` and `days_left` above 14 for `vault`, `object-store` and `gateway`.
@@ -234,8 +252,7 @@ about it and there is no shell access). node-exporter runs on every host, so Pro
 numbers. Root and `/storage` usage in percent, fullest first:
 
 ```bash
-P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
-kubectl get --raw "${P}sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%7D%29" \
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=sort_desc%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-exporter%22%2Cfstype%21%3D%22%22%2Cmountpoint%3D~%22%2F%7C%2Fstorage%22%7D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%7D%29" \
   | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.mountpoint) \(.value[1] | tonumber | floor)%"'
 ```
 
@@ -244,8 +261,7 @@ out and S3 clients (Longhorn, Velero, Loki, CNPG) get errors. Busy % now, and ov
 (`query_range` with `start`, `end` in RFC 3339 UTC and `step=300`):
 
 ```bash
-P="/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query="
-kubectl get --raw "${P}100%20%2A%20rate%28node_disk_io_time_seconds_total%7Bjob%3D%22node-exporter%22%2Cdevice%3D~%22sd%5Ba-z%5D%7Cnvme%5B0-9%5Dn%5B0-9%5D%7Cmmcblk%5B0-9%5D%22%7D%5B5m%5D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%2Cnodename%3D%22node1%22%7D"   | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.device) busy=\(.value[1] | tonumber | floor)%"'
+kubectl get --raw "/api/v1/namespaces/kube-prom-stack/services/kube-prometheus-stack-prometheus:http-web/proxy/api/v1/query?query=100%20%2A%20rate%28node_disk_io_time_seconds_total%7Bjob%3D%22node-exporter%22%2Cdevice%3D~%22sd%5Ba-z%5D%7Cnvme%5B0-9%5Dn%5B0-9%5D%7Cmmcblk%5B0-9%5D%22%7D%5B5m%5D%29%20%2A%20on%20%28instance%29%20group_left%20%28nodename%29%20node_uname_info%7Bjob%3D%22node-exporter%22%2Cnodename%3D%22node1%22%7D"   | jq -r '.data.result[] | "\(.metric.nodename) \(.metric.device) busy=\(.value[1] | tonumber | floor)%"'
 ```
 
 Drop `,nodename="node1"` (`%2Cnodename%3D%22node1%22`) for all hosts. For the history, replace
