@@ -389,7 +389,7 @@ sections 4–8.
 | 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e k3s_primary_control_node=false`), `update_node_config.yml` | playbooks green | 20–30 min |
 | 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1; Pi: TRIM works (A7) | all green | 10 min |
 
-Then restore what was scaled down (4.2), uncordon the Pis if they were cordoned, and fill in the progress table (10).
+Then restore what was scaled down, if anything (4.2), uncordon the Pis if they were cordoned, and fill in the progress table (10).
 **Stop and ask** if any "done when" is not met: do not start the next node.
 
 | Node | Procedure | Downtime | Watch out for |
@@ -454,10 +454,16 @@ Go only if every node is `Ready`, no volume is `degraded`/`faulted`, and no node
 Draining a node moves its pods to the others, and on 2026-11-14 and 2026-11-22 that overloaded the Pis. Before a
 drain, scale down what is not needed for a day, and keep heavy pods off the worn Pis.
 
+**Phase 1: nothing to scale down.** The e-commerce app and its databases are commented out in Git (only its
+Keycloak, Kafka, common and monitoring config is applied), threatmap is disabled, and freqtrade stays running on
+purpose: 1 light pod that restarts on another node in 1-2 minutes when its node is drained, with its backtest
+CronJob `suspend: true` ([disk-swap-plan.md](disk-swap-plan.md) 2.2). The procedure below is for when a heavy
+app is running again.
+
 **Scale down** (node2). Pick the namespaces; the current replica counts are saved so they can be restored:
 
 ```bash
-NS="e-commerce trading"          # add or remove namespaces as you like
+NS="<namespace> ..."             # namespaces with heavy apps you can stop for a day
 for ns in $NS; do
   kubectl -n $ns get deploy,statefulset -o json | jq -r '.items[] | "\(.kind) \(.metadata.name) \(.spec.replicas)"' | sed "s|^|$ns |" >> ~/scaled-down-$(date +%F).txt
   kubectl -n $ns scale deploy --all --replicas=0
@@ -467,8 +473,8 @@ cat ~/scaled-down-$(date +%F).txt
 ```
 
 Flux puts the replica count of a Deployment back on its next reconcile when the manifest sets `replicas:`. To keep
-them down for the day, suspend those Kustomizations first (`flux get kustomizations | grep -E "e-commerce|trading"`,
-then `flux suspend kustomization <name>`), and `flux resume kustomization <name>` afterwards.
+them down for the day, suspend those Kustomizations first (`flux get kustomizations`, then
+`flux suspend kustomization <name>`), and `flux resume kustomization <name>` afterwards.
 
 **Restore** (node2), after the swap:
 

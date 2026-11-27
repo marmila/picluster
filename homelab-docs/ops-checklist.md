@@ -410,11 +410,12 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
 - [ ] **Before the first swap:** `git pull` on pimaster, pre-flight, Elasticsearch/Prometheus copies only on the
   mini PCs (task list 0.2-0.4).
 - [ ] **node6** (task list 2): eviction, swap in the prepared drive, `fio` (must pass: it validates the BX500 on
-  the adapter), join, checks, restore the apps.
+  the adapter), full OS upgrade, join, checks, freqtrade `Running`.
 - [ ] **node4** (task list 3, master, no Longhorn data): etcd snapshot, join with
   `-e k3s_primary_control_node=false`, check no `cluster-init`.
 - [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, cordon node5, PXE reinstall,
-  join, uncordon node5, restore the apps, Elasticsearch/Prometheus back to 2 copies on node-esp-2.
+  full OS upgrade, join, uncordon node5, freqtrade `Running`, Elasticsearch/Prometheus back to 2 copies on
+  node-esp-2. No app is scaled down during the swaps: e-commerce app commented out in Git, freqtrade stays up.
 - [ ] **node5** (task list 5; Keycloak check mandatory).
 - [ ] **First Monday after each Pi swap:** `fstrim.timer` ran with no `reset`/`I/O error` (task list 6).
 - [ ] **Final replica check** (task list 6): Elasticsearch/Prometheus 2 on the mini PCs, Keycloak/Loki write 1,

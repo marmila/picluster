@@ -35,8 +35,9 @@ The 1-copy setting is a live patch, not in Git: a recreated or restored PVC come
 check (section 6) shows one of them at 3, reapply disk-replacement 2.4. Full table with the reasons:
 disk-replacement section 9.
 
-Plus what each swap switches off and must switch back on: the scaled-down apps and suspended Kustomizations
-(2.2 → 2.10), the Longhorn scheduling on the Pis (0.4, 4.1, 4.9), the cordon on node5 (4.3 → 4.8).
+Plus what each swap switches off and must switch back on: the Longhorn scheduling on the Pis (0.4, 4.1, 4.9)
+and the cordon on node5 (4.3 → 4.8). No app is scaled down and no Kustomization is suspended: the e-commerce app
+is commented out in Git, threatmap is already disabled, and freqtrade stays running (2.2).
 
 ---
 
@@ -174,23 +175,23 @@ cd ~/picluster
 
 - [ ] Section 1 green.
 
-### 2.2 Scale down what is not needed (node2)
+### 2.2 Apps: nothing to scale down, freqtrade stays up (node2)
+
+Nothing heavy is left to stop: the e-commerce app and its databases are commented out in Git (only its Keycloak,
+Kafka, common and monitoring config is applied), threatmap is disabled, and the freqtrade backtest CronJob is
+`suspend: true`. Freqtrade itself (1 pod, 100m CPU / 256Mi, 2 × 2 Gi volumes) keeps running: when its node is
+drained it restarts on another one in 1-2 minutes (`Recreate`, never two bots), trades and state are on its volume.
 
 - [ ] Run:
 
 ```bash
-flux get kustomizations | grep -E "e-commerce|trading"
-flux suspend kustomization <name>          # once per name from the line above
-NS="e-commerce trading"
-for ns in $NS; do
-  kubectl -n $ns get deploy,statefulset -o json | jq -r '.items[] | "\(.kind) \(.metadata.name) \(.spec.replicas)"' | sed "s|^|$ns |" >> ~/scaled-down-$(date +%F).txt
-  kubectl -n $ns scale deploy --all --replicas=0
-  kubectl -n $ns scale statefulset --all --replicas=0
-done
-cat ~/scaled-down-$(date +%F).txt
+kubectl -n e-commerce get deploy,statefulset --no-headers 2>/dev/null | wc -l
+kubectl -n trading get pods -o wide
+kubectl -n trading get cronjob freqtrade-backtest -o jsonpath='{.spec.suspend}{"\n"}'
 ```
 
-Note the suspended names: 2.10 resumes them.
+You want: `0`; freqtrade `Running 1/1`; `true`. If the first number is not 0, the e-commerce app was re-enabled:
+scale it down as in disk-replacement 4.2.
 
 ### 2.3 Keycloak Postgres check (node2)
 
@@ -312,17 +313,17 @@ sudo dmesg -T | grep -iE "sda|uas|reset|i/o error" | tail
 You want: `PASSED`; `unmap`; `DISC-MAX` `2G`; two "trimmed" lines; no reset or I/O error. Fill in the
 progress table (disk-replacement.md 10).
 
-### 2.10 Restore (node2)
+### 2.10 Final check (node2)
 
 - [ ] Run:
 
 ```bash
-F=~/scaled-down-$(date +%F).txt
-while read ns kind name n; do kubectl -n $ns scale $kind/$name --replicas=$n; done < $F
-flux resume kustomization <name>           # once per name suspended in 2.2
+kubectl -n trading get pods -o wide
+reps
 ```
 
-- [ ] `reps` (0.4): Elasticsearch and Prometheus unchanged (2 copies, mini PCs).
+You want: freqtrade `Running 1/1` (on any node); Elasticsearch and Prometheus unchanged (2 copies, mini PCs;
+`reps` from 0.4, paste the helpers again in a new shell).
 
 node4 only if everything in 2.9 is green.
 
@@ -428,6 +429,7 @@ kubectl get pods -A -o wide --field-selector spec.nodeName=node4 | grep -vE "Run
 ```
 
 You want: three masters `Ready`, `[+]etcd ok`, those pods `Running`, nothing broken on node4.
+- [ ] `kubectl -n trading get pods -o wide`: freqtrade `Running 1/1`.
 - [ ] node4, SMART baseline and TRIM:
 
 ```bash
@@ -452,7 +454,7 @@ Pi; 4.9 gives the second copy back on the new disk. Elasticsearch is in the nigh
 
 ### 4.1 Checks and replicas (node2)
 
-- [ ] Section 1 green; 2.2 (scale down) again. You want also: node6 already holding Longhorn data (`scheduled=`
+- [ ] Section 1 green; 2.2 (check) again. You want also: node6 already holding Longhorn data (`scheduled=`
 above 0 in the pre-flight).
 - [ ] Elasticsearch and Prometheus down to the node-esp-1 copy (helpers from 0.4):
 
@@ -563,9 +565,9 @@ You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True`, disk `/storage`; n
 
 - [ ] `kubectl uncordon node5`
 
-### 4.8 Restore the apps (node2)
+### 4.8 Freqtrade check (node2)
 
-- [ ] 2.10 (scale back, `flux resume`).
+- [ ] `kubectl -n trading get pods -o wide`: freqtrade `Running 1/1` (`reps` comes in 4.9).
 
 ### 4.9 Elasticsearch and Prometheus: second copy back on node-esp-2 (node2)
 
