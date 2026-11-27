@@ -407,10 +407,14 @@ No swap without a Completed backup.
 
 **Swaps** (one Longhorn eviction at a time: the next starts when the previous node is back and every volume `healthy`; node5 may follow node-esp-2 the same day, task list 5; [disk-replacement.md 3.1](disk-replacement.md#31-every-swap-at-a-glance)).
 Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
-- [ ] **Before the first swap:** `git pull` on pimaster, pre-flight, Elasticsearch/Prometheus copies only on the
+- [x] **Before the first swap:** `git pull` on pimaster, pre-flight, Elasticsearch/Prometheus copies only on the
   mini PCs (task list 0.2-0.4).
-- [ ] **node6** (task list 2): eviction, swap in the prepared drive, `fio` (must pass: it validates the BX500 on
-  the adapter), full OS upgrade, join, checks, freqtrade `Running`.
+- [x] **node6** (task list 2): eviction, swap in the prepared drive, `fio` (must pass: it validates the BX500 on
+  the adapter), full OS upgrade, join, checks, freqtrade `Running`. Done 27 Nov: `fio` 14.3k IOPS 4k random write
+  (1.1 ms average), 297 MB/s sequential, `uas` 5000M, no resets; SMART `PASSED`; `unmap`, `DISC-MAX 2G`; playbooks
+  `failed=0`; ES/Prometheus `replicas=2 healthy` on the mini PCs, 0 degraded. node6 holds 0 Longhorn replicas
+  after the join (Longhorn does not move copies back by itself); it fills when node5 is evicted.
+  Fresh images need `sudo apt-get update` before `apt-get install fio` (stale package list, 404s).
 - [ ] **node4** (task list 3, master, no Longhorn data): etcd snapshot, join with
   `-e k3s_primary_control_node=false`, check no `cluster-init`.
 - [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, cordon node5, PXE reinstall,
