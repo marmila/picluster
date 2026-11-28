@@ -571,10 +571,11 @@ kubectl uncordon node-esp-2      # only when all of the above are Running and RE
 lsblk -o NAME,SIZE,TYPE,MOUNTPOINT | grep -v loop
 findmnt /var/lib/rancher
 sudo smartctl -i -H -A /dev/sda | grep -iE "model|serial|result|Percent|Total_LBAs|Wear"
+sudo fstrim -v / ; sudo fstrim -v /storage
 ```
 
 You want: `/` 80G, `/storage` about 850G; `/var/lib/rancher` on `/storage/rancher`;
-`Samsung SSD 870 EVO 1TB`, `PASSED`.
+`Samsung SSD 870 EVO 1TB`, serial `S8NBNS0L324839A`, `PASSED`; "trimmed".
 - [ ] node2:
 
 ```bash
@@ -582,9 +583,11 @@ kubectl label node node-esp-2 kubernetes.io/role=worker --overwrite
 kubectl get node node-esp-2 -o wide
 kubectl -n longhorn-system get nodes.longhorn.io node-esp-2
 kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -vE "Running|Completed"
+kubectl -n envoy-gateway-system get deploy
 ```
 
-You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True`, disk `/storage`; no pod in another state.
+You want: `Ready`; Longhorn `READY True`, `SCHEDULABLE True`, disk `/storage`; no pod in another state;
+`envoy-gateway`, `lan-gateway`, `public-gateway` at full `READY`.
 
 ### 4.7 Uncordon node5 (node2)
 
@@ -610,10 +613,16 @@ Wait until both are `healthy` (the rebuild copies the whole volume: minutes to a
 sched true node5 node6
 reps
 kubectl -n longhorn-system get nodes.longhorn.io
+kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness | grep -c degraded
 ```
 
 You want: per volume `replicas=2`, rows on node-esp-1 and node-esp-2, `running`, `healthy`; every Longhorn
-node `SCHEDULABLE True`.
+node `SCHEDULABLE True`; `0` degraded.
+
+### 4.10 Last swap done: expire the `DiskWornOut` silence (node2)
+
+- [ ] If node-esp-2 is the last of the 4 swaps (the order used: node6, node4, node5, node-esp-2), expire the
+  silence now (the last item of section 6). No `DiskWornOut` should fire afterwards: all 4 worn disks are gone.
 
 ---
 
@@ -684,10 +693,18 @@ kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=NAME:.metad
 kubectl -n longhorn-system get nodes.longhorn.io
 ```
 
-You want: Elasticsearch and Prometheus 2 copies on the mini PCs; Keycloak Postgres ×2 and `data-loki-write-0`
-at 1; everything else 3; every volume `healthy`; every Longhorn node `SCHEDULABLE True`; node5 not
-`SchedulingDisabled` in `kubectl get nodes`. A Keycloak Postgres or Loki write volume at 3 means its PVC was
-recreated: reapply disk-replacement 2.4 (check the current Keycloak PVC names first, CNPG may have renamed them).
+You want (end state, same counts as before the swaps):
+
+| Volume | Copies | Where |
+|---|---|---|
+| Elasticsearch, Prometheus | **2** | node-esp-1 + node-esp-2 only |
+| Keycloak Postgres ×2, Loki write (`data-loki-write-0`) | **1** each | any node (`best-effort`) |
+| Everything else (Kafka ×3, threatmap MongoDB data + logs once re-enabled, freqtrade ×2, ...) | **3** | over node5, node6, node-esp-1, node-esp-2 |
+
+Every attached volume `healthy`; the only `detached` one is `freqtrade-backtest-data` (backtest CronJob
+suspended); every Longhorn node `SCHEDULABLE True`; no node `SchedulingDisabled` in `kubectl get nodes`. A
+Keycloak Postgres or Loki write volume at 3 means its PVC was recreated: reapply disk-replacement 2.4 (check the
+current Keycloak PVC names first, CNPG may have renamed them). Elasticsearch or Prometheus with a copy on a Pi: 0.4.
 - [ ] **Two weeks after each swap:** write amplification. Crucial drives only (attributes 247/248); expected 3 or
 lower with TRIM. node2:
 
@@ -705,3 +722,102 @@ $AM silence expire e33eec49-ba6e-4267-99c4-d968f0e331d3
 ```
 
 - [ ] **A week after each swap, new drive clean:** the old disk can go.
+
+---
+
+## 7. Threatmap and honeypots back on (after 4.10)
+
+Threatmap was switched off on 2026-11-22 (MongoDB wrote about 27 GB/day on the worn disks; ops-checklist
+"Threatmap disabled"). The new disks carry that load: the 870 EVO is rated 600 TBW, each BX500 360 TBW. Its data
+and PVCs were kept.
+
+### 7.1 Git (laptop, push to master)
+
+- [ ] `kubernetes/clusters/prod/apps/threatmap-app.yaml`: remove `suspend: true`.
+- [ ] `kubernetes/clusters/prod/infra/databases-app.yaml`: remove `suspend: true` and its comment
+  (`mongodb-community-operator-app`).
+- [ ] `kubernetes/platform/velero/config/base/backup-schedule.yaml`: remove the `excludedNamespaces: - threatmap`
+  block and its comment (threatmap is backed up again).
+- [ ] `kubernetes/platform/blackbox-exporter/app/overlays/prod/values.yaml`: uncomment the `web-threatmap` target.
+
+### 7.2 Apply (node2)
+
+```bash
+GR_NAME="$(kubectl -n flux-system get gitrepository -o jsonpath='{range .items[?(@.spec.url=="https://github.com/marmila/picluster")]}{.metadata.name}{"\n"}{end}' | head -n1)"
+flux reconcile source git "$GR_NAME" -n flux-system
+flux resume kustomization mongodb-community-operator-app -n flux-system
+flux resume helmrelease mongodb-community-operator -n "$(flux get hr -A | awk '/mongodb-community-operator/{print $1}')"
+flux resume kustomization threatmap-app -n flux-system
+flux reconcile kustomization velero-config -n flux-system
+flux get kustomizations -A | awk '$5!="True"' | cut -c1-160
+```
+
+You want: only the header line (nothing suspended or failing).
+
+### 7.3 MongoDB and the apps (node2)
+
+```bash
+kubectl -n databases scale deploy -l app.kubernetes.io/name=community-operator --replicas=1
+sleep 180
+kubectl -n threatmap get statefulset,pods -o wide
+```
+
+Wait for `mongodb-0` `2/2 Running` (the operator brings it back; repeat the last line), then:
+
+```bash
+kubectl -n threatmap scale deploy --all --replicas=1
+sleep 60
+kubectl -n threatmap get pods -o wide
+kubectl -n threatmap logs deploy/threatmap-backend --tail=20
+```
+
+You want: `mongodb-0` on node-esp-1 or node-esp-2 (amd64 only); backend and frontend `Running`; no repeating
+error in the log.
+
+### 7.4 MongoDB volumes (node2)
+
+```bash
+kubectl -n longhorn-system get volumes.longhorn.io -o custom-columns=PVC:.status.kubernetesStatus.pvcName,NS:.status.kubernetesStatus.namespace,STATE:.status.state,REPLICAS:.spec.numberOfReplicas,ROBUST:.status.robustness | grep -E "PVC|threatmap"
+```
+
+You want: 2 volumes (data, logs), `attached`, `3`, `healthy` (`degraded` for a few minutes while they rebuild is
+fine).
+
+### 7.5 Expire the `FluxResourceSuspended` silence (node2)
+
+```bash
+kubectl -n kube-prom-stack exec alertmanager-kube-prometheus-stack-0 -c alertmanager -- amtool silence expire 1d710e92 --alertmanager.url=http://localhost:9093
+```
+
+### 7.6 Honeypots (each Oracle VM: honeypot-eu-01, honeypot-eu-02)
+
+```bash
+sudo docker start cowrie
+sudo systemctl enable --now fluent-bit
+sudo docker ps --filter name=cowrie --format '{{.Names}} {{.Status}}'
+systemctl is-active fluent-bit
+sudo wg show | grep -E "interface|latest handshake"
+```
+
+You want: `cowrie Up ...`, `active`, a WireGuard handshake younger than 2 minutes (without the VPN the logs cannot
+reach Fluentd).
+
+### 7.7 End to end (node2, about 10 minutes after 7.6)
+
+```bash
+kubectl -n fluent logs -l app.kubernetes.io/name=fluentd --tail=200 2>/dev/null | grep -ci cowrie
+kubectl -n threatmap logs deploy/threatmap-backend --tail=50 | grep -iE "event|attack" | tail -5
+curl -sk -o /dev/null -w "%{http_code}\n" https://threatmap.homelab.marmilan.com/
+```
+
+You want: a cowrie count above 0, attack events in the backend log, `200`, attacks on the globe in the browser.
+
+---
+
+## 8. Close-out
+
+- [ ] Section 6 done (fstrim check, final replica check, `DiskWornOut` silence expired).
+- [ ] Progress table (disk-replacement.md 10) and ops-checklist: phase 1 closed, threatmap re-enabled.
+- [ ] Old disks: keep the four drives labelled "old" for a week after the last swap, then wipe them.
+- [ ] Not part of phase 1, still open: postmortem 2026-11-24 action 1 (alert when the Longhorn backup target is
+  unavailable); write amplification two weeks after each swap (section 6).

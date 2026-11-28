@@ -305,7 +305,7 @@ the cluster was built. node6 tested by hand on 23 Nov: 184 GiB trimmed in 37 s, 
   **Re-enable:** remove both `suspend: true` and the Velero exclusion, uncomment the `web-threatmap` target in
   `kubernetes/platform/blackbox-exporter/app/overlays/prod/values.yaml`, push, scale the operator back to 1, then the operator brings MongoDB
   back; `kubectl -n threatmap scale deploy --all --replicas=1`; on the VMs `docker start cowrie` and
-  `sudo systemctl enable --now fluent-bit`.
+  `sudo systemctl enable --now fluent-bit`. Step by step: disk-swap-plan.md section 7.
 
 ### Next steps (from 22 Nov evening)
 
