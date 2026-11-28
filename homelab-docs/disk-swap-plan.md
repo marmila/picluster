@@ -527,8 +527,10 @@ the **"node-esp-2 NEW"** drive in.
 cd ~/picluster && make pxe-setup
 ```
 
-- [ ] Power on node-esp-2, open the boot menu, choose **network boot (PXE, IPv4)**. The autoinstall runs by itself
-(10-15 minutes) and reboots into Ubuntu.
+- [ ] Plug in the network cable, a **monitor and a USB keyboard**. Power on node-esp-2 and press **F9** (boot menu)
+or **F12** (network boot) at once; choose **network boot (PXE, IPv4)**, not IPv6. The autoinstall runs by itself
+(10-15 minutes, nothing to type) and reboots into Ubuntu: you want a login prompt with `node-esp-2`. Then unplug
+monitor and keyboard. `PXE-E...`, "no boot file" or a timeout: `make pxe-setup` again, then retry.
 
 ### 4.5 Join the cluster (pimaster)
 
