@@ -425,10 +425,16 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   SSH stayed refused (drive re-imaged, then fine); `-e k3s_primary_control_node=false` is a string, so the first
   `k3s_install` stopped after writing `cluster-init: true` (k3s not installed yet; config removed, rerun with
   the JSON form).
-- [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, cordon node5, PXE reinstall,
-  full OS upgrade, join, uncordon node5, freqtrade `Running`, Elasticsearch/Prometheus back to 2 copies on
-  node-esp-2. No app is scaled down during the swaps: e-commerce app commented out in Git, freqtrade stays up.
-- [ ] **node5** (task list 5; Keycloak check mandatory).
+- [x] **node5** (task list 5; Keycloak check mandatory). Done 28 Nov, **before** node-esp-2 (all Pis first):
+  eviction of 46 GB in about 1 h (0 replicas, 0 degraded at 11:11), Keycloak primary switched to
+  `postgres-keycloak-1` (node-esp-1) before the drain, Longhorn removed its node by itself; SMART `PASSED`,
+  `unmap`, 866.6 GiB trimmed, playbooks `failed=0`, ES/Prometheus `replicas=2 healthy`, 0 degraded. After the
+  join the descheduler moved `istiod`, envoy-gateway and both gateways to the empty node5 while Cilium was still
+  starting: `lan-gateway` 0/2 for a few minutes, recovered by itself. Fix in the plan: cordon a new node until its
+  DaemonSets run.
+- [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, PXE reinstall, full OS upgrade,
+  join (cordon until its DaemonSets run), freqtrade `Running`, Elasticsearch/Prometheus back to 2 copies on
+  node-esp-2. node5 already swapped: no cordon/uncordon of node5. No app is scaled down.
 - [ ] **First Monday after each Pi swap:** `fstrim.timer` ran with no `reset`/`I/O error` (task list 6).
 - [ ] **Final replica check** (task list 6): Elasticsearch/Prometheus 2 on the mini PCs, Keycloak/Loki write 1,
   the rest 3, every Longhorn node schedulable. These are the same counts as before the swaps; nothing goes up with

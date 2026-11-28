@@ -18,6 +18,10 @@ gets fixed.
 3. node-esp-2 (procedure B): Samsung 870 EVO 1 TB `MZ-77E1T0B/EU`
 4. node5 (procedure A): BX500 1 TB. Can follow node-esp-2 the same day, under the conditions in section 5.
 
+Done in the order node6, node4, **node5**, node-esp-2 (all Pis first, by choice). node5 before node-esp-2 works: part of
+node5's data lands on the old node-esp-2 disk for a day and moves again with its eviction. With node5 already
+swapped, 4.3 does not cordon node5 and 4.7 is skipped.
+
 - One Longhorn eviction at a time (node6, node-esp-2, node5): the next one starts only when the previous node is
   back in the cluster and every volume is `healthy`, including the 4.9 copies. With one node out and its data
   rebuilding elsewhere, a second eviction would leave too few nodes for the copies.
@@ -460,8 +464,9 @@ Pi; 4.9 gives the second copy back on the new disk. Elasticsearch is in the nigh
 
 ### 4.1 Checks and replicas (node2)
 
-- [ ] Section 1 green; 2.2 (check) again. You want also: node6 already holding Longhorn data (`scheduled=`
-above 0 in the pre-flight).
+- [ ] Section 1 green; 2.2 (check) again. You want also: node6 (and node5, if already swapped) Longhorn
+`SCHEDULABLE True` in the pre-flight. A freshly swapped node can show `scheduled=0G`: Longhorn does not move
+copies back by itself, the node-esp-2 eviction fills it.
 - [ ] Elasticsearch and Prometheus down to the node-esp-1 copy (helpers from 0.4):
 
 ```bash
@@ -491,6 +496,7 @@ You want: both numbers `0`.
 ### 4.3 Keep heavy pods off the worn disk, drain, power off, remove
 
 node5 is the last worn disk by now. Cordon it only if node-esp-1 is below about 60% CPU and 70% memory.
+If node5 was already swapped (the order used on 28 Nov), skip `kubectl cordon node5` here and skip 4.7.
 
 - [ ] node2:
 
@@ -543,6 +549,17 @@ ssh-keygen -R node-esp-2
 ```
 
 You want: after the upgrade `pending=0` and `no-reboot-needed`; every playbook green.
+
+**Right after `k3s_install.yml`, cordon the new node** (node2) and uncordon it only when its DaemonSets run. A new node
+has no images yet: on 28 Nov the descheduler moved `istiod`, the envoy-gateway controller and both gateway pods to
+the fresh node5 while Cilium was still starting (`429 putEndpointIdTooManyRequests`), and `lan-gateway` was 0/2 for
+a few minutes.
+
+```bash
+kubectl cordon node-esp-2
+kubectl get pods -A -o wide --field-selector spec.nodeName=node-esp-2 | grep -E "cilium|ztunnel|istio-cni|longhorn-manager|NAME"
+kubectl uncordon node-esp-2      # only when all of the above are Running and READY
+```
 
 ### 4.6 Check the node
 
@@ -630,6 +647,18 @@ Then:
 `node5.node-password.k3s`; the **"node5 NEW"** drive; `ssh-keygen -R node5; ssh-keygen -R 10.0.0.15`;
 `--limit node5`; label and checks on node5.
 - [ ] 2.3 (Keycloak check) is mandatory: node5 holds the only copy of the other Keycloak Postgres instance.
+- [ ] After 2.4 and **before the drain**: if the Keycloak primary runs on node5 (2.3 shows `currentPrimary`), switch
+  it to the instance on another node, or its PDB blocks the drain (node2):
+
+```bash
+kubectl -n databases get cluster postgres-keycloak -o jsonpath='{.status.currentPrimary}{"\n"}'
+kubectl -n databases patch cluster postgres-keycloak --type merge --subresource status -p '{"status":{"targetPrimary":"postgres-keycloak-1"}}'
+sleep 60
+kubectl -n databases get cluster postgres-keycloak -o jsonpath='{.status.currentPrimary}{"  "}{.status.phase}{"\n"}'
+```
+
+  You want: `postgres-keycloak-1  Cluster in healthy state` (use the name of the instance that is **not** on node5).
+  Done 28 Nov: the switch took under a minute, Keycloak stayed up.
 - [ ] `fio` (2.7) is optional: node6 validated the BX500.
 
 ---
