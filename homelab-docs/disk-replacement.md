@@ -389,7 +389,7 @@ sections 4–8.
 | 2. Remove | node2, then the node | Drain, `sudo poweroff`, delete node + `node-password` secret + Longhorn node | node gone from `kubectl get nodes` | 15 min |
 | 3. New disk | laptop or the node | Pi: image the SSD and write `user-data`/`network-config` (A4), best done days before with a spare adapter (task list 0.1), so this stage is just swapping the drive in the adapter. Mini PC: fit the SSD, `make pxe-setup`, PXE boot (B4). node1: clone the old disk (D2) | node boots and answers SSH | 30–45 min |
 | 4. First boot check | the node | Pi: `lsusb -t` (uas, 5000M), `fio` + `dmesg` (A5, mandatory on the first Pi with the new model) | no `reset`/`abort` in `dmesg` | 10 min |
-| 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e k3s_primary_control_node=false`), `update_node_config.yml` | playbooks green | 20–30 min |
+| 5. Join | pimaster | `setup_picluster.yml --tags node`, `backup_configuration.yml`, `k3s_install.yml` (masters: `-e '{"k3s_primary_control_node": false}'`), `update_node_config.yml` | playbooks green | 20–30 min |
 | 6. Check | node2 + the node | `Ready`, Longhorn node schedulable, pods running (A7/B6/C6); SMART baseline and `smartmon_read_ok` 1; Pi: TRIM works (A7) | all green | 10 min |
 
 Then restore what was scaled down, if anything (4.2), uncordon the Pis if they were cordoned, and fill in the progress table (10).
@@ -399,7 +399,7 @@ Then restore what was scaled down, if anything (4.2), uncordon the Pis if they w
 |---|---|---|---|
 | node6, node5 | A (Pi Longhorn worker) | none (cluster keeps running) | node6 first: its A5 test validates the drive model for all Pis |
 | node-esp-2 | B (x86 worker, PXE reinstall) | none | Prometheus and ES move to node-esp-1: cordon the worn Pis during the drain (4.2) |
-| node4, node3, node2 | C (master) | none, etcd runs on 2 of 3 | never two masters out at once; node2 needs `-e k3s_primary_control_node=false`, and kubectl from node3 during its swap |
+| node4, node3, node2 | C (master) | none, etcd runs on 2 of 3 | never two masters out at once; node2 needs `-e '{"k3s_primary_control_node": false}'`, and kubectl from node3 during its swap |
 | node1 | D (clone) | 30–45 min of Vault, RustFS, DNS | evening, not 02:00–04:00; unseal Vault after boot; keep the old disk a week |
 
 **Phase 1 (now):**
@@ -419,7 +419,7 @@ If node-esp-2's drive arrives before node6's, swap node-esp-2 first (it does not
 |---|---|---|---|
 | 5 | node1 | D | Short downtime: a quiet evening, not during Velero (02:00) or the Longhorn cleanup (03:30) |
 | 6 | node3 | C | Masters at least an hour apart, only with all three `Ready` |
-| 7 | node2 | C | First master in the inventory: `-e k3s_primary_control_node=false` is mandatory (7) |
+| 7 | node2 | C | First master in the inventory: `-e '{"k3s_primary_control_node": false}'` is mandatory (7) |
 
 node-esp-1 (B) whenever its drive is bought; it does not depend on the others.
 
@@ -596,7 +596,7 @@ sudo dmesg -T | grep -iE "uas|reset|error" | tail            # nothing new
 **Compatibility test** (first Pi with the new drive model). Writes and reads 2 GB on `/storage`:
 
 ```bash
-sudo apt-get install -y -qq fio
+sudo apt-get update -qq && sudo apt-get install -y -qq fio
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=randwrite --bs=4k --iodepth=16 --direct=1 --ioengine=libaio --runtime=60 --time_based --group_reporting | grep -E "IOPS|lat \(usec\)|clat percentiles" -A1 | head -8
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=write --bs=1M --iodepth=8 --direct=1 --ioengine=libaio --runtime=30 --time_based --group_reporting | grep -E "bw=|IOPS"
 sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | tail -5
@@ -770,12 +770,16 @@ ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
 ./ansible-runner/ansible-runner.sh ansible node4 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
-./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e '{"k3s_primary_control_node": false}'
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
 ```
 
-**`-e k3s_primary_control_node=false` is mandatory, above all for node2** (the first master in the inventory):
+**`-e '{"k3s_primary_control_node": false}'` is mandatory, above all for node2** (the first master in the inventory):
 a primary master gets `cluster-init: true` and would start a new, empty one-node cluster instead of joining.
+Pass it as JSON: `-e k3s_primary_control_node=false` gives the **string** `"false"`, which is true. ansible-core
+2.20 stops at the first `when:` on it, but the config template has already been written with `cluster-init: true`
+(seen on node4, 28 Nov; k3s was not installed yet). If that happens: `rm /etc/rancher/k3s/config.yaml` on the
+node, then rerun with the JSON form.
 Check on the swapped master before anything else:
 
 ```bash
@@ -900,7 +904,7 @@ When node6, node-esp-2 and node5 run on new disks:
 | 2 | node-esp-2 | internal SATA | Samsung 870 EVO 1 TB `MZ-77E1T0B/EU`, serial `S8NBNS0L324839A`, firmware SVT04B6Q | planned, 3rd | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | |
 | 3 | node5 | StarTech `14b0:0207` (kept: tested OK 2026-11-22, CRC 92 not increasing) | Crucial BX500 1 TB, serial `2535E9C9C1F3`, firmware M6CR061 | planned, 4th | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | prepared 26 Nov: image + config, `10.0.0.15`, keys `@pimaster` + `@node1` |
 | 4 | node-esp-1 | internal SATA | | | | |
-| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB, serial `2530E9C77E02`, firmware **M6CR072** | planned, 2nd (no Longhorn data) | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | other firmware than node6/node5: `fio` on node4 too; prepared 26 Nov: image + config, `10.0.0.14`, keys `@pimaster` + `@node1` |
+| 5 | node4 | StarTech `14b0:0206` | Crucial BX500 1 TB, serial `2530E9C77E02`, firmware **M6CR072** | **done 28 Nov** (no Longhorn data) | checked 25 Nov (CrystalDiskInfo, spare adapter, UASP): 0 h, 0 written, 0 reallocated/pending/uncorrectable/CRC, health 100% | other firmware than node6/node5: `fio` on node4 too; prepared 26 Nov: image + config, `10.0.0.14`, keys `@pimaster` + `@node1`; swapped 28 Nov (re-imaged once: first boot without network cable): `fio` 13.7k IOPS / 1.17 ms, 297 MB/s, SMART `PASSED`, `unmap` |
 | 6 | node3 | StarTech `14b0:0207` | | | | |
 | 7 | node2 | StarTech `14b0:0207` | | | | |
 | 8 | node1 | StarTech `14b0:0207` | | | | |

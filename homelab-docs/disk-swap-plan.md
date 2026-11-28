@@ -244,7 +244,7 @@ kubectl -n longhorn-system delete nodes.longhorn.io node6
 
 ### 2.7 First boot and speed test (node6)
 
-- [ ] Connect the adapter to the **same blue USB 3 port**, power on, wait 5 minutes:
+- [ ] Connect the adapter to the **same blue USB 3 port**, **network cable plugged in first** (a first boot without network leaves SSH refused: re-image, see 0.1), power on, wait 5 minutes:
 
 ```bash
 hostname; ip -4 addr show eth0 | grep inet
@@ -257,7 +257,7 @@ You want: `node6`, `10.0.0.16`; `/` about 50G and `/storage` about 880G; `Driver
 - [ ] Speed test (mandatory on node6: it validates the BX500 on the adapter):
 
 ```bash
-sudo apt-get install -y -qq fio
+sudo apt-get update -qq && sudo apt-get install -y -qq fio
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=randwrite --bs=4k --iodepth=16 --direct=1 --ioengine=libaio --runtime=60 --time_based --group_reporting | grep -E "IOPS|lat \(usec\)|clat percentiles" -A1 | head -8
 sudo fio --name=t --filename=/storage/.fio --size=2G --rw=write --bs=1M --iodepth=8 --direct=1 --ioengine=libaio --runtime=30 --time_based --group_reporting | grep -E "bw=|IOPS"
 sudo rm -f /storage/.fio; sudo dmesg -T | grep -iE "uas|reset|abort|error" | grep -v "Power-on or device reset" | tail -5
@@ -377,7 +377,7 @@ You want: `[+]etcd ok`; node2 and node3 `Ready`.
 
 ### 3.4 First boot (node4)
 
-- [ ] Same blue USB 3 port, power on, wait 5 minutes:
+- [ ] Same blue USB 3 port, **network cable plugged in first**, power on, wait 5 minutes:
 
 ```bash
 hostname; ip -4 addr show eth0 | grep inet
@@ -405,13 +405,13 @@ ssh-keygen -R node4; ssh-keygen -R 10.0.0.14
 ./ansible-runner/ansible-runner.sh ansible node4 -b -m shell -a 'uname -r; echo pending=$(apt-get -s dist-upgrade | grep -c ^Inst); test -f /var/run/reboot-required && echo REBOOT-REQUIRED || echo no-reboot-needed'
 ./ansible-runner/ansible-runner.sh ansible-playbook setup_picluster.yml --tags node --limit node4
 ./ansible-runner/ansible-runner.sh ansible-playbook backup_configuration.yml --limit node4
-./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e k3s_primary_control_node=false
+./ansible-runner/ansible-runner.sh ansible-playbook k3s_install.yml --limit node4 -e '{"k3s_primary_control_node": false}'
 ./ansible-runner/ansible-runner.sh ansible-playbook update_node_config.yml --limit node4
 ```
 
 You want: after the upgrade `pending=0` and `no-reboot-needed`; every playbook green.
 
-**`-e k3s_primary_control_node=false` is mandatory**: without it node4 could start a new, empty cluster.
+**`-e '{"k3s_primary_control_node": false}'` is mandatory** (JSON: `=false` would be the string "false", which is true): without it node4 could start a new, empty cluster.
 (The role already treats only the first master in the inventory, node2, as primary; the extra var overrides
 that and is the safety net. For node2's own swap it is what prevents `cluster-init`.)
 - [ ] Right after `k3s_install.yml`, on node4:

@@ -417,8 +417,14 @@ Every command, in order: [disk-swap-plan.md](disk-swap-plan.md).
   `failed=0`; ES/Prometheus `replicas=2 healthy` on the mini PCs, 0 degraded. node6 holds 0 Longhorn replicas
   after the join (Longhorn does not move copies back by itself); it fills when node5 is evicted.
   Fresh images need `sudo apt-get update` before `apt-get install fio` (stale package list, 404s).
-- [ ] **node4** (task list 3, master, no Longhorn data): etcd snapshot, join with
-  `-e k3s_primary_control_node=false`, check no `cluster-init`.
+- [x] **node4** (task list 3, master, no Longhorn data): etcd snapshot, join with
+  `-e '{"k3s_primary_control_node": false}'`, check no `cluster-init`. Done 28 Nov: `fio` 13.7k IOPS (1.17 ms),
+  297 MB/s (firmware M6CR072 performs like node6's M6CR061); SMART `PASSED`; `unmap`, `DISC-MAX 2G`, 866.6 GiB
+  trimmed; joined with `server: https://10.0.0.10:6443`, three masters `Ready`, `[+]etcd ok`, kube-vip and
+  coredns `Running` on node4, freqtrade `Running`. Two lessons: the first boot ran without the network cable and
+  SSH stayed refused (drive re-imaged, then fine); `-e k3s_primary_control_node=false` is a string, so the first
+  `k3s_install` stopped after writing `cluster-init: true` (k3s not installed yet; config removed, rerun with
+  the JSON form).
 - [ ] **node-esp-2** (task list 4): Elasticsearch/Prometheus to 1 copy, eviction, cordon node5, PXE reinstall,
   full OS upgrade, join, uncordon node5, freqtrade `Running`, Elasticsearch/Prometheus back to 2 copies on
   node-esp-2. No app is scaled down during the swaps: e-commerce app commented out in Git, freqtrade stays up.
